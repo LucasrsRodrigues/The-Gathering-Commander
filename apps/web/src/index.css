@@ -4,7 +4,8 @@
   --surface-solid: #141b17;
   --surface-hi: #1d2722;
   --line: rgb(236 228 206 / 0.12);
-  --line-strong: rgb(236 228 206 / 0.24);
+  --line-strong: rgb(236 228 206 / 0.24); /* decorative edges only */
+  --control-border: rgb(236 228 206 / 0.45); /* ≥ 3:1 on every surface (WCAG 1.4.11) */
   --text: #ece4ce;
   --muted: #9ba79f;
   --gold: #d9b25a;
@@ -36,7 +37,7 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .count { display: inline-block; min-width: 1.6em; padding: 0 6px; border-radius: 99px; background: var(--surface-hi); font-family: var(--font-body); font-size: 13px; text-align: center; }
 
 .btn {
-  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line-strong);
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--control-border);
   background: var(--surface-hi); cursor: pointer; transition: background 120ms ease, border-color 120ms ease;
 }
 .btn:hover:not(:disabled) { border-color: var(--gold); }
@@ -46,8 +47,15 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .btn.ghost { background: transparent; }
 .btn.big { padding: 12px 22px; font-size: 18px; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* Inside clipping containers the ring is drawn inward so it is never cut off. */
+.seg button:focus-visible, .zone-card:focus-visible, .card-menu button:focus-visible, .stack-item:focus-visible { outline-offset: -2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+::placeholder { color: var(--muted); opacity: 1; }
 
-.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid var(--control-border); border-radius: 8px; overflow: hidden; }
 .seg button { padding: 6px 14px; border: 0; background: transparent; cursor: pointer; }
 .seg button[aria-pressed='true'] { background: var(--gold); color: var(--gold-ink); font-weight: 700; }
 .check { display: flex; align-items: center; gap: 8px; }
@@ -65,7 +73,7 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .seat legend { padding: 0 6px; color: var(--gold); font-family: var(--font-display); }
 .seat label, .house-rules label:not(.check) { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
 .seat input, .seat select, .seat textarea, .house-rules input[type='number'] {
-  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--text);
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--control-border); background: var(--bg); color: var(--text);
 }
 .seat textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 13px; }
 .house-rules { display: grid; gap: 10px; }
@@ -102,7 +110,7 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .life-value { order: 1; font-family: var(--font-display); font-size: 34px; line-height: 1; min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .life .step-btn:first-child { order: 0; }
 .life .step-btn:last-child { order: 2; }
-.step-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface-hi); cursor: pointer; line-height: 1; touch-action: manipulation; }
+.step-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--control-border); background: var(--surface-hi); cursor: pointer; line-height: 1; touch-action: manipulation; }
 .step-btn:hover { border-color: var(--gold); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 8px; border-radius: 8px; background: var(--surface-hi); font-size: 13px; }
@@ -121,12 +129,14 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .stack-panel, .game-log { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; backdrop-filter: blur(6px); }
 .stack-panel h2 { margin: 0 0 6px; font-size: 17px; }
 .stack-panel ol { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
-.stack-panel li { display: grid; padding: 6px 8px; border-radius: 6px; background: var(--surface-hi); cursor: pointer; }
+.stack-panel li { border-radius: 6px; background: var(--surface-hi); }
 .stack-panel li.top { outline: 1px solid var(--gold); }
-.stack-panel li small { color: var(--muted); }
+.stack-item { width: 100%; display: grid; justify-items: start; padding: 6px 8px; border: 0; border-radius: 6px; background: none; text-align: left; }
+button.stack-item { cursor: pointer; }
+.stack-item small { color: var(--muted); }
 .stack-panel .muted { margin: 0 0 8px; }
 .add-ability { display: grid; gap: 6px; }
-.add-ability input { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--bg); }
+.add-ability input { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--control-border); background: var(--bg); }
 .game-log { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .game-log summary { cursor: pointer; font-family: var(--font-display); }
 .game-log ol { margin: 6px 0 0; padding: 0; list-style: none; overflow: auto; font-size: 13px; color: var(--muted); display: grid; gap: 2px; align-content: start; }
@@ -170,7 +180,7 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 .menu-subtitle { padding: 6px 8px 2px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 .menu-group { display: grid; }
 .card-menu button { text-align: left; padding: 7px 8px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
-.card-menu button:hover, .card-menu button:focus-visible { background: var(--surface-hi); outline: none; }
+.card-menu button:hover, .card-menu button:focus-visible { background: var(--surface-hi); }
 
 .zone-viewer {
   position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 15; width: min(820px, calc(100% - 32px)); max-height: 76vh;
@@ -179,8 +189,8 @@ h1, h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.0
 }
 .zone-viewer header { display: flex; align-items: center; justify-content: space-between; }
 .zone-viewer h2 { margin: 0; font-size: 20px; text-transform: capitalize; }
-.zone-grid { overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
-.zone-card { padding: 0; border: 0; border-radius: 6px; overflow: hidden; aspect-ratio: 63 / 88; background: var(--surface-hi); cursor: pointer; }
+.zone-grid { margin: 0; padding: 2px; list-style: none; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.zone-card { width: 100%; padding: 0; border: 0; border-radius: 6px; overflow: hidden; aspect-ratio: 63 / 88; background: var(--surface-hi); cursor: pointer; }
 .zone-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .curtain {

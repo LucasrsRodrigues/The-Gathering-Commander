@@ -3,9 +3,11 @@ import type { PlayerView } from '@gathering-hall/engine'
 import { imagesFor } from '../catalog/catalog'
 import { ZONE_LABELS } from '../session/describe'
 import type { LogEntry } from '../session/GameSession'
-import { menuStore, previewStore, toastStore, zoneViewerStore } from '../ui/stores'
+import { closeTopmost, menuStore, previewStore, toastStore, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { libraryMenu, menuFor, type MenuGroup } from './actions'
+import { cardLabel, zoneIds } from './labels'
+import { focusables, menuAnchor, trapTab, useFocusFirst, useRestoreFocus, wrapIndex } from './a11y'
 import type { Dispatch } from './PlayerPanels'
 
 export function CardPreview() {
@@ -33,9 +35,8 @@ export function CardMenu({ view, dispatch }: { view: PlayerView; dispatch: Dispa
     })
   }, [menu])
 
-  useEffect(() => {
-    ref.current?.querySelector('button')?.focus()
-  }, [menu])
+  useRestoreFocus(!!menu)
+  useFocusFirst(ref, menu)
 
   if (!menu) return null
   let title = ''
@@ -52,18 +53,26 @@ export function CardMenu({ view, dispatch }: { view: PlayerView; dispatch: Dispa
   return (
     <div ref={ref} className="card-menu" role="menu" aria-label={title} style={pos}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') menuStore.set(null)
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        const items = focusables(ref.current)
+        const i = items.indexOf(document.activeElement as HTMLElement)
+        const go = (index: number) => {
           e.preventDefault()
-          const buttons = [...(ref.current?.querySelectorAll('button') ?? [])]
-          const i = buttons.indexOf(document.activeElement as HTMLButtonElement)
-          buttons[(i + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus()
+          items[index]?.focus()
         }
+        if (e.key === 'Escape') {
+          // Only the menu closes; the zone viewer under it stays open.
+          e.stopPropagation()
+          menuStore.set(null)
+        } else if (e.key === 'ArrowDown') go(wrapIndex(i, 1, items.length))
+        else if (e.key === 'ArrowUp') go(wrapIndex(i, -1, items.length))
+        else if (e.key === 'Home') go(0)
+        else if (e.key === 'End') go(items.length - 1)
+        else trapTab(e, ref.current)
       }}>
-      <div className="menu-title">{title}</div>
+      <div className="menu-title" aria-hidden="true">{title}</div>
       {groups.map((g, gi) => (
-        <div key={gi} className="menu-group">
-          {g.title && <div className="menu-subtitle">{g.title}</div>}
+        <div key={gi} className="menu-group" role="group" aria-label={g.title}>
+          {g.title && <div className="menu-subtitle" aria-hidden="true">{g.title}</div>}
           {g.items.map((item) => (
             <button key={item.label} role="menuitem" onClick={() => {
               menuStore.set(null)
@@ -78,41 +87,58 @@ export function CardMenu({ view, dispatch }: { view: PlayerView; dispatch: Dispa
 
 export function ZoneViewer({ view }: { view: PlayerView }) {
   const open = useStore(zoneViewerStore)
+  const ref = useRef<HTMLDivElement>(null)
+  useRestoreFocus(!!open)
+  useFocusFirst(ref, open)
   if (!open) return null
   const player = view.players[open.seat]
-  const ids = player ? [...player[open.zone]].reverse() : []
+  const ids = zoneIds(view, open.seat, open.zone)
+  const label = `${ZONE_LABELS[open.zone]} de ${player?.name}`
   return (
-    <div className="zone-viewer" role="dialog" aria-label={`${ZONE_LABELS[open.zone]} de ${player?.name}`}
-      onKeyDown={(e) => e.key === 'Escape' && zoneViewerStore.set(null)}>
+    <div ref={ref} className="zone-viewer" role="dialog" aria-modal="true" aria-label={label}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation()
+          closeTopmost()
+        } else trapTab(e, ref.current)
+      }}>
       <header>
         <h2>{ZONE_LABELS[open.zone]} · {player?.name} <span className="count">{ids.length}</span></h2>
-        <button className="btn ghost" autoFocus onClick={() => zoneViewerStore.set(null)}>Fechar</button>
+        <button className="btn ghost" onClick={() => zoneViewerStore.set(null)}>Fechar</button>
       </header>
       {ids.length === 0 ? <p className="muted">Nenhuma carta.</p> : (
-        <div className="zone-grid">
+        <ul className="zone-grid" aria-label={`${ids.length} carta(s)`}>
           {ids.map((id) => {
             const obj = view.objects[id]
             const img = imagesFor(obj?.card ?? null)
+            const show = () => obj?.card && previewStore.set(obj.card)
+            const hide = () => previewStore.set(null)
             return (
-              <button key={id} className="zone-card" aria-label={obj?.card?.name ?? 'Carta'}
-                onPointerEnter={() => obj?.card && previewStore.set(obj.card)}
-                onPointerLeave={() => previewStore.set(null)}
-                onClick={(e) => menuStore.set({ target: { kind: 'object', objectId: id }, x: e.clientX, y: e.clientY })}>
-                {img ? <img src={img.small} alt="" /> : <span>{obj?.card?.name}</span>}
-              </button>
+              <li key={id}>
+                <button className="zone-card" aria-label={cardLabel(obj)} aria-haspopup="menu"
+                  onPointerEnter={show} onPointerLeave={hide} onFocus={show} onBlur={hide}
+                  onClick={(e) => menuStore.set({
+                    target: { kind: 'object', objectId: id },
+                    ...menuAnchor(e, e.currentTarget.getBoundingClientRect()),
+                  })}>
+                  {img ? <img src={img.small} alt="" /> : <span>{obj?.card?.name}</span>}
+                </button>
+              </li>
             )
           })}
-        </div>
+        </ul>
       )}
     </div>
   )
 }
 
 export function Curtain({ name, onReady }: { name: string; onReady: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
   return (
-    <div className="curtain" role="dialog" aria-label="Troca de jogador">
+    <div ref={ref} className="curtain" role="dialog" aria-modal="true" aria-labelledby="curtain-title"
+      onKeyDown={(e) => trapTab(e, ref.current)}>
       <p className="eyebrow">Modo de mesa compartilhada</p>
-      <h2>Passe o dispositivo para {name}</h2>
+      <h2 id="curtain-title">Passe o dispositivo para {name}</h2>
       <p className="muted">A mão de {name} fica escondida até {name} confirmar.</p>
       <button className="btn primary" autoFocus onClick={onReady}>Sou {name}, mostrar</button>
     </div>

@@ -205,6 +205,7 @@ export type ErrorCode =
   | 'invalidZone'
   | 'invalidAmount'
   | 'invalidSelection'
+  | 'invalidAction'
 
 export interface GameError {
   code: ErrorCode

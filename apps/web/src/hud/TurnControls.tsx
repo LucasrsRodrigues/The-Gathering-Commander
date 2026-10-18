@@ -3,6 +3,7 @@ import type { PlayerId, PlayerView, Step } from '@gathering-hall/engine'
 import { STEP_LABELS } from '../session/describe'
 import { menuStore, previewStore } from '../ui/stores'
 import type { Dispatch } from './PlayerPanels'
+import { menuAnchor } from './a11y'
 import { primaryAction } from './primaryAction'
 
 // The 12 steps grouped into the 5 phases players think in (CR 500.1).
@@ -23,7 +24,7 @@ export function PhaseBar({ view, viewer, dispatch }: { view: PlayerView; viewer:
       <div className="turn-label">
         Turno {view.turn.number} · <b>{view.players[view.turn.active]?.name}</b>
       </div>
-      <ol className="phases">
+      <ol className="phases" aria-label="Fases">
         {PHASES.map((phase) => {
           const current = phase.steps.includes(view.turn.step)
           return (
@@ -36,7 +37,7 @@ export function PhaseBar({ view, viewer, dispatch }: { view: PlayerView; viewer:
       </ol>
       <div className="phase-actions">
         {showPass && <button className="btn ghost" onClick={() => dispatch({ type: 'passPriority' })}>Passar prioridade</button>}
-        <button className="btn primary" disabled={!primary.run} onClick={() => primary.run?.()} title="Atalho: espaço">
+        <button className="btn primary" disabled={!primary.run} onClick={() => primary.run?.()} title="Atalho: espaço" aria-keyshortcuts="Space">
           {primary.label}
         </button>
       </div>
@@ -55,12 +56,24 @@ export function StackPanel({ view, dispatch }: { view: PlayerView; dispatch: Dis
           {items.map((item, i) => {
             const obj = item.objectId ? view.objects[item.objectId] : undefined
             return (
-              <li key={item.id} className={i === 0 ? 'top' : ''}
-                onPointerEnter={() => obj?.card && previewStore.set(obj.card)}
-                onPointerLeave={() => previewStore.set(null)}
-                onClick={(e) => obj && menuStore.set({ target: { kind: 'object', objectId: obj.id }, x: e.clientX, y: e.clientY })}>
-                <span>{obj?.card?.name ?? item.description}</span>
-                <small>{view.players[item.controller]?.name}</small>
+              <li key={item.id} className={i === 0 ? 'top' : ''}>
+                {obj ? (
+                  <button className="stack-item" aria-haspopup="menu"
+                    aria-label={`${i === 0 ? 'Topo: ' : ''}${obj.card?.name ?? 'Carta'}, de ${view.players[item.controller]?.name}`}
+                    onPointerEnter={() => obj.card && previewStore.set(obj.card)}
+                    onPointerLeave={() => previewStore.set(null)}
+                    onFocus={() => obj.card && previewStore.set(obj.card)}
+                    onBlur={() => previewStore.set(null)}
+                    onClick={(e) => menuStore.set({ target: { kind: 'object', objectId: obj.id }, ...menuAnchor(e, e.currentTarget.getBoundingClientRect()) })}>
+                    <span>{obj.card?.name ?? 'Carta'}</span>
+                    <small>{view.players[item.controller]?.name}</small>
+                  </button>
+                ) : (
+                  <div className="stack-item">
+                    <span>{item.description}</span>
+                    <small>{view.players[item.controller]?.name}</small>
+                  </div>
+                )}
               </li>
             )
           })}

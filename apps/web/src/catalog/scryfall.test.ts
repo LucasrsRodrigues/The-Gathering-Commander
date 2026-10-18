@@ -1,8 +1,18 @@
 import { describe, expect, it, vi } from 'vitest'
 import { imagesFor } from './catalog'
+import { isApiUrl, isImageUrl } from './hosts'
 import { ScryfallCatalog } from './scryfall'
 
-const images = (id: string) => ({ small: `s/${id}`, normal: `n/${id}`, large: `l/${id}` })
+const CDN = 'https://cards.scryfall.io'
+const slug = (name: string) => encodeURIComponent(name)
+const images = (name: string) => ({ small: `${CDN}/small/${slug(name)}.jpg`, normal: `${CDN}/normal/${slug(name)}.jpg`, large: `${CDN}/large/${slug(name)}.jpg` })
+// A deterministic UUID-shaped id per name, like Scryfall's.
+const uuid = (name: string) => {
+  let h = 0
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const hex = h.toString(16).padStart(8, '0')
+  return `${hex}-0000-4000-8000-${hex}0000`
+}
 
 function fakeApi() {
   return vi.fn(async (_url: string, init: RequestInit) => {
@@ -10,7 +20,7 @@ function fakeApi() {
     const data = identifiers
       .filter(({ name }) => !name.startsWith('Nope'))
       .map(({ name: asked }) => asked.replace(/\s+/g, ' ')) // the real API answers with the canonical name
-      .map((name) => ({ id: `id-${name}`, oracle_id: `or-${name}`, name, type_line: 'Creature', image_uris: images(name) }))
+      .map((name) => ({ id: uuid(name), oracle_id: `or-${name}`, name, type_line: 'Creature', image_uris: images(name) }))
     return { ok: true, status: 200, json: async () => ({ data }) }
   })
 }
@@ -40,7 +50,7 @@ describe('ScryfallCatalog', () => {
     expect(missing).toEqual(['Nope Card'])
     const krenko = found.get('krenko, mob boss')!
     expect(krenko.ref).toMatchObject({ name: 'Krenko, Mob Boss', oracleId: 'or-Krenko, Mob Boss', typeLine: 'Creature' })
-    expect(imagesFor(krenko.ref)?.large).toBe('l/Krenko, Mob Boss')
+    expect(imagesFor(krenko.ref)?.large).toBe(images('Krenko, Mob Boss').large)
   })
 
   it('serves repeat lookups from the local cache', async () => {
@@ -56,5 +66,54 @@ describe('ScryfallCatalog', () => {
   it('surfaces API failures', async () => {
     const fetchFn = vi.fn(async () => ({ ok: false, status: 429, json: async () => ({}) }))
     await expect(new ScryfallCatalog({ fetchFn, storage: null }).resolve(['X'])).rejects.toThrow('429')
+  })
+
+  it('only sends credential-less requests to the Scryfall API', async () => {
+    const fetchFn = fakeApi()
+    await new ScryfallCatalog({ fetchFn, storage: null, sleep: async () => {} }).resolve(['Sol Ring'])
+    const [url, init] = fetchFn.mock.calls[0]!
+    expect(new URL(url).hostname).toBe('api.scryfall.com')
+    expect(init).toMatchObject({ credentials: 'omit', redirect: 'error' })
+  })
+
+  it('drops image URLs outside the Scryfall CDN and malformed cards', async () => {
+    const evil = { small: 'https://evil.example/x.jpg', normal: 'javascript:alert(1)', large: 'http://cards.scryfall.io/x.jpg' }
+    const fetchFn = vi.fn(async () => ({
+      ok: true, status: 200,
+      json: async () => ({ data: [
+        { id: uuid('Bad Art'), name: 'Bad Art', image_uris: evil },
+        { id: 'not-a-uuid', name: 'Bad Id' },
+        { id: uuid('Long'), name: 'x'.repeat(500) },
+      ] }),
+    }))
+    const { found, missing } = await new ScryfallCatalog({ fetchFn, storage: null, sleep: async () => {} })
+      .resolve(['Bad Art', 'Bad Id', 'Long'])
+    expect(found.get('bad art')?.images).toBeNull()
+    expect(missing).toEqual(['Bad Id', 'Long'])
+  })
+
+  it('ignores tampered cache entries', async () => {
+    const storage = new MemoryStorage() as unknown as Storage
+    storage.setItem('gh-catalog-v1', JSON.stringify({
+      'sol ring': { ref: { name: 'Sol Ring', scryfallId: uuid('Sol Ring') }, images: { small: 'https://evil.example/a', normal: 'x', large: 'y' } },
+      ['__proto__']: { ref: { name: 'Polluted', scryfallId: uuid('P') }, images: null },
+    }))
+    const fetchFn = fakeApi()
+    const { found } = await new ScryfallCatalog({ fetchFn, storage, sleep: async () => {} }).resolve(['Sol Ring'])
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+    expect(found.get('sol ring')?.images?.small).toBe(images('Sol Ring').small)
+    expect(({} as Record<string, unknown>).ref).toBeUndefined()
+  })
+})
+
+describe('host allowlist', () => {
+  it('accepts only https on the exact Scryfall hosts', () => {
+    expect(isImageUrl('https://cards.scryfall.io/large/front/a.jpg')).toBe(true)
+    expect(isApiUrl('https://api.scryfall.com/cards/collection')).toBe(true)
+    for (const bad of [
+      'http://cards.scryfall.io/a.jpg', 'https://cards.scryfall.io.evil.com/a.jpg', 'https://evil.com/cards.scryfall.io',
+      'https://user:pw@cards.scryfall.io/a.jpg', 'https://cards.scryfall.io:8443/a.jpg', 'data:image/png;base64,AAAA', 42,
+    ]) expect(isImageUrl(bad)).toBe(false)
+    expect(isApiUrl('https://cards.scryfall.io/x')).toBe(false)
   })
 })

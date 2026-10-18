@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import type { ActionIntent, PlayerId, PlayerView } from '@gathering-hall/engine'
 import { seatOrder } from '../table/layout'
-import { focusStore, zoneViewerStore } from '../ui/stores'
+import { focusStore, menuStore, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
+import { menuAnchor } from './a11y'
 
 export type Dispatch = (action: ActionIntent) => void
 
@@ -45,6 +46,7 @@ function PlayerPanel({ view, seat, dispatch, local }: {
   // Every opposing commander we can see, plus any that already dealt damage.
   const opposing = Object.values(view.objects).filter((o) => o.isCommander && o.owner !== seat).map((o) => o.id)
   const damageSources = [...new Set([...opposing, ...Object.keys(p.commanderDamage)])]
+  const battlefieldCount = view.battlefield.filter((id) => view.objects[id]?.controller === seat).length
 
   return (
     <section className={`player${local ? ' local' : ''}${active ? ' active' : ''}${priority ? ' priority' : ''}${p.lost ? ' lost' : ''}`}
@@ -69,8 +71,8 @@ function PlayerPanel({ view, seat, dispatch, local }: {
       {p.lost ? <p className="muted">Saiu da partida</p> : (
         <>
           <div className="life" aria-live="polite">
-            <Stepper label="vida" onChange={(delta) => dispatch({ type: 'adjustLife', target: seat, delta })} />
-            <span className="life-value">{p.life}</span>
+            <Stepper label={`vida de ${p.name}`} onChange={(delta) => dispatch({ type: 'adjustLife', target: seat, delta })} />
+            <span className="life-value"><span className="sr-only">Vida </span>{p.life}</span>
           </div>
           {!expanded && (
             <div className="summary">
@@ -80,19 +82,25 @@ function PlayerPanel({ view, seat, dispatch, local }: {
           {expanded && <><div className="chips">
             <span className="chip">
               Veneno <b>{p.poison}</b>
-              <Stepper label="veneno" onChange={(delta) => dispatch({ type: 'adjustPoison', target: seat, delta })} />
+              <Stepper label={`veneno de ${p.name}`} onChange={(delta) => dispatch({ type: 'adjustPoison', target: seat, delta })} />
             </span>
             {damageSources.map((id) => (
               <span className="chip" key={id} title="Dano de comandante recebido">
                 {view.objects[id]?.card?.name.split(',')[0] ?? 'Comandante'} <b>{p.commanderDamage[id] ?? 0}</b>
-                <Stepper label="dano de comandante" onChange={(amount) =>
+                <Stepper label={`dano de ${view.objects[id]?.card?.name ?? 'comandante'} em ${p.name}`} onChange={(amount) =>
                   dispatch({ type: 'commanderDamage', target: seat, commanderId: id, amount, alsoLife: amount > 0 })} />
               </span>
             ))}
           </div>
           <div className="zones-row">
             <span>Mão {p.handCount}</span>
-            <span>Grimório {p.libraryCount}</span>
+            {local ? (
+              <button className="link" aria-haspopup="menu" onClick={(e) => menuStore.set({
+                target: { kind: 'library', seat }, ...menuAnchor(e, e.currentTarget.getBoundingClientRect()),
+              })}>Grimório {p.libraryCount}</button>
+            ) : <span>Grimório {p.libraryCount}</span>}
+            <button className="link" onClick={() => zoneViewerStore.set({ seat, zone: 'battlefield' })}>Campo {battlefieldCount}</button>
+            <button className="link" onClick={() => zoneViewerStore.set({ seat, zone: 'command' })}>Comando {p.command.length}</button>
             <button className="link" onClick={() => zoneViewerStore.set({ seat, zone: 'graveyard' })}>Cemitério {p.graveyard.length}</button>
             <button className="link" onClick={() => zoneViewerStore.set({ seat, zone: 'exile' })}>Exílio {p.exile.length}</button>
           </div></>}

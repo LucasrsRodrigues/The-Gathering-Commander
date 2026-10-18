@@ -13,8 +13,20 @@ export const menuStore = createStore<{ target: MenuTarget; x: number; y: number 
 // Camera focus: null = overview, otherwise a seat's area.
 export const focusStore = createStore<PlayerId | null>(null)
 
-// Zone viewer (graveyard, exile, command) as an accessible DOM list.
-export const zoneViewerStore = createStore<{ seat: PlayerId; zone: 'graveyard' | 'exile' | 'command' } | null>(null)
+// Zone viewer as an accessible DOM list. It is also the keyboard way into the battlefield,
+// which is otherwise only reachable by pointer in the 3D scene.
+export type ViewableZone = 'battlefield' | 'graveyard' | 'exile' | 'command'
+export const zoneViewerStore = createStore<{ seat: PlayerId; zone: ViewableZone } | null>(null)
+
+// Escape closes only the topmost layer: the card menu (which may sit on top of the zone viewer),
+// then the zone viewer, then the camera focus. Returns false when nothing was open.
+export function closeTopmost(): boolean {
+  if (menuStore.get()) menuStore.set(null)
+  else if (zoneViewerStore.get()) zoneViewerStore.set(null)
+  else if (focusStore.get()) focusStore.set(null)
+  else return false
+  return true
+}
 
 // Short-lived messages (engine refusals, hints).
 export interface Toast {

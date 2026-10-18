@@ -2,6 +2,12 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    <!-- Content-Security-Policy (defense in depth against XSS). Only Scryfall (API + image CDN) and
+         Google Fonts are allowed off-origin; keep in sync with src/catalog/hosts.ts.
+         Dev server strips it (vite.config.ts) because Vite's HMR needs inline scripts and websockets.
+         frame-ancestors is ignored in <meta>: the host must send it as an HTTP header. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://cards.scryfall.io; connect-src 'self' https://api.scryfall.com; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content="Fan game gratuito e open source de Commander com mesa interativa." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

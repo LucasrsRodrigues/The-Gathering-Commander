@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_LINES, parseDecklist } from './parseDecklist'
+import { MAX_CARDS, MAX_CHARS, MAX_LINES, parseDecklist } from './parseDecklist'
 
 describe('parseDecklist', () => {
   it('reads plain "N Name" lines and a Commander section', () => {
@@ -33,6 +33,24 @@ describe('parseDecklist', () => {
     expect(parseDecklist(Array(MAX_LINES + 1).fill('1 Island').join('\n')).errors).toHaveLength(1)
     expect(parseDecklist(`1 ${'x'.repeat(300)}`).errors).toHaveLength(1)
     expect(parseDecklist('500 Island').errors).toHaveLength(1)
+  })
+
+  it('caps the whole input and the total number of cards', () => {
+    expect(parseDecklist('x'.repeat(MAX_CHARS + 1)).errors).toEqual([`A lista tem mais de ${MAX_CHARS} caracteres.`])
+    const deck = parseDecklist(['99 Island', '99 Forest', '99 Swamp', '1 Sol Ring', 'Commander', '1 Krenko, Mob Boss'].join('\n'))
+    expect(deck.cards.reduce((n, c) => n + c.count, 0)).toBeLessThanOrEqual(MAX_CARDS)
+    expect(deck.commanders).toEqual([])
+    expect(deck.errors).toHaveLength(1)
+  })
+
+  it('rejects control characters and bidi overrides', () => {
+    const deck = parseDecklist(['1 Sol\u0000 Ring', '1 Evil‮gnir', '1\tMind Stone'].join('\n'))
+    expect(deck.cards.map((c) => c.name)).toEqual(['Mind Stone'])
+    expect(deck.errors).toHaveLength(2)
+  })
+
+  it('refuses non-string input', () => {
+    expect(parseDecklist(null as unknown as string).errors).toHaveLength(1)
   })
 
   it('keeps markup as inert text', () => {

@@ -2,7 +2,9 @@ import { useState } from 'react'
 import type { PlayerId, PlayerView } from '@gathering-hall/engine'
 import { imagesFor } from '../catalog/catalog'
 import { menuStore, previewStore } from '../ui/stores'
+import { menuAnchor } from './a11y'
 import { playFromHand } from './actions'
+import { cardLabel } from './labels'
 import type { Dispatch } from './PlayerPanels'
 
 export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer: PlayerId; dispatch: Dispatch }) {
@@ -50,21 +52,35 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
           )}
         </div>
       )}
-      <div className="hand" aria-label="Sua mão">
+      <div className="hand" role="group" aria-label={choosingBottom ? 'Sua mão: escolha as cartas para o fundo' : 'Sua mão'}>
         {hand.map((id, i) => {
           const obj = view.objects[id]
           const img = imagesFor(obj?.card ?? null)
+          const openMenu = (point: { x: number; y: number }) => menuStore.set({ target: { kind: 'object', objectId: id }, ...point })
           return (
             <button key={id}
               className={`hand-card${selected.includes(id) ? ' selected' : ''}`}
               style={{ transform: `translateY(${Math.abs(i - mid) * 6}px) rotate(${(i - mid) * 4}deg)` }}
-              aria-label={obj?.card?.name ?? 'Carta'}
+              aria-label={cardLabel(obj)}
+              aria-pressed={choosingBottom ? selected.includes(id) : undefined}
+              aria-haspopup={choosingBottom ? undefined : 'menu'}
+              aria-keyshortcuts={choosingBottom ? undefined : 'M Shift+F10'}
               onPointerEnter={(e) => e.pointerType === 'mouse' && obj?.card && previewStore.set(obj.card)}
               onPointerLeave={() => previewStore.set(null)}
+              onFocus={() => obj?.card && previewStore.set(obj.card)}
+              onBlur={() => previewStore.set(null)}
               onClick={() => onCard(id)}
+              onKeyDown={(e) => {
+                if (!choosingBottom && (e.key === 'm' || e.key === 'M')) {
+                  e.preventDefault()
+                  const r = e.currentTarget.getBoundingClientRect()
+                  openMenu({ x: r.right, y: r.top })
+                }
+              }}
               onContextMenu={(e) => {
                 e.preventDefault()
-                menuStore.set({ target: { kind: 'object', objectId: id }, x: e.clientX, y: e.clientY })
+                // detail is 0 for right clicks too; only the (0, 0) of the context-menu key counts as keyboard.
+                openMenu(menuAnchor({ clientX: e.clientX, clientY: e.clientY, detail: 1 }, e.currentTarget.getBoundingClientRect()))
               }}>
               {img ? <img src={img.normal} alt="" draggable={false} /> : <span>{obj?.card?.name}</span>}
             </button>
