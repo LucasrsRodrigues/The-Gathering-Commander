@@ -1,0 +1,22 @@
+{
+  "name": "the-gathering-hall",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Fan game gratuito e open source de Commander (Magic: The Gathering) com mesa interativa.",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @gathering-hall/web",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "oxlint packages apps",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

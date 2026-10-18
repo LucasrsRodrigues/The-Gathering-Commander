@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+*.local
+.DS_Store
+.vite
+*.tsbuildinfo
+
+# Material oficial da Wizards: nunca versionar (ver LEGAL.md)
+*.pdf

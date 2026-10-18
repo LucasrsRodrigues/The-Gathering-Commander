@@ -1,0 +1,65 @@
+// Turns engine events into short Portuguese log lines without revealing hidden cards.
+
+import type { GameEvent, GameState, PlayerId, Step, ZoneKind } from '@gathering-hall/engine'
+
+export const STEP_LABELS: Record<Step, string> = {
+  untap: 'Desvirar', upkeep: 'Manutenção', draw: 'Compra', main1: 'Principal 1',
+  beginCombat: 'Início do combate', declareAttackers: 'Atacantes', declareBlockers: 'Bloqueadores',
+  combatDamage: 'Dano de combate', endCombat: 'Fim do combate', main2: 'Principal 2',
+  end: 'Final', cleanup: 'Limpeza',
+}
+
+export const ZONE_LABELS: Record<ZoneKind, string> = {
+  library: 'grimório', hand: 'mão', battlefield: 'campo de batalha', graveyard: 'cemitério',
+  exile: 'exílio', stack: 'pilha', command: 'zona de comando',
+}
+
+const LOSS_LABELS = {
+  life: 'ficou sem vida', poison: 'foi envenenado', commanderDamage: 'sofreu 21 de dano de comandante',
+  emptyLibrary: 'comprou de um grimório vazio', conceded: 'concedeu',
+} as const
+
+const HIDDEN: (ZoneKind | null)[] = ['library', 'hand', null]
+
+export function describeEvents(events: GameEvent[], after: GameState, before: GameState, viewer: PlayerId): string[] {
+  const name = (id: PlayerId) => after.players[id]?.name ?? id
+  const cardName = (id: string) => (after.objects[id] ?? before.objects[id])?.card.name ?? 'uma carta'
+  const lines: string[] = []
+  for (const e of events) {
+    switch (e.type) {
+      case 'gameStarted': lines.push(`A partida começou. ${name(e.startingPlayer)} joga primeiro.`); break
+      case 'mulliganTaken': lines.push(`${name(e.player)} fez mulligan (${e.mulligans}).`); break
+      case 'handKept': lines.push(`${name(e.player)} manteve a mão.`); break
+      case 'turnStarted': lines.push(`— Turno ${e.turn}: ${name(e.player)} —`); break
+      case 'cardsDrawn': lines.push(`${name(e.player)} comprou ${e.objectIds.length} carta(s).`); break
+      case 'libraryShuffled': lines.push(`${name(e.player)} embaralhou o grimório.`); break
+      case 'zoneChanged': {
+        if (e.from === 'library' && e.to === 'hand') break
+        const hidden = HIDDEN.includes(e.from) && HIDDEN.includes(e.to)
+        const ownHidden = e.owner === viewer
+        const what = hidden && !ownHidden ? 'uma carta' : cardName(e.objectId)
+        if (e.to === null) lines.push(`${what} saiu do jogo.`)
+        else if (e.to !== 'stack') lines.push(`${what}: ${e.from ? ZONE_LABELS[e.from] : 'nova'} → ${ZONE_LABELS[e.to]}.`)
+        break
+      }
+      case 'stackItemAdded':
+        lines.push(`${name(e.item.controller)} pôs na pilha: ${e.item.objectId ? cardName(e.item.objectId) : e.item.description}.`)
+        break
+      case 'stackItemResolved':
+        lines.push(`Resolveu: ${e.item.objectId ? cardName(e.item.objectId) : e.item.description}.`)
+        break
+      case 'lifeChanged': lines.push(`${name(e.player)}: vida ${e.from} → ${e.to}.`); break
+      case 'poisonChanged': lines.push(`${name(e.player)}: veneno ${e.from} → ${e.to}.`); break
+      case 'commanderDamageDealt':
+        lines.push(`${name(e.player)} recebeu ${e.amount} de dano de ${cardName(e.commanderId)} (total ${e.total}).`)
+        break
+      case 'commanderMayReturn': lines.push(`${cardName(e.objectId)} pode voltar para a zona de comando.`); break
+      case 'playerLost': lines.push(`${name(e.player)} ${LOSS_LABELS[e.reason]} e saiu da partida.`); break
+      case 'gameEnded':
+        lines.push(e.winners.length ? `Fim de jogo! Vitória de ${e.winners.map(name).join(', ')}.` : 'Fim de jogo.')
+        break
+      default: break
+    }
+  }
+  return lines
+}
