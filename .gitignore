@@ -11,3 +11,6 @@ coverage
 
 # Server database (local dev and VPS)
 apps/server/data
+
+# Local editor/agent config
+.claude/
