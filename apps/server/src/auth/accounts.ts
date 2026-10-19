@@ -18,6 +18,14 @@ export interface Account {
   providers: string[]
 }
 
+// Data that belongs to an account and lives elsewhere (cloud decks, match history…). Each feature registers how to
+// export it and how to erase it, so deleting an account (req. 9) and exporting it (req. 10) never forget a table.
+export interface AccountDataPart {
+  name: string // key in the export
+  export(db: Db, userId: string): Promise<unknown>
+  erase(db: Db, userId: string): Promise<void> // inside the deletion transaction
+}
+
 export const SESSION_DAYS = 30
 const TOUCH_EVERY_MS = 60 * 60 * 1000 // last_seen (and the expiry) move at most once an hour
 
@@ -25,8 +33,42 @@ export const hashToken = (token: string) => createHash('sha256').update(token).d
 
 export class AccountStore {
   private readonly db: Db
+  private readonly parts: AccountDataPart[] = []
   constructor(db: Db) {
     this.db = db
+  }
+
+  register(part: AccountDataPart) {
+    this.parts.push(part)
+  }
+
+  // Deletes the account for good: registered data first, then the user (identities and sessions cascade).
+  async deleteAccount(userId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      for (const part of this.parts) await part.erase(tx, userId)
+      await tx.query('DELETE FROM app_user WHERE id = $1', [userId])
+    })
+  }
+
+  // Everything the server keeps about the account, as JSON (req. 10).
+  async exportAccount(userId: string): Promise<Record<string, unknown>> {
+    const [user] = await this.db.query<{ id: string; display_name: string; avatar_url: string | null; created_at: Date | string }>(
+      'SELECT id, display_name, avatar_url, created_at FROM app_user WHERE id = $1', [userId])
+    if (!user) return {}
+    const identities = await this.db.query<{ provider: string; created_at: Date | string }>(
+      'SELECT provider, created_at FROM identity WHERE user_id = $1 ORDER BY provider', [userId])
+    const sessions = await this.db.query<{ created_at: Date | string; last_seen: Date | string; expires_at: Date | string }>(
+      'SELECT created_at, last_seen, expires_at FROM session WHERE user_id = $1 ORDER BY created_at', [userId])
+    const iso = (d: Date | string) => new Date(d).toISOString()
+    const out: Record<string, unknown> = {
+      kind: 'gathering-hall/account-export',
+      exportedAt: new Date().toISOString(),
+      account: { id: user.id, name: user.display_name, avatarUrl: user.avatar_url, createdAt: iso(user.created_at) },
+      identities: identities.map((i) => ({ provider: i.provider, linkedAt: iso(i.created_at) })),
+      sessions: sessions.map((s) => ({ createdAt: iso(s.created_at), lastSeen: iso(s.last_seen), expiresAt: iso(s.expires_at) })),
+    }
+    for (const part of this.parts) out[part.name] = await part.export(this.db, userId)
+    return out
   }
 
   // Finds the account of this identity or creates one. With `linkTo` (already logged in), the identity joins that

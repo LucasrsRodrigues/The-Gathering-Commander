@@ -4,6 +4,8 @@
 //   GET  /api/auth/:provider/callback   ← back from the provider: account, session cookie, redirect to /#/conta
 //   GET  /api/me                        the logged-in account, or 401
 //   POST /api/auth/logout               ends the session (same origin only)
+//   GET  /api/me/export                 everything the server keeps about the account, as a JSON download
+//   DELETE /api/me                      deletes the account for good (same origin, explicit confirmation)
 // Every redirect goes to this site's own PUBLIC_URL: nothing in the request can choose where the browser lands.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -60,6 +62,42 @@ export class AuthService {
     if (req.method === 'GET' && path === '/api/me') {
       const account = await this.accountFor(req)
       ctx.json(res, account ? 200 : 401, { account })
+      return true
+    }
+    if (path === '/api/me/export' && req.method === 'GET') {
+      const account = await this.accountFor(req)
+      if (!account) {
+        ctx.json(res, 401, { error: 'entre na conta para exportar' })
+        return true
+      }
+      const data = await this.accounts.exportAccount(account.id)
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="gathering-hall-minha-conta.json"',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      })
+      res.end(JSON.stringify(data, null, 2))
+      return true
+    }
+    if (path === '/api/me' && req.method === 'DELETE') {
+      if (!ctx.sameOrigin) {
+        ctx.json(res, 403, { error: 'origem não permitida' })
+        return true
+      }
+      const account = await this.accountFor(req)
+      if (!account) {
+        ctx.json(res, 401, { error: 'entre na conta para excluir' })
+        return true
+      }
+      const body = await readJson(req)
+      if (!body || body.confirm !== 'excluir minha conta') {
+        ctx.json(res, 400, { error: 'confirme digitando "excluir minha conta"' })
+        return true
+      }
+      await this.accounts.deleteAccount(account.id)
+      res.setHeader('Set-Cookie', cookie(SESSION_COOKIE, '', { maxAge: 0, path: '/', secure: this.secure }))
+      ctx.json(res, 200, { ok: true })
       return true
     }
     if (req.method === 'POST' && path === '/api/auth/logout') {
@@ -131,5 +169,24 @@ export class AuthService {
       cookies.push(cookie(SESSION_COOKIE, token, { maxAge: SESSION_DAYS * 24 * 60 * 60, path: '/', secure: this.secure }))
     }
     this.redirect(res, `${this.config.appUrl}/#/conta`, cookies)
+  }
+}
+
+const MAX_BODY = 4 * 1024
+
+// Small JSON bodies only (a confirmation); anything bigger or malformed is null.
+async function readJson(req: IncomingMessage): Promise<Record<string, unknown> | null> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length
+    if (size > MAX_BODY) return null
+    chunks.push(chunk as Buffer)
+  }
+  try {
+    const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+  } catch {
+    return null
   }
 }

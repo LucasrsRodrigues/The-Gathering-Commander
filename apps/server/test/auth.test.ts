@@ -177,3 +177,55 @@ describe('without accounts configured', () => {
     expect((await fetch(`${base}/api/me`)).status).toBe(404)
   })
 })
+
+describe('deleting and exporting the account (req. 9, 10)', () => {
+  it('exports what the server keeps, as a download, only with a session', async () => {
+    const env = await setup()
+    const { session } = await login(env, 'discord', { id: '11', username: 'ana' })
+    await login(env, 'google', { sub: 'g-11', name: 'Ana' }, session)
+    expect((await fetch(`${env.url}/api/me/export`)).status).toBe(401)
+    const res = await fetch(`${env.url}/api/me/export`, { headers: { Cookie: `gh_session=${session}` } })
+    expect(res.headers.get('content-disposition')).toMatch(/attachment/)
+    const data = (await res.json()) as Record<string, unknown>
+    expect(data).toMatchObject({ kind: 'gathering-hall/account-export', account: { name: 'ana' } })
+    expect((data.identities as { provider: string }[]).map((i) => i.provider)).toEqual(['discord', 'google'])
+    expect(JSON.stringify(data)).not.toMatch(/at-code|secret/) // no provider tokens, no secrets
+  })
+
+  it('deletes everything, ends every session, and needs the same origin and the typed confirmation', async () => {
+    const env = await setup()
+    const phone = await login(env, 'discord', { id: '12', username: 'bia' })
+    const laptop = await login(env, 'discord', { id: '12', username: 'bia' })
+    const del = (headers: Record<string, string>, body: unknown) =>
+      fetch(`${env.url}/api/me`, { method: 'DELETE', headers: { 'Content-Type': 'application/json', Cookie: `gh_session=${laptop.session}`, ...headers }, body: JSON.stringify(body) })
+    expect((await del({ Origin: 'https://evil.example' }, { confirm: 'excluir minha conta' })).status).toBe(403)
+    expect((await del({ Origin: env.url }, { confirm: 'sim' })).status).toBe(400)
+    const ok = await del({ Origin: env.url }, { confirm: 'excluir minha conta' })
+    expect(ok.status).toBe(200)
+    expect(ok.headers.get('set-cookie')).toMatch(/gh_session=;.*Max-Age=0/)
+    expect((await me(env, phone.session!)).status).toBe(401) // the other device's session is gone too
+    expect(await env.db.query('SELECT 1 FROM app_user')).toEqual([])
+    expect(await env.db.query('SELECT 1 FROM identity')).toEqual([])
+    expect(await env.db.query('SELECT 1 FROM session')).toEqual([])
+    // Signing in again later starts a brand-new account.
+    const again = await login(env, 'discord', { id: '12', username: 'bia' })
+    expect((await me(env, again.session!)).status).toBe(200)
+  })
+
+  it('registered account data is exported and erased with the account', async () => {
+    const db = await testDb()
+    const accounts = new AccountStore(db)
+    await db.exec('CREATE TABLE t_note (user_id uuid, text text)')
+    accounts.register({
+      name: 'notes',
+      export: async (d, id) => (await d.query<{ text: string }>('SELECT text FROM t_note WHERE user_id = $1', [id])).map((r) => r.text),
+      erase: async (d, id) => void (await d.query('DELETE FROM t_note WHERE user_id = $1', [id])),
+    })
+    const signed = await accounts.signIn({ provider: 'discord', providerUserId: '13', name: 'Caio', avatarUrl: null }, null)
+    const id = 'userId' in signed ? signed.userId : ''
+    await db.query('INSERT INTO t_note VALUES ($1, $2)', [id, 'deck do Caio'])
+    expect((await accounts.exportAccount(id)).notes).toEqual(['deck do Caio'])
+    await accounts.deleteAccount(id)
+    expect(await db.query('SELECT 1 FROM t_note')).toEqual([])
+  })
+})

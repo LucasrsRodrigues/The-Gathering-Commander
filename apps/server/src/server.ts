@@ -147,13 +147,13 @@ export function startServer(
       res.setHeader('Vary', 'Origin')
     }
     if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
       res.setHeader('Access-Control-Max-Age', '600')
       return end(res, 204)
     }
     if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size, catalog: catalog?.cache.cardCount() ?? 0 })
-    if (req.url?.startsWith('/api/auth/') || req.url === '/api/me') {
+    if (req.url?.startsWith('/api/auth/') || req.url === '/api/me' || req.url?.startsWith('/api/me/')) {
       if (!auth) {
         if (req.url === '/api/auth/providers') return json(res, 200, { providers: [] })
         return json(res, 404, { error: 'contas desligadas neste servidor' })

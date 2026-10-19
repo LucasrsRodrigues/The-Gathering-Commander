@@ -78,11 +78,18 @@ chaves de login configuradas.
     - avatar aceito só dos hosts do Discord e do Google, e nome de exibição limpo e limitado;
     - uma identidade que já é de outra conta não é ligada (`conta-em-uso`), e nada é mesclado sem querer;
     - testes rodam no PGlite e no Postgres real.
-- [ ] **T8.5 — Sair, excluir conta, exportar dados** _(req: 9, 10)_ · depende de T8.4
+- [x] **T8.5 — Sair, excluir conta, exportar dados** _(req: 9, 10)_ · depende de T8.4
   - Verificação:
     - excluir apaga conta, sessões e nuvem e anonimiza o histórico;
     - a exportação traz decks, presets e partidas;
     - fazem as duas coisas só com sessão e mesma origem.
+  - Feito:
+    - `DELETE /api/me` exige sessão, a mesma origem e `{ "confirm": "excluir minha conta" }`, apaga a conta (as
+      identidades e as sessões de todos os aparelhos caem junto) e limpa o cookie;
+    - `GET /api/me/export` baixa um JSON com conta, provedores ligados e sessões; exige sessão (é um download por
+      navegação, então não exige a mesma origem; outro site não consegue ler a resposta);
+    - "partes da conta" (`AccountStore.register`): decks na nuvem (T8.7) e histórico (T8.10) entram na exportação e
+      na exclusão sem mexer aqui; o histórico vai registrar uma exclusão que anonimiza em vez de apagar.
 - [ ] **T8.6 — Web: "Entrar", menu da conta, tela "Minha conta"** _(req: 5, 9, 10)_ · depende de T8.4
   - Verificação:
     - sem chaves no servidor, nada de login aparece;
