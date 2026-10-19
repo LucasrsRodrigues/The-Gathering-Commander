@@ -10,6 +10,13 @@ import {
   MAX_SEATS, serverError, type ClientMessage, type LobbySeat, type RoomStatus, type ServerMessage,
 } from '@gathering-hall/protocol'
 
+// Card rules never come from the client: protocol validation already drops them; this keeps the room safe
+// on its own when no catalog fills them.
+export function stripRules(deck: DeckInput): DeckInput {
+  const strip = ({ rules: _rules, ...ref }: DeckInput['cards'][number]) => ref
+  return { commanders: deck.commanders.map(strip), cards: deck.cards.map(strip) }
+}
+
 export interface RoomDeps {
   newToken(): string // 128-bit random, base64url
   hash(token: string): string
@@ -17,6 +24,8 @@ export interface RoomDeps {
   now(): number
   // Server-side deck check against the room rules (needs the catalog); null = could not check.
   checkDeck?(deck: DeckInput, preset: Preset): Violation[] | null
+  // Fills each card's engine rules from the server catalog (épico 09). Without it cards play without rules.
+  cardRules?(deck: DeckInput): DeckInput
 }
 
 export interface Member {
@@ -161,7 +170,7 @@ export class Room {
       return [this.err(connId, 'deckInvalid', `O deck não passa nas regras "${this.s.preset.name}": ${reasons}`.slice(0, 500))]
     }
     const seats = this.s.seats.map((s, i) => (s?.member === member.tokenHash && i !== seat ? null : s))
-    seats[seat] = { name, deck, member: member.tokenHash }
+    seats[seat] = { name, deck: this.deps.cardRules ? this.deps.cardRules(deck) : stripRules(deck), member: member.tokenHash }
     this.updateMember(member, { seat })
     this.s = { ...this.s, seats }
     return [this.welcomeAgain(connId, member.tokenHash), ...this.broadcast(() => this.lobby()), ...this.broadcast(() => this.presence())]

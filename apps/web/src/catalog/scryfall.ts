@@ -2,6 +2,7 @@
 // batched /cards/collection (max 75 identifiers) and a local cache so repeat lookups cost nothing.
 // Responses and cache entries are untrusted: everything goes through toCatalogCard().
 
+import { deriveCardRules, type CardRules, type OracleFacts } from '@gathering-hall/engine'
 import type { CardFacts, Color } from '@gathering-hall/formats'
 import {
   normalizeName, rememberImages, type CardImages, type CatalogCard, type CatalogPort, type RequestOptions,
@@ -11,7 +12,7 @@ import { API_HOST, isApiUrl, isImageUrl } from './hosts'
 
 const BATCH = 75
 const MIN_GAP_MS = 100 // Scryfall asks for 50–100 ms between requests
-const CACHE_KEY = 'gh-catalog-v2'
+const CACHE_KEY = 'gh-catalog-v3' // v3: cost, P/T and loyalty for the engine's card rules (épico 09)
 const MAX_CACHE_ENTRIES = 2_500 // keeps the localStorage cache well under typical quotas
 const MAX_TEXT = 200
 const MAX_ORACLE = 3_000
@@ -25,8 +26,9 @@ const LEGALITIES = ['legal', 'banned', 'not_legal', 'restricted'] as const
 const UNSAFE = /[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/
 
 interface ScryfallImages { small?: string; normal?: string; large?: string }
-interface ScryfallFace { name?: string; type_line?: string; oracle_text?: string; oracle_id?: string; image_uris?: ScryfallImages }
-interface ScryfallCard {
+interface RulesFields { mana_cost?: string; power?: string; toughness?: string; loyalty?: string }
+interface ScryfallFace extends RulesFields { name?: string; type_line?: string; oracle_text?: string; oracle_id?: string; image_uris?: ScryfallImages }
+interface ScryfallCard extends RulesFields {
   id: string
   oracle_id?: string
   name: string
@@ -54,9 +56,10 @@ function safeImages(images: ScryfallImages | undefined): CardImages | null {
 
 // Only the fields we use, so the cache stays small; re-validated by toCatalogCard on every read.
 function slim(card: ScryfallCard): ScryfallCard {
-  const face = (f: ScryfallFace): ScryfallFace => ({ name: f.name, type_line: f.type_line, oracle_text: f.oracle_text, oracle_id: f.oracle_id, image_uris: f.image_uris })
+  const rules = (f: RulesFields): RulesFields => ({ mana_cost: f.mana_cost, power: f.power, toughness: f.toughness, loyalty: f.loyalty })
+  const face = (f: ScryfallFace): ScryfallFace => ({ name: f.name, type_line: f.type_line, oracle_text: f.oracle_text, oracle_id: f.oracle_id, image_uris: f.image_uris, ...rules(f) })
   return {
-    id: card.id, oracle_id: card.oracle_id, name: card.name, type_line: card.type_line, oracle_text: card.oracle_text,
+    id: card.id, oracle_id: card.oracle_id, name: card.name, type_line: card.type_line, oracle_text: card.oracle_text, ...rules(card),
     color_identity: card.color_identity, keywords: card.keywords, legalities: { commander: card.legalities?.commander },
     game_changer: card.game_changer, cmc: card.cmc, image_uris: card.image_uris,
     ...(Array.isArray(card.card_faces) ? { card_faces: card.card_faces.slice(0, 2).map(face) } : {}),
@@ -87,11 +90,30 @@ export function toCatalogCard(card: ScryfallCard): CatalogCard | null {
       imageKey: card.id,
       ...(oracleId ? { oracleId } : {}),
       ...(typeLine ? { typeLine } : {}),
+      ...(oracleId ? { rules: rulesOf(card, front, keywords, colorIdentity) } : {}),
     },
     images: safeImages(card.image_uris ?? front?.image_uris),
     facts,
     manaValue,
   }
+}
+
+// The engine's card rules, read from the front face (the one cast normally). Untrusted fields are length-checked;
+// the parser only recognizes known sentence shapes, so odd text degrades to manual rules, never wrong ones.
+function rulesOf(card: ScryfallCard, front: ScryfallFace | undefined, keywords: string[], colorIdentity: Color[]): CardRules {
+  const field = (k: keyof RulesFields | 'type_line' | 'oracle_text', max: number) => {
+    const v = front?.[k] ?? card[k]
+    return isText(v, max) ? v : undefined
+  }
+  const facts: OracleFacts = {
+    name: card.name, typeLine: field('type_line', MAX_TEXT) ?? '', manaCost: field('mana_cost', 100) ?? '',
+    oracleText: field('oracle_text', MAX_ORACLE) ?? '', keywords, colorIdentity,
+  }
+  for (const k of ['power', 'toughness', 'loyalty'] as const) {
+    const v = field(k, 10)
+    if (v !== undefined) facts[k] = v
+  }
+  return deriveCardRules(facts)
 }
 
 export class ScryfallCatalog implements CatalogPort {

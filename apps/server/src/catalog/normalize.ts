@@ -36,6 +36,9 @@ export interface BulkCard extends BulkFace {
   card_faces?: BulkFace[]
 }
 
+// Bump when ClientCard gains fields: the next start re-imports so every stored card has them.
+export const CARD_FORMAT = 2
+
 // The shape served to the web app: the same fields its Scryfall adapter already validates.
 export interface ClientCard {
   id: string
@@ -43,6 +46,10 @@ export interface ClientCard {
   name: string
   type_line?: string
   oracle_text?: string
+  mana_cost?: string // épico 09: the engine's card rules (cost, P/T, loyalty)
+  power?: string
+  toughness?: string
+  loyalty?: string
   color_identity: string[]
   keywords: string[]
   legalities: { commander: Legality }
@@ -93,6 +100,10 @@ export function normalizeCard(raw: BulkCard): CatalogRecord | null {
     id: raw.id, oracle_id: oracleId, name,
     ...(text(raw.type_line) ? { type_line: raw.type_line } : {}),
     ...(text(raw.oracle_text, MAX_TEXT) ? { oracle_text: raw.oracle_text } : {}),
+    ...(text(raw.mana_cost, 100) ? { mana_cost: raw.mana_cost } : {}),
+    ...(text(raw.power, 10) ? { power: raw.power } : {}),
+    ...(text(raw.toughness, 10) ? { toughness: raw.toughness } : {}),
+    ...(text(raw.loyalty, 10) ? { loyalty: raw.loyalty } : {}),
     color_identity: colorIdentity, keywords, legalities: { commander: legal }, game_changer: raw.game_changer === true,
     cmc: typeof raw.cmc === 'number' && Number.isFinite(raw.cmc) ? raw.cmc : 0,
     ...(raw.image_uris ? { image_uris: raw.image_uris } : {}),

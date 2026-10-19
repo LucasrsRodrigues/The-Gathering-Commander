@@ -38,11 +38,16 @@ depois paradas.
       `enforcement`, para encaixar direto no codec e no editor de presets;
     - os controles no editor de presets entram junto com cada onda (T9.7, T9.11, T9.16), para não mostrar opções
       que ainda não fazem nada.
-- [ ] **T9.3 — Regras das cartas no preparo e no servidor** _(req: 37, 38)_ · depende de T9.1
+- [x] **T9.3 — Regras das cartas no preparo e no servidor** _(req: 37, 38)_ · depende de T9.1
   - Escopo:
     - `prepareSeatDeck` preenche `rules` com o catálogo;
     - o `sit` do servidor substitui `rules` pelo catálogo, ou apaga quando ele não existe.
   - Verificação: um cliente que manda `rules` falsas (Sol Ring com 10 manas) joga com as regras do catálogo.
+  - Feito:
+    - a validação do protocolo já descartava `rules` vindas do cliente, e a sala também as remove por conta própria;
+    - o catálogo do servidor passou a servir custo, P/T e lealdade;
+    - `CARD_FORMAT` força uma reimportação no primeiro start depois do deploy (cerca de 15 s);
+    - o cache local do app passou para `gh-catalog-v3`.
 
 ## Onda 1 — Tempo
 - [ ] **T9.4 — Políticas e `ruleBlocked` / `ruleBent`** _(req: 32, 33)_ · depende de T9.2

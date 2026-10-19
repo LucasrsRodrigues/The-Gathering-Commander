@@ -11,6 +11,7 @@ import { TokenBucket, WindowLimiter } from './limits'
 import { securityHeaders, serveStatic } from './static'
 import { Room, type Outgoing, type RoomDeps } from './room/room'
 import type { RoomStore } from './store'
+import { makeRulesFiller } from './catalog/cardRules'
 import { makeDeckChecker } from './catalog/deckCheck'
 import { handleCatalog } from './catalog/routes'
 import type { SqliteCatalogStore } from './catalog/store'
@@ -54,7 +55,9 @@ export interface RunningServer {
 }
 
 export function startServer(config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: SqliteCatalogStore | null = null): Promise<RunningServer> {
-  const deps: RoomDeps = catalog && !baseDeps.checkDeck ? { ...baseDeps, checkDeck: makeDeckChecker(catalog) } : baseDeps
+  const deps: RoomDeps = catalog
+    ? { checkDeck: makeDeckChecker(catalog), cardRules: makeRulesFiller(catalog), ...baseDeps }
+    : baseDeps
   const rooms = new Map<string, Room>()
   const sockets = new Map<string, WebSocket>() // connId → socket
   const connectionsByIp = new Map<string, number>()

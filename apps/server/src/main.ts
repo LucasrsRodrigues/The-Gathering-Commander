@@ -3,6 +3,7 @@
 import { dirname, join } from 'node:path'
 import { loadHistory } from './catalog/history'
 import { runCatalogImport } from './catalog/ingest'
+import { CARD_FORMAT } from './catalog/normalize'
 import { SqliteCatalogStore } from './catalog/store'
 import { DEFAULT_CONFIG, startServer } from './server'
 import { SqliteRoomStore } from './store'
@@ -42,7 +43,7 @@ if (catalog) {
     log: (m) => console.log(m),
   }).catch((err) => console.error('catálogo: erro', err))
   const last = cat.lastRun('ok')
-  const stale = !last?.finishedAt || Date.now() - Date.parse(last.finishedAt) > 20 * 60 * 60 * 1000
+  const stale = !last?.finishedAt || Date.now() - Date.parse(last.finishedAt) > 20 * 60 * 60 * 1000 || cat.cardFormat() !== CARD_FORMAT
   if (stale) setTimeout(run, 5_000)
   importTimer = setInterval(run, 6 * 60 * 60 * 1000)
 }

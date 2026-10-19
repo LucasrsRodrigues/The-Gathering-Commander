@@ -42,6 +42,10 @@ describe('catalog import', () => {
     ])
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', cards: 3 })
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'skipped' })
+    // A catalog stored in an older card format is re-imported even when the bulk did not change.
+    store.setCardFormat(1)
+    expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', changes: 0 })
+    expect(store.resolveNames(['Sol Ring']).get('sol ring')).toMatchObject({ mana_cost: '{1}' })
     api.nextDay()
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', changes: 1 })
     expect(store.commanderAt('2026-10-15').banned.map((c) => c.name)).toEqual(['Mana Crypt'])

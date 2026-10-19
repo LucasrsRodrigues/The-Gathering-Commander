@@ -9,7 +9,7 @@ import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { createGunzip } from 'node:zlib'
 import { diffCatalog } from './diff'
-import { normalizeCard, type BulkCard, type CatalogRecord } from './normalize'
+import { CARD_FORMAT, normalizeCard, type BulkCard, type CatalogRecord } from './normalize'
 import type { HistoryEntry, ImportRun, SqliteCatalogStore } from './store'
 
 const BULK_INFO = 'https://api.scryfall.com/bulk-data/oracle-cards'
@@ -53,7 +53,7 @@ export async function runCatalogImport(store: SqliteCatalogStore, deps: IngestDe
   const updatedAt = typeof info.updated_at === 'string' ? info.updated_at : ''
   if (!updatedAt || !allowedDownload(info.jsonl_download_uri)) throw new Error('resposta inesperada do bulk-data')
 
-  if (!opts.force && store.lastRun('ok')?.bulkUpdatedAt === updatedAt) {
+  if (!opts.force && store.lastRun('ok')?.bulkUpdatedAt === updatedAt && store.cardFormat() === CARD_FORMAT) {
     log('catálogo: bulk sem novidades')
     return { status: 'skipped', cards: 0, changes: 0 }
   }
@@ -74,6 +74,7 @@ export async function runCatalogImport(store: SqliteCatalogStore, deps: IngestDe
       const seeded = store.seedHistory(deps.history)
       if (seeded.unknown.length) log(`catálogo: histórico com nomes desconhecidos: ${seeded.unknown.join(', ')}`)
     }
+    store.setCardFormat(CARD_FORMAT)
     pruneRaw(deps.rawDir, deps.keepRaw ?? 7)
     store.finishRun(runId, { finishedAt: deps.now().toISOString(), status: 'ok', bulkUpdatedAt: updatedAt, cards: records.length, changes })
     log(`catálogo: ${records.length} cartas, ${changes} mudança(s) em ${date}`)

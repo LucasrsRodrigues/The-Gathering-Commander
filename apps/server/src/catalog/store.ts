@@ -62,7 +62,18 @@ export class SqliteCatalogStore {
         id INTEGER PRIMARY KEY AUTOINCREMENT, started_at TEXT NOT NULL, finished_at TEXT, bulk_updated_at TEXT,
         status TEXT NOT NULL, cards INTEGER NOT NULL DEFAULT 0, changes INTEGER NOT NULL DEFAULT 0, error TEXT
       );
+      CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     `)
+  }
+
+  // Version of the stored ClientCard shape (see CARD_FORMAT); 1 for catalogs imported before it existed.
+  cardFormat(): number {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = 'cardFormat'").get() as { value: string } | undefined
+    return row ? Number(row.value) : 1
+  }
+
+  setCardFormat(format: number) {
+    this.db.prepare("INSERT INTO meta (key, value) VALUES ('cardFormat', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(format))
   }
 
   close() {
