@@ -181,7 +181,9 @@ function parseManaAbility(line: string): ManaAbility | null {
   if (!taps) return null
   if (extra.length) {
     const cost = parseManaCost(extra.join(''))
-    if (!cost || cost.unknown || cost.x) return null
+    // Only generic extra costs ({1}, {T}: Signets) are paid automatically; anything else stays declared mana.
+    const onlyGeneric = cost && !cost.unknown && !cost.x && !cost.hybrid.length && !cost.twoBrid.length && !cost.phyrexian.length && !Object.keys(cost.colored).length
+    if (!onlyGeneric) return null
     ability.extraCost = cost
   }
   const [first = '', ...rest] = m[2]!.split(/(?<=\.)\s+/)

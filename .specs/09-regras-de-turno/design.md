@@ -145,7 +145,7 @@ PendingDecision |=
 |---|---|---|
 | `playLand { objectId }` | timing | Da mão (ou da zona de comando, se um dia houver) para o campo; aplica `entersTapped` |
 | `castSpell { objectId, x?, payWith?: ManaActivation[] }` | timing + mana | Ativa as fontes em `payWith`, calcula o custo (com a taxa), paga da reserva e põe na pilha. É atômica |
-| `activateMana { objectId, abilityIndex, color? }` | mana | Vira a fonte e põe a mana na reserva. Sem `color` numa opção múltipla, abre `chooseManaColor` |
+| `activateMana { objectId, abilityIndex, color? }` | mana | Vira a fonte e põe a mana na reserva. Numa opção múltipla, `color` é obrigatória (a UI pergunta antes) |
 | `declareMana { objectId, mana }` | mana | Só para fonte com `hasUnrecognizedMana`; vira a fonte e registra "mana declarada" |
 | `declareAttackers { attacks: { attacker, target }[] }` | combat | Só o jogador ativo, na etapa `declareAttackers` |
 | `declareBlockers { blocks: { blocker, attacker }[] }` | combat | Um por jogador atacado |

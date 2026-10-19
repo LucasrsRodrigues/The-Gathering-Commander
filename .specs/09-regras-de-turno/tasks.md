@@ -97,13 +97,19 @@ depois paradas.
     segundo terreno bloqueado.
   - Não verificado no navegador: a votação online com duas pessoas, coberta pelos testes do motor e do protocolo.
 
-- [ ] **T9.8 — Reserva, `activateMana`, `declareMana`, escolha de cor e esvaziar por etapa** _(req: 7–11)_ · depende de T9.5
+- [x] **T9.8 — Reserva, `activateMana`, `declareMana`, escolha de cor e esvaziar por etapa** _(req: 7–11)_ · depende de T9.5
   - Verificação:
     - Command Tower usa a identidade do comandante;
     - terreno de dor tira 1 de vida só na cor;
     - Elfo recém-chegado não gera mana;
     - a reserva esvazia ao mudar de etapa;
     - fitness de conservação de mana.
+  - Feito, com desvios:
+    - a cor vai junto com `activateMana { color }`, em vez de abrir a decisão pendente `chooseManaColor`: a UI
+      pergunta a cor antes de enviar, e a ação fica atômica (sem estado intermediário para o online);
+    - o custo extra automático só aceita mana genérica (Signets); custo colorido continua como mana declarada;
+    - um comandante incolor faz o Command Tower não gerar mana (CR 903.4f);
+    - a visão do jogador ganhou a reserva de mana, os terrenos jogados e `summoningSick` por objeto.
 - [ ] **T9.9 — Custo, taxa de comandante e pagamento** _(req: 12, 14, 15)_ · depende de T9.8
   - Verificação:
     - híbrida, phyrexiana (com vida) e X;

@@ -21,6 +21,8 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'act', seq: 10, action: { type: 'requestException', action: { type: 'playLand', objectId: 'o5' }, reason: 'Exploration' } },
       { v: 1, t: 'act', seq: 11, action: { type: 'answerException', approve: true } },
       { v: 1, t: 'act', seq: 12, action: { type: 'cancelException' } },
+      { v: 1, t: 'act', seq: 13, action: { type: 'activateMana', objectId: 'o6', abilityIndex: 1, color: 'G' } },
+      { v: 1, t: 'act', seq: 14, action: { type: 'declareMana', objectId: 'o7', mana: { B: 2, C: 1 } } },
     ]) {
       expect(decode(m), JSON.stringify(m)).toEqual({ ok: true, msg: m })
     }
@@ -52,6 +54,8 @@ describe('decodeClientMessage', () => {
     ['nested exception', enc({ v: 1, t: 'act', seq: 1, action: { type: 'requestException', action: { type: 'requestException', action: { type: 'concede' }, reason: '' }, reason: '' } })],
     ['huge reason', enc({ v: 1, t: 'act', seq: 1, action: { type: 'requestException', action: { type: 'concede' }, reason: 'x'.repeat(201) } })],
     ['non-boolean answer', enc({ v: 1, t: 'act', seq: 1, action: { type: 'answerException', approve: 'sim' } })],
+    ['unknown mana color', enc({ v: 1, t: 'act', seq: 1, action: { type: 'activateMana', objectId: 'o1', abilityIndex: 0, color: 'P' } })],
+    ['absurd declared mana', enc({ v: 1, t: 'act', seq: 1, action: { type: 'declareMana', objectId: 'o1', mana: { G: 999 } } })],
     ['negative X', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', x: -1 } })],
   ])('rejects %s', (_label, raw) => {
     expect(decodeClientMessage(raw).ok).toBe(false)

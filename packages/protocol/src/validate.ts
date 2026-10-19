@@ -8,6 +8,7 @@ import { MAX_MESSAGE_BYTES, MAX_SEATS, type ClientMessage } from './messages'
 
 export const ROOM_ID = /^[A-Za-z0-9_-]{22}$/ // 128 bits, base64url
 export const TOKEN = /^[A-Za-z0-9_-]{22}$/
+const MANA_TYPES = ['W', 'U', 'B', 'R', 'G', 'C'] as const
 const MAX_NAME = 24
 const MAX_TEXT = 200
 const MAX_ID = 40
@@ -122,6 +123,17 @@ export function actionIntent(v: unknown): ActionIntent {
       return { type, count: int(a.count, 'count', 1, 100) }
     case 'tap': case 'untap': case 'playLand':
       return { type, objectId: id(a.objectId, 'objectId') }
+    case 'activateMana':
+      return {
+        type, objectId: id(a.objectId, 'objectId'), abilityIndex: int(a.abilityIndex, 'abilityIndex', 0, 9),
+        ...(a.color !== undefined ? { color: oneOf(a.color, 'color', MANA_TYPES) } : {}),
+      }
+    case 'declareMana': {
+      const m = obj(a.mana, 'mana')
+      const mana: Partial<Record<(typeof MANA_TYPES)[number], number>> = {}
+      for (const t of MANA_TYPES) if (m[t] !== undefined) mana[t] = int(m[t], `mana ${t}`, 0, 20)
+      return { type, objectId: id(a.objectId, 'objectId'), mana }
+    }
     case 'castSpell':
       return { type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}) }
     case 'setFaceDown':

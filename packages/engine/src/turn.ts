@@ -2,6 +2,7 @@
 
 import type { Tx } from './tx'
 import { STEPS, type GameState, type PlayerId, type Step } from './types'
+import { emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
 
 // Players still in the game, in turn order starting from `from` (APNAP when `from` is the active player).
@@ -36,6 +37,7 @@ export function beginTurn(tx: Tx, player: PlayerId, number: number) {
 // Enters `step`, performs its turn-based actions and skips steps where nobody gets priority.
 function enterStep(tx: Tx, step: Step) {
   const s = tx.s
+  emptyPools(tx) // CR 500.4
   s.turn = { ...s.turn, step }
   tx.emit({ type: 'stepChanged', step, turn: s.turn.number })
   const active = s.turn.active

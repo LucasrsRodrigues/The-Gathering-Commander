@@ -4,6 +4,7 @@
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
+import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
 import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
@@ -15,7 +16,8 @@ import { drawCards, moveObject, shuffleLibrary } from './zones'
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
 // Actions that do not take priority: bookkeeping or leaving the game.
-const NO_PRIORITY_ACTIONS = new Set<Action['type']>(['setArrangement', 'concede', 'passPriority', 'advanceStep'])
+// Mana abilities (CR 605.3a) are activated while paying costs, without holding priority.
+const NO_PRIORITY_ACTIONS = new Set<Action['type']>(['setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana'])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
 const MAX_COUNTER_NAME = 40
@@ -28,7 +30,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'keepHand', 'mulligan', 'bottomCards', 'passPriority', 'advanceStep', 'moveObject', 'draw', 'mill',
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
-  'requestException', 'answerException', 'cancelException',
+  'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana',
 ])
 const MAX_X = 100
 
@@ -164,6 +166,42 @@ function applyGameAction(tx: Tx, action: Action) {
         tx.object(obj.id).tapped = true
         tx.emit({ type: 'tapped', objectId: obj.id })
       }
+      return
+    }
+
+    // CR 605: tap a source and add its mana. Costs and summoning sickness are policies (mana area).
+    case 'activateMana': {
+      const obj = controlledSource(tx, actor, action.objectId)
+      const ability = obj.card.rules?.manaAbilities[action.abilityIndex]
+      if (!Number.isInteger(action.abilityIndex) || !ability) fail('invalidAction', 'Essa carta não tem essa habilidade de mana.')
+      if (action.color !== undefined && !MANA_TYPES.includes(action.color)) fail('invalidAction', 'Cor de mana inválida.')
+      const mana = production(s, actor, ability, action.color)
+      if (ability.extraCost && levelOf(s.ruleset, 'mana') !== 'off') {
+        // Under 'warn' a missing payment is only logged (the policy did that); pay what there is.
+        const pool = s.players[actor]!.manaPool
+        tx.player(actor).manaPool = payGeneric(pool, ability.extraCost.generic) ?? payGeneric(pool, poolTotal(pool))!
+      }
+      tap(tx, obj.id)
+      if (ability.lifeCost) loseLife(tx, actor, ability.lifeCost)
+      if (ability.selfDamage) loseLife(tx, actor, ability.selfDamage)
+      addMana(tx, actor, mana, obj.id)
+      return
+    }
+
+    case 'declareMana': {
+      const obj = controlledSource(tx, actor, action.objectId)
+      if (obj.card.rules && !obj.card.rules.hasUnrecognizedMana) fail('invalidAction', 'Use a habilidade de mana da carta.')
+      const mana = action.mana
+      if (!mana || typeof mana !== 'object' || Object.keys(mana).some((k) => !MANA_TYPES.includes(k as never))) fail('invalidAction', 'Mana inválida.')
+      for (const t of MANA_TYPES) {
+        const n = mana[t]
+        if (n !== undefined && (!Number.isInteger(n) || n < 0)) fail('invalidAmount', 'Quantidade de mana inválida.')
+      }
+      const total = poolTotal(mana)
+      if (total < 1 || total > MAX_DECLARED_MANA) fail('invalidAmount', `Declare de 1 a ${MAX_DECLARED_MANA} manas.`)
+      tap(tx, obj.id)
+      tx.emit({ type: 'manaDeclared', player: actor, objectId: obj.id })
+      addMana(tx, actor, mana, obj.id)
       return
     }
 
@@ -321,6 +359,27 @@ function touchable(tx: Tx, actor: PlayerId, objectId: string, zones?: ZoneKind[]
     fail('notAllowed', 'Você não controla essa carta.')
   }
   return obj
+}
+
+// An untapped permanent the actor controls (mana sources are activated only by their controller, CR 602.2).
+function controlledSource(tx: Tx, actor: PlayerId, objectId: string): GameObject {
+  const obj = own(tx.s.objects, objectId)
+  if (!obj || obj.zone !== 'battlefield') fail('unknownObject', 'Essa carta não está no campo de batalha.')
+  if (obj.controller !== actor) fail('notAllowed', 'Você não controla essa carta.')
+  if (obj.tapped) fail('invalidAction', 'Essa carta já está virada.')
+  return obj
+}
+
+function tap(tx: Tx, id: string) {
+  tx.object(id).tapped = true
+  tx.emit({ type: 'tapped', objectId: id })
+}
+
+function loseLife(tx: Tx, player: PlayerId, amount: number) {
+  const p = tx.player(player)
+  const from = p.life
+  p.life -= amount
+  tx.emit({ type: 'lifeChanged', player, from, to: p.life })
 }
 
 // A card its owner plays: in their own hand or command zone.

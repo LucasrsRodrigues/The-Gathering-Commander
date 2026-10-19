@@ -2,8 +2,9 @@
 // a UI, a remote client or a bot should ever receive.
 
 import { commanderTax } from './commander'
+import { isSummoningSick } from './mana'
 import type {
-  Arrangement, CardRef, GameEvent, GameState, ObjectId, PendingDecision, PlayerId, PriorityState, Ruleset,
+  Arrangement, CardRef, GameEvent, GameState, ManaPool, ObjectId, PendingDecision, PlayerId, PriorityState, Ruleset,
   StackItem, TurnState, ZoneKind,
 } from './types'
 
@@ -20,6 +21,7 @@ export interface ObjectView {
   isCommander: boolean
   commanderTax: number
   arrangement?: Arrangement
+  summoningSick: boolean // épico 09: creature that cannot attack or use {T} yet
 }
 
 export interface PlayerPublicView {
@@ -31,6 +33,8 @@ export interface PlayerPublicView {
   mulligans: number
   hasKept: boolean
   lost: boolean
+  manaPool: ManaPool // public (CR 106.4)
+  landsPlayed: number
   handCount: number
   libraryCount: number
   hand: ObjectId[] // only filled for the viewer
@@ -66,6 +70,7 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
       tapped: obj.tapped, faceDown: obj.faceDown, counters: obj.counters,
       isToken: obj.isToken, isCommander: obj.isCommander,
       commanderTax: commanderTax(obj, state.ruleset),
+      summoningSick: obj.zone === 'battlefield' && isSummoningSick(state, obj),
       ...(obj.arrangement ? { arrangement: obj.arrangement } : {}),
     }
   }
@@ -81,7 +86,7 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
     zones.command.forEach(show)
     players[id] = {
       id, name: p.name, life: p.life, poison: p.poison, commanderDamage: p.commanderDamage,
-      mulligans: p.mulligans, hasKept: p.hasKept, lost: p.lost,
+      mulligans: p.mulligans, hasKept: p.hasKept, lost: p.lost, manaPool: p.manaPool, landsPlayed: p.landsPlayed,
       handCount: zones.hand.length, libraryCount: zones.library.length,
       hand: ownHand ? zones.hand : [],
       graveyard: zones.graveyard, exile: zones.exile, command: zones.command,

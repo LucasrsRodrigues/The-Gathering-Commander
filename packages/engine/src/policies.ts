@@ -2,6 +2,7 @@
 // state. reduce() decides what to do with the findings from the area's level (block / warn / off).
 
 import { hasInstantSpeed } from './cards'
+import { isSummoningSick, poolTotal } from './mana'
 import type { Action, GameState, PlayerId, RuleArea, RuleFinding, RuleLevel, Ruleset } from './types'
 
 type Policy = (state: GameState, action: Action) => RuleFinding | null
@@ -54,7 +55,27 @@ const spellTiming: Policy = (state, action) => {
   return hasInstantSpeed(obj.card) ? null : sorcerySpeed(state, action.player, 'Essa mágica (sem Flash) pode ser lançada')
 }
 
+const mana = (code: string, message: string): RuleFinding => ({ area: 'mana', code, message })
+
+// CR 302.6 for mana: a creature's {T} mana ability waits for its controller's next turn (unless Haste).
+const manaSickness: Policy = (state, action) => {
+  if (action.type !== 'activateMana' && action.type !== 'declareMana') return null
+  const obj = state.objects[action.objectId]
+  if (!obj || obj.zone !== 'battlefield' || !isSummoningSick(state, obj)) return null
+  return mana('summoningSick', 'Essa criatura acabou de chegar: só gera mana a partir do seu próximo turno.')
+}
+
+// "{1}, {T}: Add {U}{B}." — the extra cost comes out of the pool.
+const manaExtraCost: Policy = (state, action) => {
+  if (action.type !== 'activateMana') return null
+  const extra = state.objects[action.objectId]?.card.rules?.manaAbilities[action.abilityIndex]?.extraCost
+  if (!extra || poolTotal(state.players[action.player]?.manaPool ?? {}) >= extra.generic) return null
+  return mana('notEnoughMana', `Essa habilidade custa {${extra.generic}} da sua reserva de mana.`)
+}
+
 const POLICIES: { area: RuleArea; check: Policy }[] = [
+  { area: 'mana', check: manaSickness },
+  { area: 'mana', check: manaExtraCost },
   { area: 'timing', check: playedByHand },
   { area: 'timing', check: landTiming },
   { area: 'timing', check: spellTiming },

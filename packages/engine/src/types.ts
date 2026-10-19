@@ -279,6 +279,8 @@ export type Action =
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number }> // CR 601.2
+  | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
+  | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>
@@ -317,6 +319,9 @@ export type GameEvent =
   | { type: 'playerLost'; player: PlayerId; reason: LossReason }
   | { type: 'gameEnded'; winners: PlayerId[] }
   | { type: 'ruleBent'; player: PlayerId; area: RuleArea; code: string; message: string } // allowed by a 'warn' level
+  | { type: 'manaAdded'; player: PlayerId; mana: ManaAmount; source: ObjectId | null }
+  | { type: 'manaDeclared'; player: PlayerId; objectId: ObjectId } // the amount follows as manaAdded
+  | { type: 'manaEmptied'; player: PlayerId }
   | { type: 'exceptionRequested'; player: PlayerId; reason: string }
   | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
   | { type: 'exceptionCancelled'; player: PlayerId }
