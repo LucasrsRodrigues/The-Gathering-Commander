@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react'
 import { FanContentNotice } from '../legal/FanContentNotice'
 
-export type NavTarget = 'setup' | 'online' | 'decks' | 'presets' | 'about'
+export type NavTarget = 'setup' | 'online' | 'decks' | 'presets' | 'about' | 'account'
 
 const ITEMS: { target: NavTarget; label: string }[] = [
   { target: 'setup', label: 'Jogar' },
@@ -10,7 +11,7 @@ const ITEMS: { target: NavTarget; label: string }[] = [
   { target: 'about', label: 'Sobre' },
 ]
 
-export function AppNav({ current, onNavigate }: { current: string; onNavigate: (t: NavTarget) => void }) {
+export function AppNav({ current, onNavigate, end }: { current: string; onNavigate: (t: NavTarget) => void; end?: ReactNode }) {
   return (
     <header className="app-nav">
       <span className="brand">The Gathering Hall</span>
@@ -22,6 +23,7 @@ export function AppNav({ current, onNavigate }: { current: string; onNavigate: (
           </button>
         ))}
       </nav>
+      {end}
     </header>
   )
 }

@@ -264,6 +264,24 @@ button.stack-item { cursor: pointer; }
 .nav-link { padding: 6px 12px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--muted); }
 .nav-link:hover { color: var(--text); }
 .nav-link[aria-current='page'] { background: var(--surface-hi); color: var(--text); }
+/* Optional account (épico 08): a quiet corner of the top bar. */
+.account-nav { margin-left: auto; position: relative; }
+.account-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text); cursor: pointer; }
+.account-chip img, .avatar-fallback { width: 24px; height: 24px; border-radius: 50%; }
+.avatar-fallback { display: inline-grid; place-items: center; background: var(--surface-hi); color: var(--gold); font-weight: 600; }
+.account-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 240px; padding: 10px; display: grid; gap: 8px;
+  background: var(--surface-solid); border: 1px solid var(--line-strong); border-radius: var(--radius); box-shadow: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+.account-menu p { margin: 0; }
+.menu-item { text-align: left; padding: 8px; border: 0; border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; }
+.menu-item:hover, .menu-item:focus-visible { background: var(--surface-hi); }
+.account-page .setup-card { max-width: 760px; }
+.account-page .setup-card h2 { margin: 0; font-size: 20px; }
+.account-page .setup-card p { margin: 0; }
+.account-who { display: flex; align-items: center; gap: 16px; }
+.account-who img { border-radius: 50%; }
+.setup-card.danger { border-color: var(--danger); }
 .app-foot { padding-top: 16px; max-width: 1100px; width: 100%; }
 .shell .preview { position: fixed; left: auto; right: 16px; z-index: 40; }
 

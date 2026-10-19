@@ -90,11 +90,22 @@ chaves de login configuradas.
       navegação, então não exige a mesma origem; outro site não consegue ler a resposta);
     - "partes da conta" (`AccountStore.register`): decks na nuvem (T8.7) e histórico (T8.10) entram na exportação e
       na exclusão sem mexer aqui; o histórico vai registrar uma exclusão que anonimiza em vez de apagar.
-- [ ] **T8.6 — Web: "Entrar", menu da conta, tela "Minha conta"** _(req: 5, 9, 10)_ · depende de T8.4
+- [x] **T8.6 — Web: "Entrar", menu da conta, tela "Minha conta"** _(req: 5, 9, 10)_ · depende de T8.4
   - Verificação:
     - sem chaves no servidor, nada de login aparece;
     - com chaves, o fluxo funciona no navegador;
     - excluir pede confirmação digitada.
+  - Feito:
+    - `AccountClient` (provedores, conta, sair, excluir, links de entrar e de exportar), que valida o que vem do
+      servidor (avatar só dos hosts dos provedores);
+    - "Entrar" e o menu da conta no canto da barra, que somem quando o servidor não tem login ou não responde;
+    - tela "Minha conta" em `#/conta`, com as mensagens de erro do login (`?erro=`);
+    - a CSP libera as fotos de perfil do Discord e do Google.
+  - Verificado no navegador, com um provedor falso que aprova na hora e o servidor real:
+    - entrar pelo Discord e voltar logado em `#/conta` (com o cookie entre as portas do desenvolvimento);
+    - ligar o Google na mesma conta;
+    - a mensagem de erro do provedor aparece certa;
+    - excluir a conta com a confirmação digitada e voltar ao estado sem conta.
 
 ## Onda 2 — Nuvem
 - [ ] **T8.7 — API de sincronização com "última escrita vence" e marcas de exclusão** _(req: 11, 13–15)_ · depende de T8.4
