@@ -9,8 +9,8 @@ import type { Dispatch } from './PlayerPanels'
 
 export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer: PlayerId; dispatch: Dispatch }) {
   const hand = view.players[viewer]?.hand ?? []
-  // Opening-hand decisions only; a rule-exception request has its own dialog.
-  const pending = view.pending?.player === viewer && view.pending.kind !== 'exception' ? view.pending : null
+  // Opening-hand decisions only; exceptions and combat declarations have their own UI.
+  const pending = view.pending?.player === viewer && (view.pending.kind === 'mulligan' || view.pending.kind === 'bottomCards') ? view.pending : null
   const [selected, setSelected] = useState<string[]>([])
   const choosingBottom = pending?.kind === 'bottomCards'
   const mid = (hand.length - 1) / 2

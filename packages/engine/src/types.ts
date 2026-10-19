@@ -155,6 +155,8 @@ export interface StackItem {
 export type PendingDecision =
   | { kind: 'mulligan'; player: PlayerId }
   | { kind: 'bottomCards'; player: PlayerId; count: number }
+  | { kind: 'declareAttackers'; player: PlayerId } // CR 508.1: the active player declares (an empty list is fine)
+  | { kind: 'declareBlockers'; player: PlayerId; players: PlayerId[] } // CR 509.1: each attacked player; `player` = next
   | ExceptionRequest
 
 // "Fazer mesmo assim" (épico 09): an action a 'block' policy rejected, waiting for the other players' approval.
@@ -167,7 +169,11 @@ export interface ExceptionRequest {
   card?: CardRef // the card the action plays, revealed to everyone
   findings: RuleFinding[]
   approvals: PlayerId[]
+  resume?: PendingDecision // the decision the request interrupted (a combat declaration), restored afterwards
 }
+
+export type Attack = { attacker: ObjectId; target: PlayerId | ObjectId } // a player or a planeswalker
+export type Block = { blocker: ObjectId; attacker: ObjectId }
 
 export type PriorityMode = 'relaxed' | 'strict'
 
@@ -212,8 +218,8 @@ export interface TurnState {
 }
 
 export interface CombatState {
-  attacks: { attacker: ObjectId; target: PlayerId | ObjectId }[] // a player or a planeswalker
-  blocks: { blocker: ObjectId; attacker: ObjectId }[]
+  attacks: Attack[]
+  blocks: Block[]
   damageOrder: Record<ObjectId, ObjectId[]> // attacker → its blockers, in damage assignment order
   firstStrikeDealt: boolean
 }
@@ -283,6 +289,8 @@ export type Action =
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
   | ActionOf<'adjustPT', { objectId: ObjectId; power: number; toughness: number }> // until end of turn (unscripted pumps)
   | ActionOf<'dealDamage', { objectId: ObjectId; amount: number; deathtouch?: boolean }> // to a creature or planeswalker
+  | ActionOf<'declareAttackers', { attacks: Attack[] }> // CR 508
+  | ActionOf<'declareBlockers', { blocks: Block[] }> // CR 509
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>
@@ -336,6 +344,8 @@ export type GameEvent =
   | { type: 'ptAdjusted'; objectId: ObjectId; power: number; toughness: number }
   | { type: 'damageDealt'; objectId: ObjectId; amount: number; total: number }
   | { type: 'destroyed'; objectId: ObjectId; reason: 'damage' | 'toughness' | 'loyalty' } // by a state-based action
+  | { type: 'attackersDeclared'; player: PlayerId; attacks: Attack[] }
+  | { type: 'blockersDeclared'; player: PlayerId; blocks: Block[] }
   | { type: 'exceptionRequested'; player: PlayerId; reason: string }
   | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
   | { type: 'exceptionCancelled'; player: PlayerId }

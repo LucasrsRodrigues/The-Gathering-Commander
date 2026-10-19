@@ -145,6 +145,14 @@ export function actionIntent(v: unknown): ActionIntent {
       for (const t of MANA_TYPES) if (m[t] !== undefined) mana[t] = int(m[t], `mana ${t}`, 0, 20)
       return { type, objectId: id(a.objectId, 'objectId'), mana }
     }
+    case 'declareAttackers': {
+      if (!Array.isArray(a.attacks) || a.attacks.length > 200) bad('attacks inválido')
+      return { type, attacks: (a.attacks as unknown[]).map((x) => { const m = obj(x, 'ataque'); return { attacker: id(m.attacker, 'attacker'), target: id(m.target, 'target') } }) }
+    }
+    case 'declareBlockers': {
+      if (!Array.isArray(a.blocks) || a.blocks.length > 200) bad('blocks inválido')
+      return { type, blocks: (a.blocks as unknown[]).map((x) => { const m = obj(x, 'bloqueio'); return { blocker: id(m.blocker, 'blocker'), attacker: id(m.attacker, 'attacker') } }) }
+    }
     case 'adjustPT':
       return { type, objectId: id(a.objectId, 'objectId'), power: int(a.power, 'power', -100, 100), toughness: int(a.toughness, 'toughness', -100, 100) }
     case 'dealDamage':

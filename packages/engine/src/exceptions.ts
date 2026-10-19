@@ -38,7 +38,10 @@ function judged(request: Pick<ExceptionRequest, 'player' | 'action' | 'reason'>,
 export function requestException(state: GameState, a: Extract<Action, { type: 'requestException' }>, run: Run): ReduceResult {
   playing(state, a.player)
   if (pendingException(state)) fail('pendingException', 'Já há um pedido de exceção esperando resposta.')
-  if (state.pending) fail('notYourDecision', 'Há uma decisão pendente na partida.')
+  // A combat declaration can be the subject of a request by whoever is declaring; anything else must wait.
+  const declaring = state.pending?.kind === 'declareAttackers' || state.pending?.kind === 'declareBlockers'
+  const decider = state.pending?.kind === 'declareBlockers' ? state.pending.players.includes(a.player) : state.pending?.player === a.player
+  if (state.pending && !(declaring && decider)) fail('notYourDecision', 'Há uma decisão pendente na partida.')
   if (typeof a.reason !== 'string' || a.reason.length > MAX_REASON) fail('invalidAction', 'Motivo inválido.')
   if (!a.action || typeof a.action !== 'object' || NOT_EXCEPTIONS.has(a.action.type)) fail('noException', 'Essa ação não pode ser pedida como exceção.')
   const action = { ...a.action, player: a.player } as Action
@@ -58,7 +61,8 @@ export function requestException(state: GameState, a: Extract<Action, { type: 'r
   const tx = new Tx(state)
   const objectId = 'objectId' in action ? action.objectId : undefined
   const card = objectId ? state.objects[objectId]?.card : undefined
-  tx.s.pending = { kind: 'exception', player: a.player, action, reason, findings, approvals: [], ...(card ? { card } : {}) }
+  const resume = state.pending ?? undefined
+  tx.s.pending = { kind: 'exception', player: a.player, action, reason, findings, approvals: [], ...(card ? { card } : {}), ...(resume ? { resume } : {}) }
   tx.emit({ type: 'exceptionRequested', player: a.player, reason })
   return { ok: true, state: tx.s, events: tx.events }
 }
@@ -75,7 +79,7 @@ export function answerException(state: GameState, a: Extract<Action, { type: 'an
   const answered: GameEvent = { type: 'exceptionAnswered', player: a.player, approve: a.approve }
   const approvals = [...request.approvals, a.player]
   if (!a.approve || needed.every((id) => approvals.includes(id))) {
-    const cleared: GameState = { ...state, pending: null }
+    const cleared: GameState = { ...state, pending: request.resume ?? null }
     if (!a.approve) return { ok: true, state: cleared, events: [answered] }
     const result = run(cleared, request.action, true)
     if (!result.ok) {
@@ -91,5 +95,5 @@ export function cancelException(state: GameState, a: Extract<Action, { type: 'ca
   const request = pendingException(state)
   if (!request) fail('noException', 'Não há pedido de exceção para cancelar.')
   if (request.player !== a.player) fail('notYourDecision', 'Só quem pediu pode desistir do pedido.')
-  return { ok: true, state: { ...state, pending: null }, events: [{ type: 'exceptionCancelled', player: a.player }] }
+  return { ok: true, state: { ...state, pending: request.resume ?? null }, events: [{ type: 'exceptionCancelled', player: a.player }] }
 }

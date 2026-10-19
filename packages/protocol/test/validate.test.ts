@@ -24,6 +24,8 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'act', seq: 15, action: { type: 'castSpell', objectId: 'o4', payWith: [{ objectId: 'o6', abilityIndex: 0 }, { objectId: 'o8', abilityIndex: 1, color: 'B' }] } },
       { v: 1, t: 'act', seq: 16, action: { type: 'adjustPT', objectId: 'o4', power: 3, toughness: 3 } },
       { v: 1, t: 'act', seq: 17, action: { type: 'dealDamage', objectId: 'o4', amount: 3, deathtouch: true } },
+      { v: 1, t: 'act', seq: 18, action: { type: 'declareAttackers', attacks: [{ attacker: 'o4', target: 'p2' }] } },
+      { v: 1, t: 'act', seq: 19, action: { type: 'declareBlockers', blocks: [{ blocker: 'o9', attacker: 'o4' }] } },
       { v: 1, t: 'act', seq: 13, action: { type: 'activateMana', objectId: 'o6', abilityIndex: 1, color: 'G' } },
       { v: 1, t: 'act', seq: 14, action: { type: 'declareMana', objectId: 'o7', mana: { B: 2, C: 1 } } },
     ]) {
@@ -58,6 +60,7 @@ describe('decodeClientMessage', () => {
     ['huge reason', enc({ v: 1, t: 'act', seq: 1, action: { type: 'requestException', action: { type: 'concede' }, reason: 'x'.repeat(201) } })],
     ['non-boolean answer', enc({ v: 1, t: 'act', seq: 1, action: { type: 'answerException', approve: 'sim' } })],
     ['huge payment', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', payWith: Array(61).fill({ objectId: 'o2', abilityIndex: 0 }) } })],
+    ['attack without target', enc({ v: 1, t: 'act', seq: 1, action: { type: 'declareAttackers', attacks: [{ attacker: 'o1' }] } })],
     ['zero damage', enc({ v: 1, t: 'act', seq: 1, action: { type: 'dealDamage', objectId: 'o1', amount: 0 } })],
     ['absurd pump', enc({ v: 1, t: 'act', seq: 1, action: { type: 'adjustPT', objectId: 'o1', power: 1000, toughness: 0 } })],
     ['unknown mana color', enc({ v: 1, t: 'act', seq: 1, action: { type: 'activateMana', objectId: 'o1', abilityIndex: 0, color: 'P' } })],

@@ -1,6 +1,7 @@
 // State-based actions (CR 704): permanents that die from damage or stats (épico 09), losing the game
 // (CR 704.5a-c, 903.10a) and leaving the game (CR 800.4).
 
+import { leaveCombatDecision } from './combat'
 import { continueMulligans } from './mulligan'
 import { beginTurn, givePriority, nextPlayerAfter, playersInOrder } from './turn'
 import type { Tx } from './tx'
@@ -86,6 +87,7 @@ export function eliminate(tx: Tx, player: PlayerId, reason: LossReason) {
   }
 
   if (finishIfOver(tx)) return
+  leaveCombatDecision(tx, player)
   const s = tx.s
   if (s.status === 'mulligan') {
     if (s.pending?.player === player) continueMulligans(tx)

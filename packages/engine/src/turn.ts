@@ -2,6 +2,7 @@
 
 import type { Tx } from './tx'
 import { STEPS, type GameState, type PlayerId, type Step } from './types'
+import { onCombatStep } from './combat'
 import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
 
@@ -35,6 +36,10 @@ export function beginTurn(tx: Tx, player: PlayerId, number: number) {
 }
 
 // Enters `step`, performs its turn-based actions and skips steps where nobody gets priority.
+export function goToStep(tx: Tx, step: Step) {
+  enterStep(tx, step)
+}
+
 function enterStep(tx: Tx, step: Step) {
   const s = tx.s
   emptyPools(tx) // CR 500.4
@@ -76,6 +81,7 @@ function enterStep(tx: Tx, step: Step) {
     return
   }
 
+  if (onCombatStep(tx, step)) return
   givePriority(tx, active)
 }
 

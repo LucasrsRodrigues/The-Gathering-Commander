@@ -4,6 +4,7 @@
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
+import { declareAttackers, declareBlockers } from './combat'
 import { findPayment, formatCost, spellCost } from './cost'
 import { dealDamageTo } from './stats'
 import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
@@ -19,7 +20,11 @@ const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
 // Actions that do not take priority: bookkeeping or leaving the game.
 // Mana abilities (CR 605.3a) are activated while paying costs, without holding priority.
-const NO_PRIORITY_ACTIONS = new Set<Action['type']>(['setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana'])
+const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
+  'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
+])
+// While combat waits for a declaration, only that (and leaving or making mana) can happen.
+const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
 const MAX_COUNTER_NAME = 40
@@ -33,6 +38,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
+  'declareAttackers', 'declareBlockers',
 ])
 const MAX_PT_DELTA = 100
 const MAX_X = 100
@@ -70,11 +76,16 @@ function apply(tx: Tx, action: Action, skipPolicies: boolean) {
   if (player.lost) fail('playerLost', 'Esse jogador já saiu da partida.')
 
   if (action.type === 'concede') {
-    if (pendingException(s)?.player === actor) s.pending = null // the request leaves with whoever asked
+    const request = pendingException(s)
+    if (request?.player === actor) s.pending = request.resume ?? null // the request leaves with whoever asked
     eliminate(tx, actor, 'conceded')
     return
   }
   if (pendingException(s)) fail('pendingException', 'Há um pedido de exceção esperando resposta.')
+  const declaring = s.pending?.kind === 'declareAttackers' || s.pending?.kind === 'declareBlockers'
+  if (declaring && !DURING_DECLARATION.has(action.type)) {
+    fail('notYourDecision', s.pending!.kind === 'declareAttackers' ? 'Declare os atacantes primeiro.' : 'Esperando os bloqueios.')
+  }
 
   if (s.status === 'mulligan') {
     if (!MULLIGAN_ACTIONS.has(action.type)) fail('wrongPhase', 'Termine os mulligans antes de jogar.')
@@ -281,6 +292,14 @@ function applyGameAction(tx: Tx, action: Action) {
       dealDamageTo(tx, obj, n, !!action.deathtouch)
       return
     }
+
+    case 'declareAttackers':
+      declareAttackers(tx, actor, action.attacks)
+      return
+
+    case 'declareBlockers':
+      declareBlockers(tx, actor, action.blocks)
+      return
 
     case 'createToken': {
       const card = tokenCard(action.card)

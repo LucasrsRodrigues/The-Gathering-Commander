@@ -74,7 +74,11 @@ describe('damage and state-based actions (CR 120, 704.5f–i)', () => {
     s = act(s, { type: 'dealDamage', player: 'p1', objectId: hawk, amount: 2 }).state
     s = act(s, { type: 'adjustPT', player: 'p1', objectId: hawk, power: 3, toughness: 3 }).state
     const turn = s.turn.number
-    while (s.turn.number === turn) s = act(s, { type: 'advanceStep', player: 'p1' }).state
+    while (s.turn.number === turn) {
+      s = s.pending?.kind === 'declareAttackers'
+        ? act(s, { type: 'declareAttackers', player: 'p1', attacks: [] }).state
+        : act(s, { type: 'advanceStep', player: 'p1' }).state
+    }
     expect(s.objects[hawk]).toMatchObject({ damage: 0, ptMods: [], deathtouchDamage: false })
   })
 

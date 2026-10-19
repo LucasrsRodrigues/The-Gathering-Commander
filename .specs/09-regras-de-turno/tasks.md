@@ -160,12 +160,20 @@ depois paradas.
     - as ações baseadas em estado novas só valem com `combatRules` diferente de `off` e só para cartas com dados e
       P/T fixo (P/T com `*` ou carta sem dados fica com os jogadores);
     - a lealdade usa o marcador "lealdade", que a mesa já usava.
-- [ ] **T9.13 — Declarar atacantes e bloqueadores** _(req: 17–19)_ · depende de T9.12
+- [x] **T9.13 — Declarar atacantes e bloqueadores** _(req: 17–19)_ · depende de T9.12
   - Verificação:
     - enjoo, Haste, Defender, Vigilance;
     - Flying, Reach, Menace;
     - multiplayer: só os atacados bloqueiam e todos precisam declarar;
     - sem atacantes, o combate pula.
+  - Feito:
+    - a declaração é uma decisão pendente (`declareAttackers` e `declareBlockers`); enquanto ela espera, só valem
+      a própria declaração, mana e sair da partida;
+    - sem criaturas desviradas, o motor pula a declaração sozinho (atacante sem criaturas pula o combate; defensor
+      sem criaturas não é perguntado);
+    - a ordem de dano entre bloqueadores é a ordem da declaração, e o ajuste fica para a T9.14;
+    - um pedido de exceção pode ser feito no meio da declaração e, se recusado, a declaração volta a esperar;
+    - as políticas só julgam ataques e bloqueios possíveis: o que é impossível falha com o motivo próprio.
 - [ ] **T9.14 — Proposta de dano, `assignDamage` e aplicação** _(req: 20–22)_ · depende de T9.13
   - Verificação:
     - First strike e Double strike com duas etapas;
