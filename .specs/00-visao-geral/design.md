@@ -112,8 +112,8 @@ Nos identificadores de código, usamos **inglês**, igual às Comprehensive Rule
 | Fase | Entrega | Épicos | Estado |
 |---|---|---|---|
 | **1 — Mesa sandbox** | Goldfish e hot-seat de 4 lugares, regras assistidas | 02, 03 | ✅ feito |
-| **2a — Decks e regras** | Editor e biblioteca de decks, validação por preset, regras da casa que restringem, bracket | 04, 05 | próxima |
-| **2b — Online + catálogo** | Salas por link, servidor autoritativo, catálogo versionado (errata e banlist por data) | 07, 01 | depois |
+| **2a — Decks e regras** | Editor e biblioteca de decks, validação por preset, regras da casa que restringem, bracket | 04, 05 | ✅ feito |
+| **2b — Online + catálogo** | Salas por link, servidor autoritativo, catálogo versionado (errata e banlist por data) | 07, 01 | specs prontas; hospedagem a decidir |
 | 3 — Automação | Schema de cartas, mecânicas, cobertura crescente | 02 (cartas) | |
 | 4 — Bots | Bot heurístico → simulação → político | 06 | |
 
