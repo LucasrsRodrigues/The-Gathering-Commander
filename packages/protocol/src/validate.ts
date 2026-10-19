@@ -110,8 +110,10 @@ export function actionIntent(v: unknown): ActionIntent {
       }
     case 'draw': case 'mill':
       return { type, count: int(a.count, 'count', 1, 100) }
-    case 'tap': case 'untap':
+    case 'tap': case 'untap': case 'playLand':
       return { type, objectId: id(a.objectId, 'objectId') }
+    case 'castSpell':
+      return { type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}) }
     case 'setFaceDown':
       return { type, objectId: id(a.objectId, 'objectId'), faceDown: bool(a.faceDown, 'faceDown') }
     case 'addCounter':

@@ -149,6 +149,7 @@ export interface StackItem {
   objectId?: ObjectId // for kind 'card': the object on the stack
   sourceId?: ObjectId // for kind 'ability': where it came from
   description?: string
+  x?: number // the value chosen for {X} when the spell was cast
 }
 
 export type PendingDecision =
@@ -263,6 +264,8 @@ export type Action =
   | ActionOf<'commanderDamage', { target: PlayerId; commanderId: ObjectId; amount: number; alsoLife: boolean }>
   | ActionOf<'putAbilityOnStack', { description: string; sourceId?: ObjectId }>
   | ActionOf<'concede'>
+  | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
+  | ActionOf<'castSpell', { objectId: ObjectId; x?: number }> // CR 601.2
 
 export type ActionType = Action['type']
 

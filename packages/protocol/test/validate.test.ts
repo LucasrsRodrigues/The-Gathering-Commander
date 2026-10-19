@@ -16,6 +16,8 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'stand' }, { v: 1, t: 'start' }, { v: 1, t: 'rematch' }, { v: 1, t: 'ping' },
       { v: 1, t: 'configure', preset: { ...officialPreset(), id: 'g', name: 'Grupo', ruleset: { startingLife: 30 } } },
       { v: 1, t: 'act', seq: 7, action: { type: 'moveObject', objectId: 'o12', to: 'battlefield', faceDown: false } },
+      { v: 1, t: 'act', seq: 8, action: { type: 'playLand', objectId: 'o3' } },
+      { v: 1, t: 'act', seq: 9, action: { type: 'castSpell', objectId: 'o4', x: 3 } },
     ]) {
       expect(decode(m), JSON.stringify(m)).toEqual({ ok: true, msg: m })
     }
@@ -43,6 +45,8 @@ describe('decodeClientMessage', () => {
     ['infinite arrangement', '{"v":1,"t":"act","seq":1,"action":{"type":"setArrangement","objectId":"o1","arrangement":{"x":1e999,"z":0}}}'],
     ['absurd preset', enc({ v: 1, t: 'configure', preset: { ...officialPreset(), ruleset: { startingLife: 1e9 } } })],
     ['too big', 'x'.repeat(MAX_MESSAGE_BYTES + 1)],
+    ['absurd X', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', x: 101 } })],
+    ['negative X', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', x: -1 } })],
   ])('rejects %s', (_label, raw) => {
     expect(decodeClientMessage(raw).ok).toBe(false)
   })

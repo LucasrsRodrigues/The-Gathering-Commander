@@ -19,7 +19,7 @@ function randomAction(state: GameState, rng: { s: number }): Action {
   const player = pick(alive, rng)
   const own = Object.values(state.objects).filter((o) => o.owner === player && o.zone !== 'library')
   const target = pick(alive, rng)
-  const kind = pick(['pass', 'advance', 'move', 'move', 'tap', 'draw', 'life', 'counter', 'token', 'ability'] as const, rng)
+  const kind = pick(['pass', 'advance', 'move', 'move', 'tap', 'draw', 'life', 'counter', 'token', 'ability', 'play'] as const, rng)
   switch (kind) {
     case 'pass': return { type: 'passPriority', player: state.priority?.player ?? player }
     case 'advance': return { type: 'advanceStep', player: state.turn.active }
@@ -39,6 +39,11 @@ function randomAction(state: GameState, rng: { s: number }): Action {
     }
     case 'token': return { type: 'createToken', player, card: { name: 'Token' } }
     case 'ability': return { type: 'putAbilityOnStack', player, description: 'Efeito manual' }
+    case 'play': {
+      const hand = state.zones[player]!.hand
+      const card = hand.length ? pick(hand, rng) : undefined
+      return card ? { type: pick(['playLand', 'castSpell'] as const, rng), player, objectId: card } : { type: 'draw', player, count: 1 }
+    }
   }
 }
 

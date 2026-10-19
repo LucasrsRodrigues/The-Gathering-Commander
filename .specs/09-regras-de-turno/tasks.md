@@ -58,13 +58,18 @@ depois paradas.
       primeira política;
     - **o padrão das três áreas fica `off` por enquanto.** Cada área vira `block` na tarefa de UI da sua onda, para
       cada deploy continuar jogável (sem os botões novos, a mesa não teria como lançar cartas).
-- [ ] **T9.5 — `playLand`, `castSpell` (sem custo ainda) e movimento manual restrito** _(req: 1–6)_ · depende de T9.4
+- [x] **T9.5 — `playLand`, `castSpell` (sem custo ainda) e movimento manual restrito** _(req: 1–6)_ · depende de T9.4
   - Verificação:
     - feitiço na manutenção bloqueado;
     - segundo terreno bloqueado;
     - instantânea e Flash no turno do outro permitidos;
     - comandante segue o tipo;
     - arrastar da mão para o campo em estrito dá a mensagem certa.
+  - Feito:
+    - `playLand` e `castSpell` (com X guardado na pilha) entraram no motor e no protocolo;
+    - as políticas de tempo devolvem um código por motivo (`notYourTurn`, `notMainPhase`, `stackNotEmpty`,
+      `landLimit`, `noPriority`), que a UI pode usar;
+    - pedir a carta da mão de outro jogador responde "carta desconhecida", sem revelar nada.
 - [ ] **T9.6 — Pedido de exceção** _(req: 33–36)_ · depende de T9.4
   - Escopo: `requestException`, `answerException`, `cancelException`, os modos `auto`/`vote` e `judgeAction`.
   - Verificação:

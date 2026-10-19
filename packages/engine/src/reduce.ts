@@ -3,6 +3,7 @@
 
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
+import { isLand } from './cards'
 import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
 import { advanceStep, givePriority, passPriority } from './turn'
@@ -25,8 +26,9 @@ const MAX_COORD = 1_000
 const ACTION_TYPES = new Set<Action['type']>([
   'keepHand', 'mulligan', 'bottomCards', 'passPriority', 'advanceStep', 'moveObject', 'draw', 'mill',
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
-  'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede',
+  'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
 ])
+const MAX_X = 100
 
 export function reduce(state: GameState, action: Action): ReduceResult {
   try {
@@ -139,6 +141,33 @@ function applyGameAction(tx: Tx, action: Action) {
     case 'draw':
       drawCards(tx, actor, count(action.count))
       return
+
+    // Épico 09: the regular ways to play cards. Timing is checked by the policies (timing area) before this.
+    case 'playLand': {
+      const obj = ownCard(tx, actor, action.objectId, ['hand'])
+      if (!isLand(obj.card)) fail('invalidAction', 'Isso não é um terreno: use "Lançar".')
+      moveObject(tx, obj.id, 'battlefield', { controller: actor })
+      tx.player(actor).landsPlayed += 1
+      if (obj.card.rules?.entersTapped) {
+        tx.object(obj.id).tapped = true
+        tx.emit({ type: 'tapped', objectId: obj.id })
+      }
+      return
+    }
+
+    case 'castSpell': {
+      const obj = ownCard(tx, actor, action.objectId, ['hand', 'command'])
+      if (isLand(obj.card)) fail('invalidAction', 'Terrenos não são lançados: use "Jogar terreno".')
+      if (action.x !== undefined && (!Number.isInteger(action.x) || action.x < 0 || action.x > MAX_X)) {
+        fail('invalidAmount', `X precisa ser um número inteiro entre 0 e ${MAX_X}.`)
+      }
+      moveObject(tx, obj.id, 'stack', { controller: actor })
+      if (action.x !== undefined) {
+        const stack = tx.stack()
+        stack[stack.length - 1] = { ...stack[stack.length - 1]!, x: action.x }
+      }
+      return
+    }
 
     case 'mill': {
       const n = count(action.count)
@@ -279,6 +308,15 @@ function touchable(tx: Tx, actor: PlayerId, objectId: string, zones?: ZoneKind[]
   if (controlled && tx.s.ruleset.restrictToController && obj.controller !== actor) {
     fail('notAllowed', 'Você não controla essa carta.')
   }
+  return obj
+}
+
+// A card its owner plays: in their own hand or command zone.
+function ownCard(tx: Tx, actor: PlayerId, objectId: string, zones: ZoneKind[]): GameObject {
+  const obj = own(tx.s.objects, objectId)
+  if (!obj || (obj.zone === 'hand' && obj.owner !== actor)) fail('unknownObject', 'Carta desconhecida.')
+  if (!zones.includes(obj.zone)) fail('invalidZone', 'Essa carta não está na sua mão nem na zona de comando.')
+  if (obj.owner !== actor) fail('notAllowed', 'Só o dono joga essa carta.')
   return obj
 }
 

@@ -228,7 +228,7 @@ export class Room {
     if (intent.type === 'createToken' && Object.keys(game.objects).length >= LIMITS.objects) {
       return 'Limite de objetos na partida atingido.'
     }
-    const toStack = intent.type === 'putAbilityOnStack' || (intent.type === 'moveObject' && intent.to === 'stack')
+    const toStack = intent.type === 'putAbilityOnStack' || intent.type === 'castSpell' || (intent.type === 'moveObject' && intent.to === 'stack')
     if (toStack && game.stack.length >= LIMITS.stack) return 'A pilha atingiu o limite de itens.'
     return null
   }
