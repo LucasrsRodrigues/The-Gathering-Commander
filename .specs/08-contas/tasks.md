@@ -4,7 +4,7 @@ Quatro ondas, cada uma com deploy seguro: a onda 0 não muda nada para quem joga
 chaves de login configuradas.
 
 ## Onda 0 — Postgres
-- [ ] **T8.1 — Porta `Db`, adaptadores Postgres e PGlite, migrações** _(req: 1, 2, 4)_
+- [x] **T8.1 — Porta `Db`, adaptadores Postgres e PGlite, migrações** _(req: 1, 2, 4)_
   - Escopo:
     - `Db` com `query`/`transaction`;
     - `PgDb` (`postgres`) e `PgliteDb`;
@@ -14,6 +14,11 @@ chaves de login configuradas.
     - migrações idempotentes;
     - uma migração com erro não deixa nada pela metade;
     - os testes rodam sem banco externo.
+  - Feito:
+    - `apps/server/src/db/`: porta `Db`, `PostgresDb` (`postgres` 3.4.9, pool de 5) e `PgliteDb`
+      (`@electric-sql/pglite` 0.5.8, em memória ou no diretório `pg` dos dados);
+    - `migrate` aplica `migrations/NNNN-nome.sql` em ordem, cada uma numa transação;
+    - os testes rodam no PGlite e repetem a suíte num Postgres real quando há `TEST_DATABASE_URL`.
 - [ ] **T8.2 — Stores assíncronos: salas e catálogo no Postgres** _(req: 1)_ · depende de T8.1
   - Escopo:
     - `RoomStore` e `CatalogStore` assíncronos;

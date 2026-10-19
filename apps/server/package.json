@@ -12,11 +12,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@gathering-hall/engine": "*",
     "@gathering-hall/formats": "*",
     "@gathering-hall/protocol": "*",
-    "ws": "^8.22.0",
-    "tsx": "^4.23.15"
+    "postgres": "^3.4.9",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
