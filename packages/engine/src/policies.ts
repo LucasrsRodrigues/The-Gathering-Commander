@@ -3,7 +3,7 @@
 
 import { hasInstantSpeed } from './cards'
 import { findPayment, formatCost, spellCost } from './cost'
-import { isSummoningSick, poolTotal } from './mana'
+import { isSummoningSick, poolTotal, simulatePool } from './mana'
 import type { Action, GameState, PlayerId, RuleArea, RuleFinding, RuleLevel, Ruleset } from './types'
 
 type Policy = (state: GameState, action: Action) => RuleFinding | null
@@ -83,7 +83,11 @@ const spellPayment: Policy = (state, action) => {
   if (cost.kind === 'none') return mana('noManaCost', 'Essa carta não tem custo de mana: só entra por outro efeito.')
   if (cost.kind !== 'mana') return null
   const x = action.x ?? 0
-  if (findPayment(state.players[action.player]!.manaPool, cost.cost, x, cost.tax)) return null
+  // With payWith, the sources are tapped first: judge the pool they leave (an impossible activation fails later).
+  const simulated = action.payWith?.length ? simulatePool(state, action.player, action.payWith) : null
+  if (simulated?.sick) return mana('summoningSick', 'Uma criatura do pagamento acabou de chegar: só gera mana a partir do seu próximo turno.')
+  const pool = simulated?.pool ?? state.players[action.player]!.manaPool
+  if (!simulated?.short && findPayment(pool, cost.cost, x, cost.tax)) return null
   const tax = cost.tax ? ` (com taxa de comandante +${cost.tax})` : ''
   return mana('notEnoughMana', `Mana insuficiente: custa ${formatCost(cost.cost, x, cost.tax)}${tax}. Gere mana primeiro.`)
 }

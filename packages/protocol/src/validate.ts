@@ -93,6 +93,17 @@ export function deckInput(v: unknown): DeckInput {
 }
 
 // Rebuilds an engine action with exactly the fields that action type has.
+function manaActivations(v: unknown) {
+  if (!Array.isArray(v) || v.length > 60) bad('payWith inválido')
+  return (v as unknown[]).map((item) => {
+    const m = obj(item, 'ativação')
+    return {
+      objectId: id(m.objectId, 'objectId'), abilityIndex: int(m.abilityIndex, 'abilityIndex', 0, 9),
+      ...(m.color !== undefined ? { color: oneOf(m.color, 'color', MANA_TYPES) } : {}),
+    }
+  })
+}
+
 export function actionIntent(v: unknown): ActionIntent {
   const a = obj(v, 'ação')
   const type = a.type
@@ -135,7 +146,10 @@ export function actionIntent(v: unknown): ActionIntent {
       return { type, objectId: id(a.objectId, 'objectId'), mana }
     }
     case 'castSpell':
-      return { type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}) }
+      return {
+        type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}),
+        ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
+      }
     case 'setFaceDown':
       return { type, objectId: id(a.objectId, 'objectId'), faceDown: bool(a.faceDown, 'faceDown') }
     case 'addCounter':

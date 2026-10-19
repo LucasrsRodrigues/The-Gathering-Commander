@@ -1,9 +1,9 @@
 // Mana (épico 09, CR 106, 605): the pool, what a mana ability produces and summoning sickness for {T} abilities.
 
-import { fail } from './errors'
+import { fail, RuleViolation } from './errors'
 import { hasKeyword, typesOf } from './cards'
 import type { Tx } from './tx'
-import type { GameObject, GameState, ManaAbility, ManaAmount, ManaColor, ManaPool, ManaType, PlayerId } from './types'
+import type { GameObject, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaPool, ManaType, PlayerId } from './types'
 
 export const MANA_TYPES: readonly ManaType[] = ['W', 'U', 'B', 'R', 'G', 'C']
 const COLORS: readonly ManaColor[] = ['W', 'U', 'B', 'R', 'G']
@@ -63,6 +63,43 @@ export function payGeneric(pool: ManaPool, amount: number): ManaPool | null {
     left -= take
   }
   return next
+}
+
+export interface SimulatedPool {
+  pool: ManaPool
+  sick: boolean // some creature source is summoning sick
+  short: boolean // some extra cost ({1}, {T}: …) could not be paid when its turn came
+}
+
+// The pool after activating these abilities in order, without touching the state. Null when an activation is
+// not possible at all (unknown or tapped source, used twice, no such ability, wrong color).
+export function simulatePool(state: GameState, player: PlayerId, activations: readonly ManaActivation[]): SimulatedPool | null {
+  let pool = { ...state.players[player]!.manaPool }
+  let sick = false
+  let short = false
+  const used = new Set<string>()
+  for (const a of activations) {
+    const obj = state.objects[a.objectId]
+    if (!obj || obj.zone !== 'battlefield' || obj.controller !== player || obj.tapped || used.has(obj.id)) return null
+    used.add(obj.id)
+    const ability = obj.card.rules?.manaAbilities[a.abilityIndex]
+    if (!ability) return null
+    let mana: ManaAmount
+    try {
+      mana = production(state, player, ability, a.color)
+    } catch (err) {
+      if (err instanceof RuleViolation) return null
+      throw err
+    }
+    if (isSummoningSick(state, obj)) sick = true
+    if (ability.extraCost) {
+      const paid = payGeneric(pool, ability.extraCost.generic)
+      if (!paid) short = true
+      pool = paid ?? payGeneric(pool, poolTotal(pool))!
+    }
+    for (const t of MANA_TYPES) pool[t] += mana[t] ?? 0
+  }
+  return { pool, sick, short }
 }
 
 export function addMana(tx: Tx, player: PlayerId, mana: ManaAmount, source: GameObject['id'] | null) {

@@ -11,7 +11,7 @@ import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
 import { advanceStep, givePriority, passPriority } from './turn'
 import { Tx } from './tx'
-import type { Action, CardRef, GameObject, GameState, PlayerId, ReduceResult, ZoneKind } from './types'
+import type { Action, CardRef, GameObject, GameState, ManaActivation, PlayerId, ReduceResult, ZoneKind } from './types'
 import { drawCards, moveObject, shuffleLibrary } from './zones'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
@@ -34,6 +34,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana',
 ])
 const MAX_X = 100
+const MAX_PAY_WITH = 60
 
 export function reduce(state: GameState, action: Action): ReduceResult {
   return run(state, action, false)
@@ -171,23 +172,9 @@ function applyGameAction(tx: Tx, action: Action) {
     }
 
     // CR 605: tap a source and add its mana. Costs and summoning sickness are policies (mana area).
-    case 'activateMana': {
-      const obj = controlledSource(tx, actor, action.objectId)
-      const ability = obj.card.rules?.manaAbilities[action.abilityIndex]
-      if (!Number.isInteger(action.abilityIndex) || !ability) fail('invalidAction', 'Essa carta não tem essa habilidade de mana.')
-      if (action.color !== undefined && !MANA_TYPES.includes(action.color)) fail('invalidAction', 'Cor de mana inválida.')
-      const mana = production(s, actor, ability, action.color)
-      if (ability.extraCost && levelOf(s.ruleset, 'mana') !== 'off') {
-        // Under 'warn' a missing payment is only logged (the policy did that); pay what there is.
-        const pool = s.players[actor]!.manaPool
-        tx.player(actor).manaPool = payGeneric(pool, ability.extraCost.generic) ?? payGeneric(pool, poolTotal(pool))!
-      }
-      tap(tx, obj.id)
-      if (ability.lifeCost) loseLife(tx, actor, ability.lifeCost)
-      if (ability.selfDamage) loseLife(tx, actor, ability.selfDamage)
-      addMana(tx, actor, mana, obj.id)
+    case 'activateMana':
+      activateManaAbility(tx, actor, action)
       return
-    }
 
     case 'declareMana': {
       const obj = controlledSource(tx, actor, action.objectId)
@@ -208,6 +195,11 @@ function applyGameAction(tx: Tx, action: Action) {
 
     case 'castSpell': {
       const obj = ownCard(tx, actor, action.objectId, ['hand', 'command'])
+      if (action.payWith !== undefined) {
+        // CR 601.2g: mana abilities are activated while casting; all of it happens or none does.
+        if (!Array.isArray(action.payWith) || action.payWith.length > MAX_PAY_WITH) fail('invalidAction', 'Pagamento malformado.')
+        for (const activation of action.payWith) activateManaAbility(tx, actor, activation)
+      }
       if (isLand(obj.card)) fail('invalidAction', 'Terrenos não são lançados: use "Jogar terreno".')
       if (action.x !== undefined && (!Number.isInteger(action.x) || action.x < 0 || action.x > MAX_X)) {
         fail('invalidAmount', `X precisa ser um número inteiro entre 0 e ${MAX_X}.`)
@@ -361,6 +353,26 @@ function touchable(tx: Tx, actor: PlayerId, objectId: string, zones?: ZoneKind[]
     fail('notAllowed', 'Você não controla essa carta.')
   }
   return obj
+}
+
+// CR 605: tap a source and add its mana. Summoning sickness and the extra cost are policies (mana area).
+function activateManaAbility(tx: Tx, actor: PlayerId, a: ManaActivation) {
+  const s = tx.s
+  if (!a || typeof a !== 'object' || typeof a.objectId !== 'string') fail('invalidAction', 'Ativação de mana malformada.')
+  const obj = controlledSource(tx, actor, a.objectId)
+  const ability = obj.card.rules?.manaAbilities[a.abilityIndex]
+  if (!Number.isInteger(a.abilityIndex) || !ability) fail('invalidAction', 'Essa carta não tem essa habilidade de mana.')
+  if (a.color !== undefined && !MANA_TYPES.includes(a.color)) fail('invalidAction', 'Cor de mana inválida.')
+  const mana = production(s, actor, ability, a.color)
+  if (ability.extraCost && levelOf(s.ruleset, 'mana') !== 'off') {
+    // Under 'warn' a missing payment is only logged (the policy did that); pay what there is.
+    const pool = s.players[actor]!.manaPool
+    tx.player(actor).manaPool = payGeneric(pool, ability.extraCost.generic) ?? payGeneric(pool, poolTotal(pool))!
+  }
+  tap(tx, obj.id)
+  if (ability.lifeCost) loseLife(tx, actor, ability.lifeCost)
+  if (ability.selfDamage) loseLife(tx, actor, ability.selfDamage)
+  addMana(tx, actor, mana, obj.id)
 }
 
 // Takes the cost from the pool (and life for Phyrexian mana). Under 'warn' a cost the pool cannot cover is only

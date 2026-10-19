@@ -278,7 +278,7 @@ export type Action =
   | ActionOf<'putAbilityOnStack', { description: string; sourceId?: ObjectId }>
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
-  | ActionOf<'castSpell', { objectId: ObjectId; x?: number }> // CR 601.2
+  | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[] }> // CR 601.2 (payWith: tap these first, atomically)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
@@ -286,6 +286,13 @@ export type Action =
   | ActionOf<'cancelException'>
 
 export type ActionType = Action['type']
+
+// One mana ability to activate: which source, which of its abilities, and the color when it offers a choice.
+export interface ManaActivation {
+  objectId: ObjectId
+  abilityIndex: number
+  color?: ManaType
+}
 
 // An action before the acting player is attached (what a UI or bot "intends" to do).
 type WithoutPlayer<A> = A extends unknown ? Omit<A, 'player'> : never

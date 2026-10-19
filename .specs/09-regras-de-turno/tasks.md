@@ -120,12 +120,16 @@ depois paradas.
     - a busca de pagamento tenta as escolhas de híbrida, {2/C} e phyrexiana (mana antes de vida);
     - carta sem custo de mana (Ancestral Vision) é bloqueada com `noManaCost`, e o caminho é a exceção;
     - carta sem dados é lançada sem cobrança e o log diz "custo pago à mão".
-- [ ] **T9.10 — `planPayment` e `castSpell { payWith }` atômico** _(req: 13)_ · depende de T9.9
+- [x] **T9.10 — `planPayment` e `castSpell { payWith }` atômico** _(req: 13)_ · depende de T9.9
   - Verificação:
     - escolhe cor fixa antes de "qualquer cor";
     - Signet pago com outra fonte;
     - `null` quando não dá;
     - menos de 5 ms com 30 fontes.
+  - Feito:
+    - o `planPayment` é guloso e depois verificado por simulação: nunca propõe um pagamento errado, no máximo
+      diz que não há plano quando um mais esperto existiria;
+    - `castSpell { payWith }` vira as fontes e paga numa ação só; se algo falha, nada muda.
 - [ ] **T9.11 — Mesa: HUD da reserva, clicar para gerar mana, confirmação do pagamento** · depende de T9.10
   - Verificação: lançar uma criatura de 4 com o pagamento automático é feito em 2 cliques.
 
