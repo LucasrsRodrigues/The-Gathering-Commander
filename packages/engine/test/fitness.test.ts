@@ -24,6 +24,13 @@ describe('engine fitness functions', () => {
     }
   })
 
+  it('keeps the Oracle parser out of the rules core (only index.ts re-exports it)', () => {
+    for (const { name, code } of files) {
+      if (name === 'index.ts' || name === 'deriveRules.ts') continue
+      expect(/from\s+['"]\.\/deriveRules['"]/.test(code), name).toBe(false)
+    }
+  })
+
   it('has no hidden sources of nondeterminism', () => {
     for (const { name, code } of files) {
       expect(/Math\.random|Date\.now|new Date\(|performance\.now/.test(code), name).toBe(false)

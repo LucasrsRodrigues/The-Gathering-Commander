@@ -7,3 +7,4 @@ export { viewFor, eventsFor, type ObjectView, type PlayerPublicView, type Player
 export { commanderTax } from './commander'
 export { isPermanentCard } from './zones'
 export { playersInOrder } from './turn'
+export { deriveCardRules, parseManaCost, type OracleFacts } from './deriveRules'

@@ -18,13 +18,72 @@ export const STEPS = [
 ] as const
 export type Step = (typeof STEPS)[number]
 
-// Pointer to the card catalog. The engine never needs rules text in phase 1.
+// Pointer to the card catalog, plus the structured rules the engine uses (épico 09). The engine never
+// reads rules text: `rules` is derived outside the core (deriveRules.ts) and, online, by the server.
 export interface CardRef {
   name: string
   scryfallId?: string
   oracleId?: string
   typeLine?: string
   imageKey?: string
+  rules?: CardRules // absent = no data: the card stays playable with manual costs
+}
+
+// ---- Card rules (structured, no text) ---------------------------------------
+
+export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G'
+export type ManaType = ManaColor | 'C'
+export type ManaAmount = Partial<Record<ManaType, number>>
+
+export type CardType = 'land' | 'creature' | 'artifact' | 'enchantment' | 'planeswalker' | 'instant' | 'sorcery' | 'battle'
+export type Supertype = 'legendary' | 'basic' | 'snow'
+
+export const KEYWORDS = [
+  'flash', 'haste', 'vigilance', 'defender', 'flying', 'reach', 'menace',
+  'trample', 'firstStrike', 'doubleStrike', 'deathtouch', 'lifelink', 'indestructible',
+] as const
+export type Keyword = (typeof KEYWORDS)[number]
+
+// CR 107.4 mana symbols the engine understands. `unknown` = some symbol it does not (snow, …): cost is manual.
+export interface ManaCost {
+  generic: number
+  colored: ManaAmount // includes {C}
+  hybrid: [ManaColor, ManaColor][] // {W/U}
+  twoBrid: ManaColor[] // {2/W}
+  phyrexian: ManaColor[] // {G/P}
+  x: number // how many {X}
+  unknown?: boolean
+}
+
+export type ManaProduction =
+  | { kind: 'fixed'; mana: ManaAmount } // {T}: Add {C}{C}.
+  | { kind: 'oneOf'; colors: ManaType[] } // {T}: Add {W}, {U}, or {B}.
+  | { kind: 'anyColor'; amount: number } // one mana of any color / three mana of any one color
+  | { kind: 'commanderIdentity' } // one mana of any color in your commander's color identity
+
+export interface ManaAbility {
+  produces: ManaProduction
+  extraCost?: ManaCost // "{1}, {T}: Add {U}{B}." (Signets)
+  lifeCost?: number // "{T}, Pay 1 life: …"
+  selfDamage?: number // "This land deals 1 damage to you." / "Whenever this land becomes tapped, it deals 1 damage to you."
+  partial?: boolean // the ability does something else too (applied by hand)
+}
+
+export interface CardRules {
+  types: CardType[]
+  supertypes: Supertype[]
+  subtypes: string[]
+  cost: ManaCost | null // null = no mana cost (lands, suspend-only cards)
+  power: number | null
+  toughness: number | null
+  variablePT?: boolean // '*' in P/T: base 0, needs a manual adjustment
+  loyalty: number | null
+  keywords: Keyword[]
+  manaAbilities: ManaAbility[]
+  hasUnrecognizedMana?: boolean // an activated ability adds mana in a way the parser does not know → declared mana
+  entersTapped?: boolean
+  spellMana?: ManaAmount // instants/sorceries whose whole text is "Add {B}{B}{B}."
+  colorIdentity: ManaColor[]
 }
 
 export interface Arrangement {
