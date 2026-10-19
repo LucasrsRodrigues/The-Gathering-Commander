@@ -114,7 +114,8 @@ Nos identificadores de código, usamos **inglês**, igual às Comprehensive Rule
 | **1 — Mesa sandbox** | Goldfish e hot-seat de 4 lugares, regras assistidas | 02, 03 | ✅ feito |
 | **2a — Decks e regras** | Editor e biblioteca de decks, validação por preset, regras da casa que restringem, bracket | 04, 05 | ✅ feito |
 | **2b — Online + catálogo** | Salas por link, servidor autoritativo, catálogo versionado (errata e banlist por data) | 07, 01 | ✅ feito |
-| 3a — Regras de turno e tempo | Velocidade de feitiço, terreno por turno, mana cobrada, combate com dano calculado, paradas automáticas | 09 | specs escritas |
+| 3a — Regras de turno e tempo | Velocidade de feitiço, terreno por turno, mana cobrada, combate com dano calculado, paradas automáticas | 09 | em andamento (ondas 0–3 feitas) |
+| — Editor de decks estilo Moxfield | Edição e gerenciamento de decks mais intuitivos e customizáveis, tomando o Moxfield como referência (pedido do usuário em 2026-10-19; conversar antes de escrever a spec) | 05 | guardado |
 | 3b — Contas opcionais | Login opcional, decks na nuvem, histórico | 08 | guardado |
 | 3c — Automação de cartas | Schema de cartas, mecânicas, cobertura crescente | 02 (cartas) | |
 | 4 — Bots | Bot heurístico → simulação → político | 06 | |
