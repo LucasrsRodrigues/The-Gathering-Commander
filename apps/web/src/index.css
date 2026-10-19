@@ -345,3 +345,17 @@ button.deck-open:hover { background: var(--surface-hi); }
 @media (max-width: 680px) {
   .editor { grid-template-columns: 1fr; }
 }
+
+/* ---------- Online ---------- */
+.room-seats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.room-seat { display: grid; gap: 6px; align-content: start; justify-items: start; padding: 14px; min-height: 130px; border: 1px dashed var(--control-border); border-radius: 12px; }
+.room-seat.taken { border-style: solid; background: var(--surface-hi); }
+.room-seat.mine { border-color: var(--gold); }
+.room-seat strong { font-family: var(--font-display); font-size: 18px; }
+.dot { font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.on::before { background: var(--ok); }
+.dot.off { color: var(--muted); }
+.net-status { align-self: center; padding: 4px 10px; border-radius: 99px; font-size: 13px; background: var(--surface-hi); }
+.net-status.online { color: var(--ok); }
+.net-status.offline, .net-status.connecting { color: var(--danger); }

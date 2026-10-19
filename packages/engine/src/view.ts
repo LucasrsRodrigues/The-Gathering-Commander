@@ -97,12 +97,22 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
   }
 }
 
-// Events filtered the same way: another player's draws and bottomed cards reveal only how many.
+// A zone is visible to the viewer when it is public, or it is their own hand/library.
+function zoneVisible(zone: ZoneKind | null, owner: PlayerId, viewer: PlayerId | null): boolean {
+  if (zone === 'hand' || zone === 'library') return owner === viewer
+  return true
+}
+
+// Events filtered the same way as views: an object id never reaches someone who cannot see where the
+// object went (otherwise opponents could track cards into hidden zones). Draws and bottomed cards of
+// other players reveal only how many.
 export function eventsFor(events: GameEvent[], viewer: PlayerId | null): GameEvent[] {
-  return events.map((e) => {
+  return events.flatMap((e): GameEvent[] => {
     if ((e.type === 'cardsDrawn' || e.type === 'cardsBottomed') && e.player !== viewer) {
-      return { ...e, objectIds: e.objectIds.map(() => 'hidden') }
+      return [{ ...e, objectIds: e.objectIds.map(() => 'hidden') }]
     }
-    return e
+    if (e.type === 'zoneChanged' && !zoneVisible(e.to, e.owner, viewer)) return [{ ...e, objectId: 'hidden' }]
+    if (e.type === 'commanderMayReturn' && e.owner !== viewer) return []
+    return [e]
   })
 }

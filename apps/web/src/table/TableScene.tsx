@@ -69,7 +69,9 @@ function CameraRig({ layout }: { layout: TableLayout }) {
     }
     // Overview: pull back on narrower screens so all seats stay visible.
     // Leaves room for the HUD strips at the top and bottom of the screen.
-    const k = Math.min(3.4, Math.max(1.35, 2.75 / (size.width / size.height)))
+    // A canvas measured at 0×0 on mount would give NaN and freeze the camera: assume 16:9 until measured.
+    const aspect = size.width > 0 && size.height > 0 ? size.width / size.height : 16 / 9
+    const k = Math.min(3.4, Math.max(1.35, 2.75 / aspect))
     return { pos: new THREE.Vector3(0, 13.5 * k, 10.5 * k), look: new THREE.Vector3(0, 0, 1.2) }
   }, [focus, layout, size])
 
@@ -83,6 +85,9 @@ function CameraRig({ layout }: { layout: TableLayout }) {
 
   useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 5)
+    // Never let a bad frame (NaN) stick: lerping from NaN stays NaN forever.
+    if (!Number.isFinite(camera.position.x + camera.position.y + camera.position.z)) camera.position.copy(goal.pos)
+    if (!Number.isFinite(target.current.x + target.current.y + target.current.z)) target.current.copy(goal.look)
     camera.position.lerp(goal.pos, k)
     target.current.lerp(goal.look, k)
     camera.lookAt(target.current)

@@ -1,9 +1,10 @@
 import { FanContentNotice } from '../legal/FanContentNotice'
 
-export type NavTarget = 'setup' | 'decks' | 'presets' | 'about'
+export type NavTarget = 'setup' | 'online' | 'decks' | 'presets' | 'about'
 
 const ITEMS: { target: NavTarget; label: string }[] = [
   { target: 'setup', label: 'Jogar' },
+  { target: 'online', label: 'Online' },
   { target: 'decks', label: 'Decks' },
   { target: 'presets', label: 'Regras da casa' },
   { target: 'about', label: 'Sobre' },

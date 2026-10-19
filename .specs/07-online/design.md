@@ -18,8 +18,8 @@ flowchart LR
     S --> R[RemoteSession]
     R --> T[GameTransport: WebSocket]
   end
-  T <--> W[Worker: HTTP e upgrade de WebSocket]
-  W --> D[(Room: um objeto durável por sala)]
+  T <--> W[Servidor Node: HTTP + upgrade WebSocket via ws]
+  W --> D[(Room: um ator RoomCore por sala)]
   D --> E[@gathering-hall/engine: reduce, viewFor]
   D --> ST[(armazenamento da sala: estado + log)]
 ```
@@ -82,7 +82,7 @@ flowchart LR
 - A **cortina de hot-seat não existe no online**: cada dispositivo é um lugar.
 
 ## Decisões
-- **ADR-07.1 — Hospedagem (decisão pendente com o usuário).**
+- **ADR-07.1 — Hospedagem: VPS própria (decidido em 2026-10-19).** Servidor Node + `ws` + SQLite nativo do Node (`node:sqlite`), atrás de um proxy com TLS (Caddy). Abaixo, a comparação que embasou a escolha.
 
   | | A. Servidor próprio (Node + `ws` + SQLite/Postgres) | B. Cloudflare Workers + Durable Objects ⭐ |
   |---|---|---|
@@ -93,9 +93,13 @@ flowchart LR
   | Aprisionamento | Nenhum | Médio; mitigado pela porta de transporte e de armazenamento |
   | Dev local | `node` direto | `wrangler dev` (simula os objetos localmente) |
 
-  Recomendação: **B**. O modelo de uma sala por objeto é exatamente o nosso aggregate, o custo zero combina com a
-  Fan Content Policy e o mesmo `engine` roda sem adaptação. O núcleo do servidor (`RoomCore`, puro) não importa nada
-  da Cloudflare, então migrar para A é trocar só o adaptador.
+  **Escolha do usuário: A (VPS própria).** Ganho: controle total e nenhum aprisionamento. Custo: operação
+  (atualizações, TLS, backups) e escala vertical, mais do que suficiente para partidas entre amigos. O `RoomCore`
+  puro continua isolado do runtime, então a opção B segue possível no futuro trocando só o adaptador.
+  - Cada sala vira um **ator em memória** (um `RoomCore` por sala) dentro de um único processo Node, com fila de
+    mensagens por sala. Isso mantém a ordem total das ações.
+  - **Persistência:** SQLite em arquivo (`node:sqlite`, sem dependência nativa). Uma tabela de salas (estado +
+    lobby) e uma de log de ações. Gravação a cada ação, numa transação.
 - **ADR-07.2 — Núcleo de sala puro (`RoomCore`) separado do runtime.** `RoomCore` recebe mensagens e devolve
   mensagens + novo estado. O adaptador (Durable Object ou servidor Node) só cuida de sockets e armazenamento.
   Testável sem rede, como o motor.

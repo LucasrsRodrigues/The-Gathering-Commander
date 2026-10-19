@@ -20,6 +20,11 @@ Fan game gratuito e open source de **Commander** (Magic: The Gathering) com uma 
 As regras de cada carta ainda são aplicadas pelos jogadores, como numa mesa física. A automação vem por fases
 (veja `.specs/`).
 
+## Online
+Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do
+próprio dispositivo, sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
+ver. Para colocar na sua VPS, veja o [DEPLOY.md](DEPLOY.md).
+
 ## Rodar
 Requer Node 22+.
 
@@ -28,7 +33,11 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173`.
+Abra `http://localhost:5173`. Para o modo online local, suba também o servidor:
+
+```bash
+npm run dev -w @gathering-hall/server
+```
 
 ```bash
 npm test          # motor + web (inclui as fitness functions de arquitetura)
@@ -40,7 +49,11 @@ npm run build
 ## Estrutura
 ```
 packages/engine   motor de regras puro em TypeScript (sem dependências)
+packages/formats  regras do formato, presets (regras da casa), validação de deck e bracket
+packages/protocol mensagens do jogo online, com validação estrita
 apps/web          React + react-three-fiber (mesa 3D) + HUD em DOM
+apps/server       servidor online (Node + ws + SQLite), uma sala = um RoomCore puro
+deploy/           Dockerfile, Caddyfile e docker-compose para a VPS
 .specs/           requisitos, design e tarefas por épico
 spikes/           protótipos descartáveis (ex.: benchmark de renderização)
 ```

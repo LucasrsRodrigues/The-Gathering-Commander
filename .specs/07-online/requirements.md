@@ -11,7 +11,7 @@ O servidor é a fonte da verdade e cada jogador só recebe o que pode ver.
   cliente de cada jogador**: é um jogo entre amigos. A validação no servidor depende do catálogo do servidor
   (épico 01) e vem depois.
 - O modo local (goldfish e hot-seat) continua existindo e funciona sem rede.
-- Hospedagem: decisão pendente (ver ADR-07.1 no design).
+- Hospedagem: VPS própria do usuário, com Node + SQLite atrás de Caddy (ver ADR-07.1).
 
 ## Escopo
 - **Dentro:**

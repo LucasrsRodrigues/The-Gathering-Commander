@@ -1,0 +1,19 @@
+{
+  "name": "@gathering-hall/protocol",
+  "version": "0.1.0",
+  "description": "Mensagens cliente/servidor do jogo online, com validação estrita. Puro, sem rede.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json"
+  },
+  "dependencies": {
+    "@gathering-hall/engine": "*",
+    "@gathering-hall/formats": "*"
+  }
+}

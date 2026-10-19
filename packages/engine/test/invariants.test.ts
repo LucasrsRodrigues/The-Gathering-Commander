@@ -2,7 +2,7 @@
 // These double as the fitness functions for hidden information, determinism and serializability.
 
 import { describe, expect, it } from 'vitest'
-import { reduce, replay, viewFor, type Action, type GameState, type ZoneKind } from '../src'
+import { eventsFor, reduce, replay, viewFor, type Action, type GameEvent, type GameState, type ZoneKind } from '../src'
 import { nextRandom } from '../src/rng'
 import { deepFreeze, keepAll, newGame } from './helpers'
 
@@ -51,6 +51,7 @@ function simulate(seed: number, steps: number) {
     const action = randomAction(state, rng)
     const result = reduce(deepFreeze(state), action) // deepFreeze: any mutation of the input throws
     if (result.ok) {
+      checkEvents(result.events, result.state)
       state = result.state
       applied.push(action)
       if (applied.length % 5 === 0) checkInvariants(state)
@@ -58,6 +59,19 @@ function simulate(seed: number, steps: number) {
   }
   checkInvariants(state)
   return { initial, state, applied }
+}
+
+// No filtered event may carry the id of an object that is hidden from that viewer after the action.
+function checkEvents(events: GameEvent[], after: GameState) {
+  for (const viewer of [...after.seats, null]) {
+    const hidden = new Set<string>()
+    for (const seat of after.seats) {
+      after.zones[seat]!.library.forEach((id) => seat !== viewer && hidden.add(id))
+      if (seat !== viewer) after.zones[seat]!.hand.forEach((id) => hidden.add(id))
+    }
+    const text = JSON.stringify(eventsFor(events, viewer))
+    for (const id of hidden) expect(text.includes(`"${id}"`), `evento vaza ${id} para ${viewer}`).toBe(false)
+  }
 }
 
 function checkInvariants(state: GameState) {

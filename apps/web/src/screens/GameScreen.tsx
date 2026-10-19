@@ -5,12 +5,18 @@ import { isInteractiveTarget } from '../hud/a11y'
 import { PlayerPanels, type Dispatch } from '../hud/PlayerPanels'
 import { primaryAction } from '../hud/primaryAction'
 import { PhaseBar, StackPanel } from '../hud/TurnControls'
-import type { GameSession } from '../session/GameSession'
+import type { GameSessionPort } from '../session/port'
 import { useSessionVersion } from '../session/useSession'
 import { TableScene, type TableIntents } from '../table/TableScene'
 import { closeTopmost, toast } from '../ui/stores'
 
-export function GameScreen({ session, onExit }: { session: GameSession; onExit: () => void }) {
+const CONNECTION_LABELS = { connecting: 'Conectando…', online: 'Online', offline: 'Sem conexão: reconectando…' } as const
+
+export function GameScreen({ session, onExit, onRematch }: {
+  session: GameSessionPort
+  onExit: () => void
+  onRematch?: () => void // online host: back to the room lobby with the same seats
+}) {
   useSessionVersion(session)
   const view = session.view()
   const seat = session.seat()
@@ -49,6 +55,9 @@ export function GameScreen({ session, onExit }: { session: GameSession; onExit: 
   }, [session, dispatch])
 
   const winners = view.winners?.map((id) => view.players[id]?.name).join(', ')
+  const connection = session.connection()
+  const presence = session.presence()
+  const away = presence ? view.seats.filter((id) => !presence.includes(id) && !view.players[id]?.lost) : []
 
   return (
     <div className="game">
@@ -59,7 +68,15 @@ export function GameScreen({ session, onExit }: { session: GameSession; onExit: 
       <div className="hud" inert={curtain}>
         <PlayerPanels view={view} viewer={seat} dispatch={dispatch} />
         <div className="topbar">
-          <button className="btn ghost" disabled={!session.canUndo()} onClick={() => session.undo()} title="Ctrl/Cmd + Z">Desfazer</button>
+          {connection !== 'local' && (
+            <span className={`net-status ${connection}`} role="status">
+              {CONNECTION_LABELS[connection]}
+              {away.length > 0 && ` · fora: ${away.map((id) => view.players[id]?.name).join(', ')}`}
+            </span>
+          )}
+          {connection === 'local' && (
+            <button className="btn ghost" disabled={!session.canUndo()} onClick={() => session.undo()} title="Ctrl/Cmd + Z">Desfazer</button>
+          )}
           <button className="btn ghost" onClick={() => { if (confirm('Sair da partida atual?')) onExit() }}>Sair</button>
         </div>
         <aside className="side">
@@ -75,7 +92,12 @@ export function GameScreen({ session, onExit }: { session: GameSession; onExit: 
         {view.status === 'ended' && (
           <div className="game-over" role="alert">
             <h2>{winners ? `Vitória de ${winners}!` : 'Fim de jogo'}</h2>
-            <button className="btn primary" autoFocus onClick={onExit}>Nova partida</button>
+            <div className="row">
+              {onRematch && <button className="btn primary" autoFocus onClick={onRematch}>Revanche na mesma sala</button>}
+              <button className={onRematch ? 'btn' : 'btn primary'} autoFocus={!onRematch} onClick={onExit}>
+                {connection === 'local' ? 'Nova partida' : 'Sair da sala'}
+              </button>
+            </div>
           </div>
         )}
       </div>

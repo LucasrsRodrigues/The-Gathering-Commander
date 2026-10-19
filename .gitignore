@@ -8,3 +8,6 @@ coverage
 
 # Material oficial da Wizards: nunca versionar (ver LEGAL.md)
 *.pdf
+
+# Server database (local dev and VPS)
+apps/server/data

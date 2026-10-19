@@ -7,6 +7,9 @@ import { LocalPresetRepository } from '../presets/repository'
 import { AboutScreen } from '../screens/AboutScreen'
 import { DeckEditorScreen } from '../screens/DeckEditorScreen'
 import { DeckLibraryScreen } from '../screens/DeckLibraryScreen'
+import { OnlineScreen } from '../screens/OnlineScreen'
+import { RoomScreen } from '../screens/RoomScreen'
+import { ROOM_HASH } from '../net/config'
 import { PresetsScreen } from '../screens/PresetsScreen'
 import { SetupScreen } from '../screens/SetupScreen'
 import { GameSession } from '../session/GameSession'
@@ -24,13 +27,30 @@ type Screen =
   | { kind: 'decks' }
   | { kind: 'editor'; deckId: string }
   | { kind: 'presets' }
+  | { kind: 'online' }
+  | { kind: 'room'; roomId: string }
   | { kind: 'game'; session: GameSession; back: NavTarget }
+
+// An invite link (#/sala/<id>) opens the room directly.
+function screenFromHash(): Screen | null {
+  const match = ROOM_HASH.exec(location.hash)
+  return match ? { kind: 'room', roomId: match[1]! } : null
+}
 
 export default function App() {
   const catalog = useMemo(() => new ScryfallCatalog(), [])
   const presets = useMemo(() => new LocalPresetRepository(), [])
   const [decks, setDecks] = useState<DeckRepository | null>(null)
-  const [screen, setScreen] = useState<Screen>({ kind: 'setup' })
+  const [screen, setScreen] = useState<Screen>(() => screenFromHash() ?? { kind: 'setup' })
+
+  useEffect(() => {
+    const onHash = () => {
+      const next = screenFromHash()
+      if (next) setScreen(next)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   useEffect(() => {
     openDeckRepository().then((repo) => {
@@ -41,7 +61,10 @@ export default function App() {
 
   if (!decks) return <div className="loading">Carregando…</div>
   const services: Services = { catalog, decks, presets }
-  const go = (target: NavTarget) => setScreen({ kind: target })
+  const go = (target: NavTarget) => {
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search)
+    setScreen({ kind: target })
+  }
 
   // Goldfish straight from the editor or library: one seat, never blocked by the deck's rules.
   async function testDeck(deck: Deck) {
@@ -65,6 +88,17 @@ export default function App() {
     )
   }
 
+  if (screen.kind === 'room') {
+    return (
+      <div className="shell">
+        <AppNav current="online" onNavigate={go} />
+        <RoomScreen key={screen.roomId} services={services} roomId={screen.roomId} onLeave={() => go('online')} />
+        <CardPreview />
+        <Toasts />
+      </div>
+    )
+  }
+
   return (
     <div className="shell">
       <AppNav current={screen.kind === 'editor' ? 'decks' : screen.kind} onNavigate={go} />
@@ -76,6 +110,7 @@ export default function App() {
         <DeckEditorScreen services={services} deckId={screen.deckId} onBack={() => go('decks')} onTest={testDeck} />
       )}
       {screen.kind === 'presets' && <PresetsScreen presets={presets} />}
+      {screen.kind === 'online' && <OnlineScreen onEnter={(roomId) => { location.hash = `#/sala/${roomId}` }} />}
       {screen.kind === 'setup' && (
         <SetupScreen services={services} onManagePresets={() => go('presets')}
           onStart={(game, notes) => {

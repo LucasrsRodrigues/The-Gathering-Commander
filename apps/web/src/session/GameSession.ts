@@ -5,16 +5,14 @@ import {
   eventsFor, reduce, viewFor, type Action, type ActionIntent, type GameError, type GameState, type PlayerId, type PlayerView,
 } from '@gathering-hall/engine'
 import { describeEvents } from './describe'
+import type { ConnectionStatus, GameSessionPort, LogEntry } from './port'
 
-export interface LogEntry {
-  id: number
-  text: string
-}
+export type { LogEntry } from './port'
 
 const MAX_HISTORY = 500
 const MAX_LOG = 300
 
-export class GameSession {
+export class GameSession implements GameSessionPort {
   private state: GameState
   private readonly history: GameState[] = []
   private log: LogEntry[] = []
@@ -41,6 +39,14 @@ export class GameSession {
   private changed() {
     this.version += 1
     this.listeners.forEach((l) => l())
+  }
+
+  connection(): ConnectionStatus {
+    return 'local'
+  }
+
+  presence(): PlayerId[] | null {
+    return null
   }
 
   // ---- reads ----

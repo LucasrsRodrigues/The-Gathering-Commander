@@ -32,7 +32,7 @@ function Stepper({ label, onChange }: { label: string; onChange: (delta: number)
       {sign > 0 ? '+' : '−'}
     </button>
   )
-  return [button(-1), button(1)]
+  return <>{button(-1)}{button(1)}</>
 }
 
 function PlayerPanel({ view, seat, dispatch, local }: {

@@ -1,6 +1,12 @@
 // Turns engine events into short Portuguese log lines without revealing hidden cards.
 
-import type { GameEvent, GameState, PlayerId, Step, ZoneKind } from '@gathering-hall/engine'
+import type { CardRef, GameEvent, PlayerId, Step, ZoneKind } from '@gathering-hall/engine'
+
+// Both a full GameState (local) and a PlayerView (online) fit this shape.
+export interface LogContext {
+  players: Record<PlayerId, { name: string } | undefined>
+  objects: Record<string, { card: CardRef | null } | undefined>
+}
 
 export const STEP_LABELS: Record<Step, string> = {
   untap: 'Desvirar', upkeep: 'Manutenção', draw: 'Compra', main1: 'Principal 1',
@@ -21,9 +27,9 @@ const LOSS_LABELS = {
 
 const HIDDEN: (ZoneKind | null)[] = ['library', 'hand', null]
 
-export function describeEvents(events: GameEvent[], after: GameState, before: GameState, viewer: PlayerId): string[] {
+export function describeEvents(events: GameEvent[], after: LogContext, before: LogContext, viewer: PlayerId | null): string[] {
   const name = (id: PlayerId) => after.players[id]?.name ?? id
-  const cardName = (id: string) => (after.objects[id] ?? before.objects[id])?.card.name ?? 'uma carta'
+  const cardName = (id: string) => (after.objects[id] ?? before.objects[id])?.card?.name ?? 'uma carta'
   const lines: string[] = []
   for (const e of events) {
     switch (e.type) {

@@ -1,0 +1,33 @@
+# Run on the VPS from the repository root: docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    restart: unless-stopped
+    environment:
+      ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:?defina PUBLIC_ORIGIN, ex. https://jogo.seudominio.com}
+      ROOM_TTL_HOURS: "24"
+      MAX_ROOMS: "500"
+    volumes:
+      - rooms:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../apps/web/dist:/srv/web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
+
+volumes:
+  rooms:
+  caddy_data:
+  caddy_config:

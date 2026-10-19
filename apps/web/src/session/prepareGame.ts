@@ -47,18 +47,30 @@ async function deckFor(choice: SeatDeck, catalog: CatalogPort, now: number): Pro
 
 // `enforce: false` (goldfish from the editor) still reports violations but never blocks: testing a
 // half-built deck is the point of goldfishing.
+export interface PreparedSeat {
+  input: DeckInput
+  violations: Violation[]
+  notes: string[]
+}
+
+// One seat's deck: resolved in the catalog, validated against the preset, converted to engine input.
+export async function prepareSeatDeck(choice: SeatDeck, preset: Preset, catalog: CatalogPort, now: number): Promise<PreparedSeat> {
+  const { deckRules } = resolvePreset(preset)
+  const { deck, notes } = await deckFor(choice, catalog, now)
+  const data = await loadDeckCards(deck, catalog)
+  return { input: toGameDeck(deck, data), violations: validateDeck(toValidation(deck), data.facts, deckRules), notes }
+}
+
 export async function prepareGame(
   seats: SeatChoice[], preset: Preset, catalog: CatalogPort, seed: number, now: number, enforce = true,
 ): Promise<PrepareResult> {
-  const { ruleset, deckRules } = resolvePreset(preset)
+  const { ruleset } = resolvePreset(preset)
   const reports: SeatReport[] = []
   const inputs: DeckInput[] = []
   for (const seat of seats) {
-    const { deck, notes } = await deckFor(seat.deck, catalog, now)
-    const data = await loadDeckCards(deck, catalog)
-    const violations = validateDeck(toValidation(deck), data.facts, deckRules)
-    reports.push({ name: seat.name, violations, notes })
-    inputs.push(toGameDeck(deck, data))
+    const prepared = await prepareSeatDeck(seat.deck, preset, catalog, now)
+    reports.push({ name: seat.name, violations: prepared.violations, notes: prepared.notes })
+    inputs.push(prepared.input)
   }
   if (enforce && reports.some((r) => blocks(r.violations))) return { ok: false, reports }
   const game = createGame({

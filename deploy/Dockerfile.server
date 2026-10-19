@@ -1,0 +1,15 @@
+# Online game server. Build from the repository root: docker build -f deploy/Dockerfile.server .
+FROM node:24-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY packages ./packages
+COPY apps/server ./apps/server
+# Only the manifest of the web app is needed for the workspace lockfile.
+COPY apps/web/package.json ./apps/web/package.json
+RUN npm ci --omit=dev --workspace @gathering-hall/server --include-workspace-root=false
+ENV NODE_ENV=production DB_PATH=/data/rooms.db PORT=8787 TRUST_PROXY=1
+RUN mkdir -p /data && chown node:node /data
+VOLUME /data
+USER node
+EXPOSE 8787
+CMD ["npx", "tsx", "apps/server/src/main.ts"]

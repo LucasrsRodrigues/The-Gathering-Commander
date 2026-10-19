@@ -1,0 +1,27 @@
+{
+  "name": "@gathering-hall/server",
+  "version": "0.1.0",
+  "description": "Servidor do jogo online: salas por link, autoritativo, roda o mesmo motor do navegador.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@gathering-hall/engine": "*",
+    "@gathering-hall/formats": "*",
+    "@gathering-hall/protocol": "*",
+    "ws": "^8.22.0",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/ws": "^8.18.2",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.5"
+  }
+}

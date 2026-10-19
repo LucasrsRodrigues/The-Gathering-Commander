@@ -66,7 +66,7 @@ GET /catalog/legality/commander?at=YYYY-MM-DD  → banidas + Game Changers na da
   evita milhares de versões inúteis.
 - **ADR-01.2 — Raw imutável guardado.** Se o formato do Scryfall mudar, ou se errarmos a normalização,
   reprocessamos sem perder o histórico.
-- **ADR-01.3 — Catálogo e online na mesma hospedagem.** A mesma decisão do ADR-07.1 vale aqui.
+- **ADR-01.3 — Catálogo e online na mesma hospedagem.** VPS própria (ADR-07.1): cron do sistema + SQLite (ou Postgres, se crescer) + disco para o raw.
 
 ## Riscos
 - **Histórico curto no começo** → arquivos de dados retroativos para banlist e Game Changers. Errata antiga fica
