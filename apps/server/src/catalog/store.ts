@@ -32,6 +32,8 @@ export interface CommanderSnapshot {
 }
 
 const BATCH = 1000
+// Array parameters always go as text[] and are cast in SQL: the postgres driver sends a JS boolean[] as a single
+// boolean (which Postgres cannot cast to boolean[]), while text arrays work the same on Postgres and PGlite.
 
 // Splits rows into batches and calls `fn` with one array per column (for unnest).
 async function inBatches<T>(rows: T[], fn: (batch: T[]) => Promise<void>) {
@@ -105,15 +107,15 @@ export class CatalogStore {
       await inBatches(records, async (rs) => {
         await tx.query(
           `INSERT INTO card_current (oracle_id, name, name_norm, front_norm, hash, legal, game_changer, data)
-           SELECT id, name, name_norm, front_norm, hash, legal, gc, data::jsonb
-           FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::boolean[], $8::text[])
+           SELECT id, name, name_norm, front_norm, hash, legal, gc::boolean, data::jsonb
+           FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[])
              AS t(id, name, name_norm, front_norm, hash, legal, gc, data)
            ON CONFLICT (oracle_id) DO UPDATE SET name = excluded.name, name_norm = excluded.name_norm, front_norm = excluded.front_norm,
              hash = excluded.hash, legal = excluded.legal, game_changer = excluded.game_changer, data = excluded.data`,
           [
             rs.map((r) => r.oracleId), rs.map((r) => r.name), rs.map((r) => normalizeName(r.name)),
             rs.map((r) => (r.frontName ? normalizeName(r.frontName) : null)), rs.map((r) => r.hash), rs.map((r) => r.legal),
-            rs.map((r) => r.gameChanger), rs.map((r) => JSON.stringify(r.card)),
+            rs.map((r) => String(r.gameChanger)), rs.map((r) => JSON.stringify(r.card)),
           ],
         )
       })

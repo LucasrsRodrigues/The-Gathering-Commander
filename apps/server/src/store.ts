@@ -37,7 +37,7 @@ export class DbRoomStore implements RoomStore {
 
   async save(snapshot: RoomSnapshot): Promise<void> {
     await this.db.query(
-      `INSERT INTO room (id, snapshot, last_active) VALUES ($1, $2::jsonb, $3)
+      `INSERT INTO room (id, snapshot, last_active) VALUES ($1, ($2::text)::jsonb, $3) -- text first: the driver would JSON-encode a jsonb parameter again
        ON CONFLICT (id) DO UPDATE SET snapshot = excluded.snapshot, last_active = excluded.last_active`,
       [snapshot.id, JSON.stringify(snapshot), snapshot.lastActive],
     )
