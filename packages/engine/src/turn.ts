@@ -60,6 +60,16 @@ function enterStep(tx: Tx, step: Step) {
   if (step === 'draw' && s.ruleset.autoDraw && !skipsFirstDraw(s)) drawCards(tx, active, 1)
 
   if (step === 'cleanup') {
+    // CR 514.2: damage wears off and "until end of turn" effects end.
+    for (const id of s.battlefield) {
+      const obj = s.objects[id]!
+      if (obj.damage || obj.deathtouchDamage || obj.ptMods.length) {
+        const w = tx.object(id)
+        w.damage = 0
+        w.deathtouchDamage = false
+        w.ptMods = []
+      }
+    }
     // CR 514.3: normally no priority in cleanup. Discarding to hand size stays manual in the sandbox.
     const next = nextPlayerAfter(s, active)
     if (next) beginTurn(tx, next, s.turn.number + 1)

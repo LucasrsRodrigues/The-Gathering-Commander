@@ -3,6 +3,7 @@
 
 import { commanderTax } from './commander'
 import { isSummoningSick } from './mana'
+import { isCreature, powerOf, toughnessOf } from './stats'
 import type {
   Arrangement, CardRef, GameEvent, GameState, ManaPool, ObjectId, PendingDecision, PlayerId, PriorityState, Ruleset,
   StackItem, TurnState, ZoneKind,
@@ -22,6 +23,9 @@ export interface ObjectView {
   commanderTax: number
   arrangement?: Arrangement
   summoningSick: boolean // épico 09: creature that cannot attack or use {T} yet
+  power: number | null // current, for creatures with data (null = unknown or not a creature)
+  toughness: number | null
+  damage: number
 }
 
 export interface PlayerPublicView {
@@ -64,6 +68,7 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
     const obj = state.objects[id]
     if (!obj) return
     const faceHidden = obj.faceDown && obj.controller !== viewer
+    const stats = !faceHidden && isCreature(obj) && !!obj.card.rules && !obj.card.rules.variablePT
     objects[id] = {
       id, owner: obj.owner, controller: obj.controller, zone: obj.zone,
       card: faceHidden ? null : obj.card,
@@ -71,6 +76,9 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
       isToken: obj.isToken, isCommander: obj.isCommander,
       commanderTax: commanderTax(obj, state.ruleset),
       summoningSick: obj.zone === 'battlefield' && isSummoningSick(state, obj),
+      power: stats ? powerOf(obj) : null,
+      toughness: stats ? toughnessOf(obj) : null,
+      damage: obj.damage,
       ...(obj.arrangement ? { arrangement: obj.arrangement } : {}),
     }
   }

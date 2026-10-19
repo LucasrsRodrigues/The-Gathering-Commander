@@ -145,6 +145,13 @@ export function actionIntent(v: unknown): ActionIntent {
       for (const t of MANA_TYPES) if (m[t] !== undefined) mana[t] = int(m[t], `mana ${t}`, 0, 20)
       return { type, objectId: id(a.objectId, 'objectId'), mana }
     }
+    case 'adjustPT':
+      return { type, objectId: id(a.objectId, 'objectId'), power: int(a.power, 'power', -100, 100), toughness: int(a.toughness, 'toughness', -100, 100) }
+    case 'dealDamage':
+      return {
+        type, objectId: id(a.objectId, 'objectId'), amount: int(a.amount, 'amount', 1, 999),
+        ...(a.deathtouch !== undefined ? { deathtouch: bool(a.deathtouch, 'deathtouch') } : {}),
+      }
     case 'castSpell':
       return {
         type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}),

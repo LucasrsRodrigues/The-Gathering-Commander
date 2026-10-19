@@ -53,6 +53,17 @@ export function menuFor(obj: ObjectView): MenuGroup[] {
           ...(obj.arrangement ? [{ label: 'Voltar à fileira', action: { type: 'setArrangement', objectId: obj.id, arrangement: null } } satisfies MenuItem] : []),
         ],
       })
+      if (obj.toughness !== null) {
+        groups.push({
+          title: 'Efeitos (até o fim do turno)',
+          items: [
+            { label: '+1/+1', action: { type: 'adjustPT', objectId: obj.id, power: 1, toughness: 1 } },
+            { label: '−1/−1', action: { type: 'adjustPT', objectId: obj.id, power: -1, toughness: -1 } },
+            { label: '1 de dano', action: { type: 'dealDamage', objectId: obj.id, amount: 1 } },
+            { label: '3 de dano', action: { type: 'dealDamage', objectId: obj.id, amount: 3 } },
+          ],
+        })
+      }
       groups.push({
         title: 'Contadores',
         items: [

@@ -147,13 +147,19 @@ depois paradas.
   - Verificado no navegador (jogo local): mana insuficiente bloqueada com o custo, lançamento em 2 cliques e log com
     o pagamento.
 
-- [ ] **T9.12 — P/T atual, dano marcado, `adjustPT` e ações baseadas em estado** _(req: 22–24, 26)_ · depende de T9.2
+- [x] **T9.12 — P/T atual, dano marcado, `adjustPT` e ações baseadas em estado** _(req: 22–24, 26)_ · depende de T9.2
   - Verificação:
     - contadores +1/+1 e −1/−1 se anulam;
     - Indestructible sobrevive;
     - Deathtouch mata com 1;
     - planeswalker com 0 vai para o cemitério;
     - o cleanup limpa dano e ajustes.
+  - Feito:
+    - além do `adjustPT`, entrou a ação manual `dealDamage` (com Deathtouch opcional) para efeitos sem script
+      como Lightning Bolt, e o menu da criatura ganhou atalhos (+1/+1, −1/−1, 1 e 3 de dano);
+    - as ações baseadas em estado novas só valem com `combatRules` diferente de `off` e só para cartas com dados e
+      P/T fixo (P/T com `*` ou carta sem dados fica com os jogadores);
+    - a lealdade usa o marcador "lealdade", que a mesa já usava.
 - [ ] **T9.13 — Declarar atacantes e bloqueadores** _(req: 17–19)_ · depende de T9.12
   - Verificação:
     - enjoo, Haste, Defender, Vigilance;

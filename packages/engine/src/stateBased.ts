@@ -1,9 +1,13 @@
-// State-based actions about losing the game (CR 704.5a-c, 903.10a) and leaving the game (CR 800.4).
+// State-based actions (CR 704): permanents that die from damage or stats (épico 09), losing the game
+// (CR 704.5a-c, 903.10a) and leaving the game (CR 800.4).
 
 import { continueMulligans } from './mulligan'
 import { beginTurn, givePriority, nextPlayerAfter, playersInOrder } from './turn'
 import type { Tx } from './tx'
-import type { LossReason, PlayerId, PlayerState } from './types'
+import type { GameEvent, LossReason, PlayerId, PlayerState } from './types'
+import { hasKeyword } from './cards'
+import { hasKnownStats, isCreature, isPlaneswalker, LOYALTY, MINUS_ONE, PLUS_ONE, toughnessOf } from './stats'
+import { moveObject } from './zones'
 
 function lossReason(p: PlayerState, poisonLimit: number, commanderDamageLimit: number): LossReason | null {
   if (p.life <= 0) return 'life'
@@ -14,13 +18,50 @@ function lossReason(p: PlayerState, poisonLimit: number, commanderDamageLimit: n
 }
 
 export function checkStateBasedActions(tx: Tx) {
-  if (tx.s.status !== 'playing' || !tx.s.ruleset.autoLoss) return
+  if (tx.s.status !== 'playing') return
+  if (tx.s.ruleset.combatRules !== 'off') checkPermanents(tx)
+  if (!tx.s.ruleset.autoLoss) return
   const { poisonLimit, commanderDamageLimit } = tx.s.ruleset
   for (const id of tx.s.seats) {
     const p = tx.s.players[id]!
     if (p.lost) continue
     const reason = lossReason(p, poisonLimit, commanderDamageLimit)
     if (reason) eliminate(tx, id, reason)
+  }
+}
+
+// CR 704.5f–i, 704.5q, repeated until nothing changes (CR 704.3). Only for permanents with known stats: cards
+// without data or with '*' P/T are left to the players.
+function checkPermanents(tx: Tx) {
+  for (let changed = true; changed;) {
+    changed = false
+    for (const id of tx.s.battlefield.slice()) {
+      const obj = tx.s.objects[id]!
+      const plus = obj.counters[PLUS_ONE] ?? 0
+      const minus = obj.counters[MINUS_ONE] ?? 0
+      if (plus && minus) {
+        // CR 704.5q: +1/+1 and -1/-1 counters cancel out in pairs.
+        const n = Math.min(plus, minus)
+        const counters: Record<string, number> = { ...obj.counters, [PLUS_ONE]: plus - n, [MINUS_ONE]: minus - n }
+        for (const k of [PLUS_ONE, MINUS_ONE]) if (!counters[k]) delete counters[k]
+        tx.object(id).counters = counters
+        changed = true
+        continue
+      }
+      if (!hasKnownStats(obj)) continue
+      let reason: Extract<GameEvent, { type: 'destroyed' }>['reason'] | null = null
+      if (isCreature(obj)) {
+        const toughness = toughnessOf(obj)
+        if (toughness <= 0) reason = 'toughness' // CR 704.5f: not destruction, Indestructible does not help
+        else if ((obj.damage >= toughness || (obj.deathtouchDamage && obj.damage > 0)) && !hasKeyword(obj.card, 'indestructible')) reason = 'damage' // 704.5g–h
+      } else if (isPlaneswalker(obj) && obj.card.rules!.loyalty !== null && (obj.counters[LOYALTY] ?? 0) <= 0) {
+        reason = 'loyalty' // CR 704.5i
+      }
+      if (!reason) continue
+      tx.emit({ type: 'destroyed', objectId: id, reason })
+      moveObject(tx, id, 'graveyard')
+      changed = true
+    }
   }
 }
 

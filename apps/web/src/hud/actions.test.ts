@@ -5,7 +5,7 @@ import { describeIntent } from './labels'
 
 const obj = (card: ObjectView['card'], zone: ObjectView['zone'] = 'hand'): ObjectView => ({
   id: 'o1', owner: 'p1', controller: 'p1', zone, card, tapped: false, faceDown: false, counters: {}, isToken: false,
-  isCommander: zone === 'command', commanderTax: 0, summoningSick: false,
+  isCommander: zone === 'command', commanderTax: 0, summoningSick: false, power: null, toughness: null, damage: 0,
 })
 
 describe('playing from hand', () => {

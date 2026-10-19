@@ -27,6 +27,8 @@ const LOSS_LABELS = {
 
 const HIDDEN: (ZoneKind | null)[] = ['library', 'hand', null]
 
+const DESTROYED = { damage: 'morreu (dano letal)', toughness: 'morreu (resistência 0)', loyalty: 'saiu do jogo (lealdade 0)' } as const
+
 export function describeEvents(events: GameEvent[], after: LogContext, before: LogContext, viewer: PlayerId | null): string[] {
   const name = (id: PlayerId) => after.players[id]?.name ?? id
   const cardName = (id: string) => (after.objects[id] ?? before.objects[id])?.card?.name ?? 'uma carta'
@@ -69,6 +71,13 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
         lines.push(`${name(e.player)} pagou ${e.cost} por ${cardName(e.objectId)}${e.life ? ` (e ${e.life} de vida)` : ''}.`)
         break
       case 'manualCost': lines.push(`${cardName(e.objectId)}: custo sem dados, pago à mão.`); break
+      case 'ptAdjusted': {
+        const sign = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
+        lines.push(`${cardName(e.objectId)} recebe ${sign(e.power)}/${sign(e.toughness)} até o fim do turno.`)
+        break
+      }
+      case 'damageDealt': lines.push(`${cardName(e.objectId)} sofreu ${e.amount} de dano.`); break
+      case 'destroyed': lines.push(`${cardName(e.objectId)} ${DESTROYED[e.reason]}.`); break
       case 'manaDeclared': lines.push(`${name(e.player)} declarou mana de ${cardName(e.objectId)} (fonte sem automação).`); break
       case 'exceptionRequested': lines.push(`${name(e.player)} pediu uma exceção às regras${e.reason ? `: “${e.reason}”` : ''}.`); break
       case 'exceptionAnswered': lines.push(`${name(e.player)} ${e.approve ? 'aprovou' : 'recusou'} o pedido.`); break

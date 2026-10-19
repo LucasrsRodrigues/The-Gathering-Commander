@@ -281,6 +281,8 @@ export type Action =
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[] }> // CR 601.2 (payWith: tap these first, atomically)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
+  | ActionOf<'adjustPT', { objectId: ObjectId; power: number; toughness: number }> // until end of turn (unscripted pumps)
+  | ActionOf<'dealDamage', { objectId: ObjectId; amount: number; deathtouch?: boolean }> // to a creature or planeswalker
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>
@@ -331,6 +333,9 @@ export type GameEvent =
   | { type: 'manaEmptied'; player: PlayerId }
   | { type: 'costPaid'; player: PlayerId; objectId: ObjectId; cost: string; mana: ManaAmount; life: number }
   | { type: 'manualCost'; player: PlayerId; objectId: ObjectId } // no data to charge: paid by hand
+  | { type: 'ptAdjusted'; objectId: ObjectId; power: number; toughness: number }
+  | { type: 'damageDealt'; objectId: ObjectId; amount: number; total: number }
+  | { type: 'destroyed'; objectId: ObjectId; reason: 'damage' | 'toughness' | 'loyalty' } // by a state-based action
   | { type: 'exceptionRequested'; player: PlayerId; reason: string }
   | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
   | { type: 'exceptionCancelled'; player: PlayerId }

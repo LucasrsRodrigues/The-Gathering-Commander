@@ -5,6 +5,7 @@ import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
 import { findPayment, formatCost, spellCost } from './cost'
+import { dealDamageTo } from './stats'
 import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
 import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
@@ -31,8 +32,9 @@ const ACTION_TYPES = new Set<Action['type']>([
   'keepHand', 'mulligan', 'bottomCards', 'passPriority', 'advanceStep', 'moveObject', 'draw', 'mill',
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
-  'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana',
+  'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
 ])
+const MAX_PT_DELTA = 100
 const MAX_X = 100
 const MAX_PAY_WITH = 60
 
@@ -259,6 +261,27 @@ function applyGameAction(tx: Tx, action: Action) {
       return
     }
 
+    // Épico 09: manual effects for unscripted cards. Free, and in the log.
+    case 'adjustPT': {
+      const obj = touchable(tx, actor, action.objectId, ['battlefield'])
+      for (const n of [action.power, action.toughness]) {
+        if (!Number.isInteger(n) || Math.abs(n) > MAX_PT_DELTA) fail('invalidAmount', `Ajuste de P/T entre −${MAX_PT_DELTA} e +${MAX_PT_DELTA}.`)
+      }
+      if (!action.power && !action.toughness) fail('invalidAmount', 'O ajuste não muda nada.')
+      tx.object(obj.id).ptMods = [...obj.ptMods, { power: action.power, toughness: action.toughness }]
+      tx.emit({ type: 'ptAdjusted', objectId: obj.id, power: action.power, toughness: action.toughness })
+      return
+    }
+
+    case 'dealDamage': {
+      const obj = touchable(tx, actor, action.objectId, ['battlefield'])
+      const n = action.amount
+      if (!Number.isInteger(n) || n < 1 || n > MAX_DELTA) fail('invalidAmount', 'Quantidade de dano inválida.')
+      optionalBoolean(action.deathtouch)
+      dealDamageTo(tx, obj, n, !!action.deathtouch)
+      return
+    }
+
     case 'createToken': {
       const card = tokenCard(action.card)
       optionalBoolean(action.tapped)
@@ -354,6 +377,7 @@ function touchable(tx: Tx, actor: PlayerId, objectId: string, zones?: ZoneKind[]
   }
   return obj
 }
+
 
 // CR 605: tap a source and add its mana. Summoning sickness and the extra cost are policies (mana area).
 function activateManaAbility(tx: Tx, actor: PlayerId, a: ManaActivation) {
