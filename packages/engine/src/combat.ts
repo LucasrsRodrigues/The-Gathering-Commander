@@ -37,8 +37,8 @@ export function onCombatStep(tx: Tx, step: Step): boolean {
       s.turn = { ...s.turn, combat: { attacks: [], blocks: [], damageOrder: {}, firstStrikeDealt: false, regularDealt: false } }
       return false
     case 'declareAttackers':
-      // Nothing that could attack: no attackers, and the combat damage steps are skipped (CR 508.8).
-      if (!untappedCreatures(s, active).length) {
+      // Nothing that could attack, or nobody to attack (goldfish): no attackers, combat damage is skipped (CR 508.8).
+      if (!untappedCreatures(s, active).length || !s.seats.some((p) => p !== active && !s.players[p]!.lost)) {
         goToStep(tx, 'endCombat')
         return true
       }

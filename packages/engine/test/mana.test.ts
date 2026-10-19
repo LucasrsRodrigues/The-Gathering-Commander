@@ -16,7 +16,7 @@ const SOURCES = ['Forest', 'Command Tower', 'Caves of Koilos', 'Mana Confluence'
 function game(manaRules: 'block' | 'warn' | 'off' = 'block'): GameState {
   const deck = { commanders: [card('Krenko, Mob Boss')], cards: [...SOURCES.map(card), ...Array(60).fill(card('Forest'))] }
   return keepAll(createGame({
-    seed: 9, startingPlayer: 'p1', ruleset: { timingRules: 'off', manaRules },
+    seed: 9, startingPlayer: 'p1', ruleset: { timingRules: 'off', manaRules, combatRules: 'off' },
     players: [{ id: 'p1', name: 'Ana', deck }, { id: 'p2', name: 'Bia', deck }],
   }))
 }

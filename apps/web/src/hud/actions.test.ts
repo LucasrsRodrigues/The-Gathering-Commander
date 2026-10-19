@@ -29,3 +29,11 @@ describe('playing from hand', () => {
     expect(describeIntent({ type: 'moveObject', objectId: 'o1', to: 'battlefield' }, null)).toBe('pôr uma carta no campo de batalha')
   })
 })
+
+describe('describing combat and cleanup requests', () => {
+  it('says what was asked', () => {
+    expect(describeIntent({ type: 'declareAttackers', attacks: [{ attacker: 'o1', target: 'p2' }] }, null)).toBe('atacar com 1 criatura(s)')
+    expect(describeIntent({ type: 'declareBlockers', blocks: [] }, null)).toBe('não bloquear')
+    expect(describeIntent({ type: 'discard', objectIds: [] }, null)).toBe('descartar só 0 carta(s)')
+  })
+})

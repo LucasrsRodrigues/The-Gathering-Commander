@@ -19,10 +19,10 @@ export const COMMANDER_RULESET: Ruleset = {
   restrictToController: false, // sandbox: anyone may move public cards; hidden zones stay owner-only
   landsPerTurn: 1,
   // Épico 09 decided 'block' for all three. Each area switches to it when the table UI of its wave ships
-  // (timing T9.7 ✓, mana T9.11 ✓, combat T9.16), so every deploy stays playable in between.
+  // (timing T9.7 ✓, mana T9.11 ✓, combat T9.16 ✓), so every deploy stays playable in between.
   timingRules: 'block',
   manaRules: 'block',
-  combatRules: 'off',
+  combatRules: 'block',
 }
 
 // Arena-style defaults (épico 09, req. 30): stop in your main phases and to declare attackers; on other

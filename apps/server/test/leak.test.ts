@@ -19,6 +19,14 @@ function rng(seed: number) {
 
 function randomIntent(game: GameState, player: string, r: () => number): ActionIntent {
   const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)]!
+  // Turn-rule decisions (épico 09) are answered so the game keeps moving.
+  switch (game.pending?.kind) {
+    case 'declareAttackers': return { type: 'declareAttackers', attacks: [] }
+    case 'declareBlockers': return { type: 'declareBlockers', blocks: [] }
+    case 'confirmDamage': return { type: 'assignDamage', assignments: game.pending.proposal.assignments }
+    case 'discard': return { type: 'discard', objectIds: game.zones[player]!.hand.slice(0, game.pending.count) }
+    default: break
+  }
   const own = Object.values(game.objects).filter((o) => o.owner === player && o.zone !== 'library')
   switch (Math.floor(r() * 6)) {
     case 0: return { type: 'passPriority' }

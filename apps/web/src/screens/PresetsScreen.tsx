@@ -150,6 +150,11 @@ function PresetEditor({ preset, onClose, onSave }: { preset: Preset; onClose: ()
                 {(Object.keys(LEVEL_LABELS) as Enforcement[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
               </select>
             </label>
+            <label className="field">Combate (ataques, bloqueios e dano)
+              <select value={values.ruleset.combatRules} onChange={(e) => setRule({ combatRules: e.target.value as Enforcement })}>
+                {(Object.keys(LEVEL_LABELS) as Enforcement[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
+              </select>
+            </label>
             <label className="field">Terrenos por turno
               <input type="number" min={1} max={5} value={values.ruleset.landsPerTurn}
                 onChange={(e) => setRule({ landsPerTurn: Math.max(1, Math.min(5, Math.round(Number(e.target.value)) || 1)) })} />

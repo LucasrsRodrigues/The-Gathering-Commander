@@ -31,6 +31,10 @@ export function describeIntent(action: ActionIntent, card: CardRef | null | unde
     case 'playLand': return `jogar o terreno ${name}`
     case 'castSpell': return `lançar ${name}${action.x !== undefined ? ` com X = ${action.x}` : ''}`
     case 'moveObject': return `pôr ${name} ${INTO_ZONE[action.to] ?? 'em outra zona'}`
+    case 'declareAttackers': return action.attacks.length ? `atacar com ${action.attacks.length} criatura(s)` : 'não atacar'
+    case 'declareBlockers': return action.blocks.length ? `bloquear com ${action.blocks.length} criatura(s)` : 'não bloquear'
+    case 'assignDamage': return 'distribuir o dano de combate assim'
+    case 'discard': return `descartar só ${action.objectIds.length} carta(s)`
     default: return 'fazer essa ação'
   }
 }

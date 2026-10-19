@@ -7,9 +7,20 @@ export interface PrimaryAction {
   run: (() => void) | null
 }
 
+const DECISIONS: Record<string, string> = {
+  declareAttackers: 'Declarando atacantes…',
+  declareBlockers: 'Declarando bloqueios…',
+  confirmDamage: 'Confirmando o dano…',
+  discard: 'Descartando…',
+  exception: 'Pedido de exceção…',
+}
+
 // The one big button: advance (relaxed mode, your turn, empty stack) or pass priority.
 export function primaryAction(view: PlayerView, viewer: PlayerId, dispatch: Dispatch): PrimaryAction {
   if (view.status !== 'playing') return { label: view.status === 'ended' ? 'Fim de jogo' : 'Mulligan…', run: null }
+  // While the game waits on a decision (combat, discard, an exception), the panel for it is the way forward.
+  const decision = view.pending ? DECISIONS[view.pending.kind] : undefined
+  if (decision) return { label: decision, run: null }
   const hasPriority = view.priority?.player === viewer
   const canAdvance = view.ruleset.priorityMode === 'relaxed' && view.turn.active === viewer && view.stack.length === 0
   if (canAdvance) {

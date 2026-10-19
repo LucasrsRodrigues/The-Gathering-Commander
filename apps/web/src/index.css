@@ -178,6 +178,21 @@ button.stack-item { cursor: pointer; }
 .exception-request p { margin: 0; }
 .exception-request .row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .exception-request .row .muted { margin-right: auto; }
+.combat-panel {
+  position: absolute; left: 50%; top: 84px; translate: -50% 0; z-index: 14; width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 340px); overflow: auto; padding: 14px 18px; display: grid; gap: 10px;
+  background: var(--surface-solid); border: 1px solid var(--gold); border-radius: var(--radius); box-shadow: 0 16px 40px rgb(0 0 0 / 0.6);
+}
+.combat-panel h3 { margin: 0; font-family: var(--font-display); }
+.combat-panel p { margin: 0; }
+.combat-panel .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.combat-rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.combat-rows li { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.combat-rows b { color: var(--gold); }
+.damage-source { align-items: flex-start; }
+.damage-row { display: inline-flex; gap: 6px; align-items: center; }
+.damage-preview { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: rgb(0 0 0 / 0.25); }
+.damage-preview:empty { display: none; }
 .mana-pool {
   margin-left: auto; padding: 2px 8px; border-radius: 999px; font-weight: 600; letter-spacing: 0.04em;
   background: var(--surface-solid); border: 1px solid var(--gold); color: var(--gold);

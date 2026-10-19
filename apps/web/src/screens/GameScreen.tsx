@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
+import { CombatPanel } from '../hud/Combat'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
 import { isInteractiveTarget } from '../hud/a11y'
@@ -106,6 +107,7 @@ export function GameScreen({ session, onExit, onRematch }: {
           <PaymentDialog payment={payment} view={view} onClose={() => setPayment(null)}
             dispatch={(a) => { const error = session.dispatch(a); if (error) toast(error.message) }} />
         )}
+        {!curtain && view.status === 'playing' && <CombatPanel view={view} seat={seat} dispatch={dispatch} />}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
         {blocked && !curtain && (
           <BlockedDialog blocked={blocked} view={view} online={connection !== 'local'} dispatch={dispatch}

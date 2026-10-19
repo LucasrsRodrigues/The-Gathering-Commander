@@ -196,12 +196,23 @@ depois paradas.
     - ficar com mais cartas ("sem tamanho máximo de mão") é a política `discardCount` e passa por exceção;
     - a mão da mesa reaproveita a seleção do mulligan;
     - verificado no navegador: com 8 cartas, pede 1, descarta e o turno seguinte começa.
-- [ ] **T9.16 — Mesa: modo de ataque, modo de bloqueio e painel de dano (DOM primeiro)** · depende de T9.14
+- [x] **T9.16 — Mesa: modo de ataque, modo de bloqueio e painel de dano (DOM primeiro)** · depende de T9.14
   - Verificação: critério de aceite da fase, com uma partida de 2 jogadores até a morte por combate sem ajuste
     manual de vida.
 
 ## Onda 4 — Paradas automáticas
-  - Ao terminar: mudar o padrão de `combatRules` para `block` em `COMMANDER_RULESET`.
+  - Ao terminar: mudar o padrão de `combatRules` para `block` em `COMMANDER_RULESET`. ✓
+  - Feito:
+    - painéis DOM para atacar (alvo por criatura, "Todos em…", "Sem ataque"), bloquear e confirmar o dano, com
+      prévia de mortes, vida e dano de comandante e +/− para redistribuir entre bloqueadores;
+    - quem espera vê "X está declarando…", e o botão principal da barra de fases fica parado enquanto há decisão;
+    - o editor de regras da casa ganhou "Combate";
+    - sem oponente vivo (modo solo), o combate não pede declaração.
+  - Critério de aceite: o teste `acceptance.test.ts` joga uma partida de 2 jogadores com as três áreas em `block`
+    até a morte por dano de combate, sem ajuste manual de vida e sem nenhuma regra contornada.
+  - Verificado no navegador (2 lugares, mesmo aparelho): painel de ataque, bloqueio por enjoo de invocação,
+    exceção, painel de dano com prévia e vida caindo de 40 para 38.
+  - Fica para depois: setas de ataque na mesa 3D.
 
 - [ ] **T9.17 — `shouldAutoPass`, `setStops`, `passUntil`** _(req: 28–31)_ · depende de T9.5
   - Verificação:

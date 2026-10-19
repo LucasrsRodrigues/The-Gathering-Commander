@@ -158,3 +158,16 @@ describe('declaring blockers (CR 509)', () => {
     expect(s.priority?.player).toBe('p1')
   })
 })
+
+describe('playing alone (goldfish)', () => {
+  it('there is nobody to attack, so combat does not ask', () => {
+    let s = keepAll(createGame({
+      seed: 1, startingPlayer: 'p1', ruleset: { timingRules: 'off', manaRules: 'off', combatRules: 'block' },
+      players: [{ id: 'p1', name: 'Solo', deck: { commanders: [card('Krenko, Mob Boss')], cards: [creature('Bear', 2, 2), ...Array(40).fill(card('Wastes'))] } }],
+    }))
+    const bear = Object.values(s.objects).find((o) => o.card.name === 'Bear')!.id
+    s = act(s, { type: 'moveObject', player: 'p1', objectId: bear, to: 'battlefield' }).state
+    for (let i = 0; i < 30 && s.turn.number < 3; i++) s = act(s, { type: 'advanceStep', player: 'p1' }).state
+    expect(s.turn.number).toBe(3)
+  })
+})
