@@ -110,12 +110,16 @@ depois paradas.
     - o custo extra automático só aceita mana genérica (Signets); custo colorido continua como mana declarada;
     - um comandante incolor faz o Command Tower não gerar mana (CR 903.4f);
     - a visão do jogador ganhou a reserva de mana, os terrenos jogados e `summoningSick` por objeto.
-- [ ] **T9.9 — Custo, taxa de comandante e pagamento** _(req: 12, 14, 15)_ · depende de T9.8
+- [x] **T9.9 — Custo, taxa de comandante e pagamento** _(req: 12, 14, 15)_ · depende de T9.8
   - Verificação:
     - híbrida, phyrexiana (com vida) e X;
     - taxa aumenta a cada lançamento da zona de comando;
     - custo desconhecido vira manual com aviso;
     - Dark Ritual gera {B}{B}{B} ao resolver.
+  - Feito:
+    - a busca de pagamento tenta as escolhas de híbrida, {2/C} e phyrexiana (mana antes de vida);
+    - carta sem custo de mana (Ancestral Vision) é bloqueada com `noManaCost`, e o caminho é a exceção;
+    - carta sem dados é lançada sem cobrança e o log diz "custo pago à mão".
 - [ ] **T9.10 — `planPayment` e `castSpell { payWith }` atômico** _(req: 13)_ · depende de T9.9
   - Verificação:
     - escolhe cor fixa antes de "qualquer cor";

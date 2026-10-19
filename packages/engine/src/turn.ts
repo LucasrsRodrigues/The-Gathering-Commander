@@ -2,7 +2,7 @@
 
 import type { Tx } from './tx'
 import { STEPS, type GameState, type PlayerId, type Step } from './types'
-import { emptyPools } from './mana'
+import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
 
 // Players still in the game, in turn order starting from `from` (APNAP when `from` is the active player).
@@ -88,7 +88,11 @@ export function resolveTop(tx: Tx) {
   if (item.kind === 'card' && item.objectId) {
     const obj = tx.s.objects[item.objectId]!
     if (isPermanentCard(obj)) moveObject(tx, obj.id, 'battlefield', { controller: item.controller })
-    else moveObject(tx, obj.id, 'graveyard')
+    else {
+      const spellMana = obj.card.rules?.spellMana
+      moveObject(tx, obj.id, 'graveyard')
+      if (spellMana) addMana(tx, item.controller, spellMana, obj.id) // rituals: "Add {B}{B}{B}."
+    }
   } else {
     tx.stack().pop()
   }

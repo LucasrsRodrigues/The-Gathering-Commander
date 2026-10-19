@@ -65,6 +65,10 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
         lines.push(e.winners.length ? `Fim de jogo! Vitória de ${e.winners.map(name).join(', ')}.` : 'Fim de jogo.')
         break
       case 'ruleBent': lines.push(`Regra contornada (aviso) por ${name(e.player)}: ${e.message}`); break
+      case 'costPaid':
+        lines.push(`${name(e.player)} pagou ${e.cost} por ${cardName(e.objectId)}${e.life ? ` (e ${e.life} de vida)` : ''}.`)
+        break
+      case 'manualCost': lines.push(`${cardName(e.objectId)}: custo sem dados, pago à mão.`); break
       case 'manaDeclared': lines.push(`${name(e.player)} declarou mana de ${cardName(e.objectId)} (fonte sem automação).`); break
       case 'exceptionRequested': lines.push(`${name(e.player)} pediu uma exceção às regras${e.reason ? `: “${e.reason}”` : ''}.`); break
       case 'exceptionAnswered': lines.push(`${name(e.player)} ${e.approve ? 'aprovou' : 'recusou'} o pedido.`); break

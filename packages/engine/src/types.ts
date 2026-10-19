@@ -322,6 +322,8 @@ export type GameEvent =
   | { type: 'manaAdded'; player: PlayerId; mana: ManaAmount; source: ObjectId | null }
   | { type: 'manaDeclared'; player: PlayerId; objectId: ObjectId } // the amount follows as manaAdded
   | { type: 'manaEmptied'; player: PlayerId }
+  | { type: 'costPaid'; player: PlayerId; objectId: ObjectId; cost: string; mana: ManaAmount; life: number }
+  | { type: 'manualCost'; player: PlayerId; objectId: ObjectId } // no data to charge: paid by hand
   | { type: 'exceptionRequested'; player: PlayerId; reason: string }
   | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
   | { type: 'exceptionCancelled'; player: PlayerId }

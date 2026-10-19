@@ -4,6 +4,7 @@
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
+import { findPayment, formatCost, spellCost } from './cost'
 import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
 import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
@@ -211,6 +212,7 @@ function applyGameAction(tx: Tx, action: Action) {
       if (action.x !== undefined && (!Number.isInteger(action.x) || action.x < 0 || action.x > MAX_X)) {
         fail('invalidAmount', `X precisa ser um número inteiro entre 0 e ${MAX_X}.`)
       }
+      if (levelOf(s.ruleset, 'mana') !== 'off') payForSpell(tx, actor, obj, action.x ?? 0) // before the move: tax counts casts
       moveObject(tx, obj.id, 'stack', { controller: actor })
       if (action.x !== undefined) {
         const stack = tx.stack()
@@ -359,6 +361,22 @@ function touchable(tx: Tx, actor: PlayerId, objectId: string, zones?: ZoneKind[]
     fail('notAllowed', 'Você não controla essa carta.')
   }
   return obj
+}
+
+// Takes the cost from the pool (and life for Phyrexian mana). Under 'warn' a cost the pool cannot cover is only
+// logged by the policy; costs without data are flagged as paid by hand.
+function payForSpell(tx: Tx, actor: PlayerId, obj: GameObject, x: number) {
+  const cost = spellCost(obj, tx.s.ruleset)
+  if (cost.kind === 'manual') {
+    tx.emit({ type: 'manualCost', player: actor, objectId: obj.id })
+    return
+  }
+  if (cost.kind !== 'mana') return
+  const payment = findPayment(tx.s.players[actor]!.manaPool, cost.cost, x, cost.tax)
+  if (!payment) return
+  tx.player(actor).manaPool = payment.pool
+  if (payment.life) loseLife(tx, actor, payment.life)
+  tx.emit({ type: 'costPaid', player: actor, objectId: obj.id, cost: formatCost(cost.cost, x, cost.tax), mana: payment.spent, life: payment.life })
 }
 
 // An untapped permanent the actor controls (mana sources are activated only by their controller, CR 602.2).

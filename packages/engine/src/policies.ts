@@ -2,6 +2,7 @@
 // state. reduce() decides what to do with the findings from the area's level (block / warn / off).
 
 import { hasInstantSpeed } from './cards'
+import { findPayment, formatCost, spellCost } from './cost'
 import { isSummoningSick, poolTotal } from './mana'
 import type { Action, GameState, PlayerId, RuleArea, RuleFinding, RuleLevel, Ruleset } from './types'
 
@@ -73,8 +74,23 @@ const manaExtraCost: Policy = (state, action) => {
   return mana('notEnoughMana', `Essa habilidade custa {${extra.generic}} da sua reserva de mana.`)
 }
 
+// CR 601.2f–h: the total cost is paid from the pool.
+const spellPayment: Policy = (state, action) => {
+  if (action.type !== 'castSpell') return null
+  const obj = state.objects[action.objectId]
+  if (!obj) return null
+  const cost = spellCost(obj, state.ruleset)
+  if (cost.kind === 'none') return mana('noManaCost', 'Essa carta não tem custo de mana: só entra por outro efeito.')
+  if (cost.kind !== 'mana') return null
+  const x = action.x ?? 0
+  if (findPayment(state.players[action.player]!.manaPool, cost.cost, x, cost.tax)) return null
+  const tax = cost.tax ? ` (com taxa de comandante +${cost.tax})` : ''
+  return mana('notEnoughMana', `Mana insuficiente: custa ${formatCost(cost.cost, x, cost.tax)}${tax}. Gere mana primeiro.`)
+}
+
 const POLICIES: { area: RuleArea; check: Policy }[] = [
   { area: 'mana', check: manaSickness },
+  { area: 'mana', check: spellPayment },
   { area: 'mana', check: manaExtraCost },
   { area: 'timing', check: playedByHand },
   { area: 'timing', check: landTiming },
