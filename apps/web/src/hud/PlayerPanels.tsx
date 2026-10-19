@@ -4,6 +4,7 @@ import { seatOrder } from '../table/layout'
 import { focusStore, menuStore, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { menuAnchor } from './a11y'
+import { formatMana } from './mana'
 
 export type Dispatch = (action: ActionIntent) => void
 
@@ -46,6 +47,7 @@ function PlayerPanel({ view, seat, dispatch, local }: {
   // Every opposing commander we can see, plus any that already dealt damage.
   const opposing = Object.values(view.objects).filter((o) => o.isCommander && o.owner !== seat).map((o) => o.id)
   const damageSources = [...new Set([...opposing, ...Object.keys(p.commanderDamage)])]
+  const pool = formatMana(p.manaPool)
   const battlefieldCount = view.battlefield.filter((id) => view.objects[id]?.controller === seat).length
 
   return (
@@ -73,6 +75,7 @@ function PlayerPanel({ view, seat, dispatch, local }: {
           <div className="life" aria-live="polite">
             <Stepper label={`vida de ${p.name}`} onChange={(delta) => dispatch({ type: 'adjustLife', target: seat, delta })} />
             <span className="life-value"><span className="sr-only">Vida </span>{p.life}</span>
+            {pool && <span className="mana-pool" title="Reserva de mana (esvazia ao fim da etapa)"><span className="sr-only">Reserva de mana: </span>{pool}</span>}
           </div>
           {!expanded && (
             <div className="summary">

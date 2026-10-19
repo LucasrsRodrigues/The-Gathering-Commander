@@ -4,10 +4,14 @@
 // (a Forest before a Command Tower before Birds), painless options before painful ones; the rest of the cost is
 // filled with whatever is left, Signets last so the pool can pay their {1}. The plan is checked by simulating
 // it, so it is never wrong — at worst it says there is no plan when a cleverer one existed.
+//
+// It works from the full state (engine, bots) or from what a player sees (the table, online).
 
-import { findPayment, spellCost } from './cost'
-import { colorChoices, isSummoningSick, MANA_TYPES, production, simulatePool } from './mana'
-import type { GameObject, GameState, ManaAbility, ManaActivation, ManaAmount, ManaType, ObjectId, PlayerId } from './types'
+import { commanderTax } from './commander'
+import { findPayment, MAX_FLEXIBLE } from './cost'
+import { choicesFor, commanderIdentity, isSummoningSick, MANA_TYPES, payGeneric, poolTotal, productionFor } from './mana'
+import type { CardRef, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaCost, ManaPool, ManaType, ObjectId, PlayerId } from './types'
+import type { PlayerView } from './view'
 
 interface Option {
   activation: ManaActivation
@@ -22,82 +26,112 @@ interface Source {
   flex: number // how many mana types it can make: fewer = spend first
 }
 
+interface PlanInput {
+  pool: ManaPool
+  cost: ManaCost
+  tax: number
+  x: number
+  sources: { id: ObjectId; abilities: ManaAbility[] }[] // untapped, controlled, not summoning sick
+  identity: ManaColor[]
+}
+
 // Null = the spell cannot be paid with what is untapped now. [] = nothing to tap (already paid, or no data).
 export function planPayment(state: GameState, player: PlayerId, objectId: ObjectId, x = 0): ManaActivation[] | null {
   const obj = state.objects[objectId]
   if (!obj) return null
-  const cost = spellCost(obj, state.ruleset)
-  if (cost.kind === 'none') return null
-  if (cost.kind === 'manual') return []
-  const fits = (plan: ManaActivation[]) => {
-    const sim = simulatePool(state, player, plan)
-    return !!sim && !sim.short && !!findPayment(sim.pool, cost.cost, x, cost.tax)
-  }
-  if (fits([])) return []
+  const sources = state.battlefield.flatMap((id) => {
+    const o = state.objects[id]!
+    return o.controller === player && !o.tapped && o.card.rules?.manaAbilities.length && !isSummoningSick(state, o)
+      ? [{ id, abilities: o.card.rules.manaAbilities }] : []
+  })
+  const tax = obj.zone === 'command' ? commanderTax(obj, state.ruleset) : 0
+  return planFor(obj.card, tax, x, state.players[player]!.manaPool, sources, commanderIdentity(state, player))
+}
 
-  const sources = availableSources(state, player)
+// The same plan from a player's view of the game (the table has no full state online).
+export function planPaymentFromView(view: PlayerView, player: PlayerId, objectId: ObjectId, x = 0): ManaActivation[] | null {
+  const obj = view.objects[objectId]
+  const pool = view.players[player]?.manaPool
+  if (!obj?.card || !pool) return null
+  const sources = view.battlefield.flatMap((id) => {
+    const o = view.objects[id]
+    return o && o.controller === player && !o.tapped && !o.summoningSick && o.card?.rules?.manaAbilities.length
+      ? [{ id, abilities: o.card.rules.manaAbilities }] : []
+  })
+  const identity = new Set<ManaColor>()
+  for (const o of Object.values(view.objects)) if (o.isCommander && o.owner === player) o.card?.rules?.colorIdentity.forEach((c) => identity.add(c))
+  const tax = obj.zone === 'command' ? obj.commanderTax : 0
+  return planFor(obj.card, tax, x, pool, sources, (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => identity.has(c)))
+}
+
+function planFor(card: CardRef, tax: number, x: number, pool: ManaPool, sources: PlanInput['sources'], identity: ManaColor[]) {
+  const cost = card.rules?.cost
+  if (card.rules && !cost) return null // no mana cost: cannot be cast by paying one
+  if (!cost || cost.unknown || cost.hybrid.length + cost.twoBrid.length + cost.phyrexian.length > MAX_FLEXIBLE) return [] // paid by hand
+  return plan({ pool, cost, tax, x, sources, identity })
+}
+
+function plan(input: PlanInput): ManaActivation[] | null {
+  const { pool, cost, tax, x } = input
+  const sources = input.sources.map((s) => toSource(s, input.identity)).filter((s) => s.options.length)
+  const fits = (options: Option[]) => {
+    let left = { ...pool }
+    for (const o of options) {
+      const paid = payGeneric(left, o.extra)
+      if (!paid) return false
+      left = paid
+      for (const t of MANA_TYPES) left[t] += o.mana[t] ?? 0
+    }
+    return !!findPayment(left, cost, x, tax)
+  }
   const chosen: Option[] = []
   const used = new Set<ObjectId>()
-  const take = (source: Source, option: Option) => {
-    chosen.push(option)
-    used.add(source.id)
-  }
-  const ordered = () => [...chosen.filter((o) => !o.extra), ...chosen.filter((o) => o.extra)].map((o) => o.activation)
-  const produced = (t: ManaType) => chosen.reduce((n, o) => n + (o.mana[t] ?? 0), 0)
+  const ordered = () => [...chosen.filter((o) => !o.extra), ...chosen.filter((o) => o.extra)]
+  if (fits([])) return []
 
   // 1. Colored (and {C}) symbols, least flexible sources first.
-  const pool = state.players[player]!.manaPool
   for (const t of MANA_TYPES) {
-    let missing = (cost.cost.colored[t] ?? 0) - pool[t] - produced(t)
+    let missing = (cost.colored[t] ?? 0) - pool[t] - chosen.reduce((n, o) => n + (o.mana[t] ?? 0), 0)
     while (missing > 0) {
       const pick = sources
         .filter((s) => !used.has(s.id))
         .flatMap((s) => s.options.filter((o) => (o.mana[t] ?? 0) > 0).map((o) => ({ s, o })))
         .sort((a, b) => a.s.flex - b.s.flex || a.o.pain - b.o.pain || a.o.extra - b.o.extra)[0]
       if (!pick) return null
-      take(pick.s, pick.o)
+      chosen.push(pick.o)
+      used.add(pick.s.id)
       missing -= pick.o.mana[t]!
     }
   }
 
   // 2. Hybrid / two-brid / Phyrexian colors and the generic part: keep adding until the payment fits.
-  const wanted = new Set<ManaType>([...cost.cost.hybrid.flat(), ...cost.cost.twoBrid, ...cost.cost.phyrexian])
+  const wanted = new Set<ManaType>([...cost.hybrid.flat(), ...cost.twoBrid, ...cost.phyrexian])
   while (!fits(ordered())) {
     const next = sources.filter((s) => !used.has(s.id)).sort((a, b) => a.flex - b.flex || bestOf(a, wanted).pain - bestOf(b, wanted).pain)[0]
     if (!next) return null
-    take(next, bestOf(next, wanted))
+    chosen.push(bestOf(next, wanted))
+    used.add(next.id)
   }
-  return ordered()
+  return ordered().map((o) => o.activation)
 }
 
 // The option to use when filling: a wanted color if it has one, then no pain, then the most mana.
 function bestOf(source: Source, wanted: Set<ManaType>): Option {
-  const amount = (o: Option) => MANA_TYPES.reduce((n, t) => n + (o.mana[t] ?? 0), 0) - o.extra
+  const net = (o: Option) => poolTotal(o.mana) - o.extra
   const wantedScore = (o: Option) => (MANA_TYPES.some((t) => wanted.has(t) && (o.mana[t] ?? 0) > 0) ? 1 : 0)
-  return [...source.options].sort((a, b) => wantedScore(b) - wantedScore(a) || a.pain - b.pain || amount(b) - amount(a))[0]!
+  return [...source.options].sort((a, b) => wantedScore(b) - wantedScore(a) || a.pain - b.pain || net(b) - net(a))[0]!
 }
 
-function availableSources(state: GameState, player: PlayerId): Source[] {
-  const sources: Source[] = []
-  for (const id of state.battlefield) {
-    const obj = state.objects[id]!
-    if (obj.controller !== player || obj.tapped || !obj.card.rules?.manaAbilities.length || isSummoningSick(state, obj)) continue
-    const options = obj.card.rules.manaAbilities.flatMap((ability, i) => optionsOf(state, player, obj, ability, i))
-    if (!options.length) continue
-    const types = new Set(options.flatMap((o) => MANA_TYPES.filter((t) => (o.mana[t] ?? 0) > 0)))
-    sources.push({ id, options, flex: types.size })
-  }
-  return sources
-}
-
-function optionsOf(state: GameState, player: PlayerId, obj: GameObject, ability: ManaAbility, abilityIndex: number): Option[] {
-  const pain = (ability.lifeCost ?? 0) + (ability.selfDamage ?? 0)
-  const extra = ability.extraCost?.generic ?? 0
-  const choices = colorChoices(state, player, ability)
-  const colors: (ManaType | undefined)[] = choices ? choices : [undefined]
-  return colors.flatMap((color) => {
-    const mana = production(state, player, ability, color)
-    if (!MANA_TYPES.some((t) => (mana[t] ?? 0) > 0)) return []
-    return [{ activation: { objectId: obj.id, abilityIndex, ...(color ? { color } : {}) }, mana, pain, extra }]
+function toSource(source: PlanInput['sources'][number], identity: ManaColor[]): Source {
+  const options = source.abilities.flatMap((ability, abilityIndex): Option[] => {
+    const pain = (ability.lifeCost ?? 0) + (ability.selfDamage ?? 0)
+    const extra = ability.extraCost?.generic ?? 0
+    const colors: (ManaType | undefined)[] = choicesFor(ability, identity) ?? [undefined]
+    return colors.flatMap((color) => {
+      const mana = productionFor(ability, color, identity)
+      return poolTotal(mana) ? [{ activation: { objectId: source.id, abilityIndex, ...(color ? { color } : {}) }, mana, pain, extra }] : []
+    })
   })
+  const types = new Set(options.flatMap((o) => MANA_TYPES.filter((t) => (o.mana[t] ?? 0) > 0)))
+  return { id: source.id, options, flex: types.size }
 }

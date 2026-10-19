@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
@@ -9,7 +10,8 @@ import { PhaseBar, StackPanel } from '../hud/TurnControls'
 import type { GameSessionPort } from '../session/port'
 import { useSessionVersion } from '../session/useSession'
 import { TableScene, type TableIntents } from '../table/TableScene'
-import { closeTopmost, toast } from '../ui/stores'
+import { closeTopmost, menuStore, toast } from '../ui/stores'
+import { manaItems, paymentFor, type PendingPayment } from '../hud/mana'
 
 const CONNECTION_LABELS = { connecting: 'Conectando…', online: 'Online', offline: 'Sem conexão: reconectando…' } as const
 
@@ -23,15 +25,24 @@ export function GameScreen({ session, onExit, onRematch }: {
   const seat = session.seat()
   const curtain = session.needsCurtain()
 
+  const [payment, setPayment] = useState<PendingPayment | null>(null)
   const dispatch: Dispatch = useCallback((action) => {
+    // Casting that needs sources tapped asks first (automatic payment).
+    const pending = paymentFor(session.view(), session.seat(), action)
+    if (pending) return setPayment(pending)
     const error = session.dispatch(action)
     if (error) toast(error.message)
-  }, [session])
+  }, [session, setPayment])
 
   const intents: TableIntents = useMemo(() => ({
-    tap: (objectId) => {
-      const obj = session.view().objects[objectId]
-      dispatch({ type: obj?.tapped ? 'untap' : 'tap', objectId })
+    // Clicking a mana source makes mana: at once when there is one way, otherwise a menu of the options.
+    tap: (objectId, x, y) => {
+      const view = session.view()
+      const obj = view.objects[objectId]
+      const mana = obj ? manaItems(view, session.seat(), obj) : []
+      if (mana.length === 1) dispatch(mana[0]!.action)
+      else if (mana.length > 1) menuStore.set({ target: { kind: 'object', objectId }, x, y })
+      else dispatch({ type: obj?.tapped ? 'untap' : 'tap', objectId })
     },
     arrange: (objectId, x, z) => dispatch({ type: 'setArrangement', objectId, arrangement: { x, z } }),
   }), [dispatch, session])
@@ -91,6 +102,10 @@ export function GameScreen({ session, onExit, onRematch }: {
         <CardMenu view={view} dispatch={dispatch} />
         <ZoneViewer view={view} />
         <Toasts />
+        {payment && !curtain && (
+          <PaymentDialog payment={payment} view={view} onClose={() => setPayment(null)}
+            dispatch={(a) => { const error = session.dispatch(a); if (error) toast(error.message) }} />
+        )}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
         {blocked && !curtain && (
           <BlockedDialog blocked={blocked} view={view} online={connection !== 'local'} dispatch={dispatch}

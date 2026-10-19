@@ -130,11 +130,22 @@ depois paradas.
     - o `planPayment` é guloso e depois verificado por simulação: nunca propõe um pagamento errado, no máximo
       diz que não há plano quando um mais esperto existiria;
     - `castSpell { payWith }` vira as fontes e paga numa ação só; se algo falha, nada muda.
-- [ ] **T9.11 — Mesa: HUD da reserva, clicar para gerar mana, confirmação do pagamento** · depende de T9.10
+- [x] **T9.11 — Mesa: HUD da reserva, clicar para gerar mana, confirmação do pagamento** · depende de T9.10
   - Verificação: lançar uma criatura de 4 com o pagamento automático é feito em 2 cliques.
 
 ## Onda 3 — Combate
-  - Ao terminar: mudar o padrão de `manaRules` para `block` em `COMMANDER_RULESET`.
+  - Ao terminar: mudar o padrão de `manaRules` para `block` em `COMMANDER_RULESET`. ✓
+  - Feito:
+    - clicar numa fonte gera a mana (direto quando há um jeito só; menu quando há escolha ou dor);
+    - fontes não reconhecidas oferecem "Declarar {X}";
+    - a reserva aparece no painel de cada jogador;
+    - lançar mostra quais fontes serão viradas, e "Lançar" confirma;
+    - o editor de regras da casa ganhou "Custo de mana".
+  - Desvio: o planejador ganhou uma entrada pela `PlayerView` (`planPaymentFromView`), porque o navegador online
+    não tem o estado completo; um teste garante que as duas entradas planejam igual.
+  - "Trocar uma fonte" no confirmar ficou como "Pagar à mão" (fechar, clicar nas fontes e lançar de novo).
+  - Verificado no navegador (jogo local): mana insuficiente bloqueada com o custo, lançamento em 2 cliques e log com
+    o pagamento.
 
 - [ ] **T9.12 — P/T atual, dano marcado, `adjustPT` e ações baseadas em estado** _(req: 22–24, 26)_ · depende de T9.2
   - Verificação:

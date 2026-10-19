@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { createGame, deriveCardRules, planPayment, reduce, type CardRef, type GameState, type OracleFacts } from '../src'
+import { createGame, deriveCardRules, planPayment, planPaymentFromView, reduce, viewFor, type CardRef, type GameState, type OracleFacts } from '../src'
 import { act, keepAll } from './helpers'
 
 const FIXTURE: OracleFacts[] = JSON.parse(readFileSync(join(import.meta.dirname, 'fixtures', 'oracle.json'), 'utf8'))
@@ -76,6 +76,12 @@ describe('planPayment (automatic payment)', () => {
     const result = reduce(s, { type: 'castSpell', player: 'p1', objectId: krenko, payWith: plan })
     expect(result.ok).toBe(false)
     expect(s.objects[plan[0]!.objectId]!.tapped).toBe(false)
+  })
+
+  it('plans the same from what the player sees (the table online)', () => {
+    const s = game(['Command Tower', 'Arcane Signet', 'Sol Ring', 'Forest', 'Dimir Signet', 'City of Brass'])
+    const krenko = idOf(s, 'Krenko, Mob Boss')
+    expect(planPaymentFromView(viewFor(s, 'p1'), 'p1', krenko)).toEqual(planPayment(s, 'p1', krenko))
   })
 
   it('stays fast with a big board', () => {

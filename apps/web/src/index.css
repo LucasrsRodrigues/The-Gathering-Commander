@@ -178,6 +178,12 @@ button.stack-item { cursor: pointer; }
 .exception-request p { margin: 0; }
 .exception-request .row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .exception-request .row .muted { margin-right: auto; }
+.mana-pool {
+  margin-left: auto; padding: 2px 8px; border-radius: 999px; font-weight: 600; letter-spacing: 0.04em;
+  background: var(--surface-solid); border: 1px solid var(--gold); color: var(--gold);
+}
+.payment-sources { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.payment-sources b { color: var(--gold); margin-left: 6px; }
 .rule-reasons { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
 .preview { position: absolute; left: 16px; top: 50%; translate: 0 -50%; width: clamp(220px, 20vw, 300px); border-radius: 14px; box-shadow: 0 20px 50px rgb(0 0 0 / 0.7); pointer-events: none; }

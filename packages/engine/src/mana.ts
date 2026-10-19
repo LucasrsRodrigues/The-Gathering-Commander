@@ -30,20 +30,28 @@ export function commanderIdentity(state: GameState, player: PlayerId): ManaColor
 
 // The colors a player may pick from for this ability; null when it produces fixed mana.
 export function colorChoices(state: GameState, player: PlayerId, ability: ManaAbility): ManaType[] | null {
+  return choicesFor(ability, commanderIdentity(state, player))
+}
+
+export function choicesFor(ability: ManaAbility, identity: readonly ManaColor[]): ManaType[] | null {
   const p = ability.produces
   switch (p.kind) {
     case 'fixed': return null
     case 'oneOf': return p.colors
     case 'anyColor': return [...COLORS]
-    case 'commanderIdentity': return commanderIdentity(state, player)
+    case 'commanderIdentity': return [...identity]
   }
 }
 
 // What the ability adds, given the chosen color when there is a choice.
 export function production(state: GameState, player: PlayerId, ability: ManaAbility, color: ManaType | undefined): ManaAmount {
+  return productionFor(ability, color, commanderIdentity(state, player))
+}
+
+export function productionFor(ability: ManaAbility, color: ManaType | undefined, identity: readonly ManaColor[]): ManaAmount {
   const p = ability.produces
   if (p.kind === 'fixed') return p.mana
-  const choices = colorChoices(state, player, ability)!
+  const choices = choicesFor(ability, identity)!
   // CR 903.4f: "a color in your commander's identity" with a colorless commander produces no mana.
   if (!choices.length) return {}
   const chosen = color ?? (choices.length === 1 ? choices[0] : undefined)

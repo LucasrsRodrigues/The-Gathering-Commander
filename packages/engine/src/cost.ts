@@ -8,7 +8,7 @@ import { commanderTax } from './commander'
 import { payGeneric } from './mana'
 import type { GameObject, ManaAmount, ManaColor, ManaCost, ManaPool, ManaType, Ruleset } from './types'
 
-const MAX_FLEXIBLE = 10 // symbols with a choice; beyond this the cost is treated as manual
+export const MAX_FLEXIBLE = 10 // symbols with a choice; beyond this the cost is treated as manual
 const PHYREXIAN_LIFE = 2 // CR 107.4f
 const TWO_BRID_GENERIC = 2 // CR 107.4e
 

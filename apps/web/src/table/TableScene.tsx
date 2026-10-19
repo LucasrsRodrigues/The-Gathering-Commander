@@ -17,7 +17,7 @@ const cardGeometry = new THREE.BoxGeometry(TABLE.CW, THICKNESS, TABLE.CH)
 const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
 export interface TableIntents {
-  tap: (objectId: string) => void
+  tap: (objectId: string, x: number, y: number) => void // x, y: where to open a menu if one is needed
   arrange: (objectId: string, x: number, z: number) => void
 }
 
@@ -244,7 +244,7 @@ const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, int
       intents.arrange(obj.id, group.current.position.x, group.current.position.z)
       g.moved = false
     } else if (!g.long) {
-      if (onBattlefield) intents.tap(obj.id)
+      if (onBattlefield) intents.tap(obj.id, e.clientX, e.clientY)
       else openMenu(e.clientX, e.clientY)
     }
   }
