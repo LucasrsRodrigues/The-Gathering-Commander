@@ -4,21 +4,45 @@ Fan game gratuito e open source de **Commander** (Magic: The Gathering) com uma 
 
 > The Gathering Hall is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
 
-## O que já dá para fazer (fase 1 — mesa sandbox)
-- Partidas de 1 a 4 lugares no mesmo dispositivo: goldfish (sozinho) ou hot-seat, com cortina entre jogadores.
-- Decks de exemplo ou lista colada (formato Moxfield, Archidekt ou texto simples). As cartas vêm do Scryfall.
-- Mesa 3D com câmera que foca no oponente. Para mexer nas cartas: arrastar, clicar para virar, passar o mouse
-  ou segurar para ampliar, botão direito ou toque longo para o menu.
-- O motor cuida de:
-  - turnos e etapas, prioridade e pilha;
-  - mulligan London (o primeiro é grátis);
-  - vida, veneno, dano e taxa de comandante;
-  - derrotas automáticas;
-  - desfazer e registro da partida.
-- Regras da casa: vida inicial e restrição de quem mexe em cada permanente.
+## O que já dá para fazer
+- Partidas de 1 a 4 lugares no mesmo dispositivo: goldfish (sozinho) ou hot-seat, com cortina entre jogadores. Ou
+  online, com salas por link (veja abaixo).
+- Decks salvos no navegador, com editor, validação por regras e sugestão de bracket. Também dá para usar decks de
+  exemplo ou colar uma lista (formato Moxfield, Archidekt ou texto simples). As cartas vêm do catálogo próprio,
+  atualizado todo dia a partir do Scryfall, e a banlist pode ser a de uma data.
+- Mesa 3D com câmera que foca no oponente. Para mexer nas cartas: arrastar, clicar para virar ou gerar mana, passar
+  o mouse ou segurar para ampliar, botão direito ou toque longo para o menu.
 
-As regras de cada carta ainda são aplicadas pelos jogadores, como numa mesa física. A automação vem por fases
-(veja `.specs/`).
+### O que o jogo faz sozinho
+- **Turnos:** etapas, prioridade, pilha e mulligan London (o primeiro é grátis), com paradas automáticas estilo
+  Arena. Um turno sem nada a fazer passa com 2 cliques, e há "passar até o fim do turno".
+- **Hora de jogar:** um terreno por turno; mágicas em velocidade de feitiço; instantâneas e Flash quando há prioridade.
+- **Mana:**
+  - terrenos básicos e a maioria das fontes comuns (Sol Ring, Command Tower, Signets, terrenos de dor) geram a
+    mana certa;
+  - lançar cobra o custo, com X e taxa de comandante, e o pagamento automático escolhe as fontes.
+- **Combate:**
+  - atacar e bloquear, com Vigilance, Haste, Defender, Flying, Reach e Menace;
+  - o dano é calculado com First strike, Double strike, Trample, Deathtouch e Lifelink, e quem ataca confirma;
+  - o dano de comandante soma sozinho.
+- **Ações baseadas em estado:**
+  - criaturas morrem com dano letal ou resistência 0;
+  - planeswalkers saem com lealdade 0;
+  - no fim do turno, descarte até o máximo da mão;
+  - derrota por vida, veneno, dano de comandante ou grimório vazio.
+- **Exceções:** quando uma carta muda as regras e ainda não tem automação, "Fazer mesmo assim" pede uma exceção.
+  No jogo local ela vale na hora; online, os outros jogadores aprovam. Fica no log como ação de juiz.
+
+### O que ainda é manual
+- Os **efeitos** das cartas: o que um feitiço ou habilidade faz, gatilhos, fichas com regras (Treasure etc.),
+  custos alternativos e reduções de custo. Os jogadores aplicam com as ações da mesa (mover cartas, contadores, vida,
+  "+1/+1 até o fim do turno", "causar dano"), como numa mesa física.
+- Fontes de mana que o jogo não reconhece: a mana é declarada ao virar a carta e fica marcada no log.
+- A automação carta a carta é a próxima grande fase (veja `.specs/`).
+
+### Regras da casa
+Vida inicial, dano de comandante, mulligans, terrenos por turno e o rigor de cada área. "Hora de jogar", "Custo de
+mana" e "Combate" têm três níveis: bloqueia, só avisa ou desligada. Desligada é a mesa livre de antes.
 
 ## Online
 Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do

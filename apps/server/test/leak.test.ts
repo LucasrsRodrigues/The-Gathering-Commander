@@ -21,6 +21,7 @@ function randomIntent(game: GameState, player: string, r: () => number): ActionI
   const pick = <T,>(xs: T[]) => xs[Math.floor(r() * xs.length)]!
   // Turn-rule decisions (épico 09) are answered so the game keeps moving.
   switch (game.pending?.kind) {
+    case 'exception': return { type: 'answerException', approve: r() < 0.5 }
     case 'declareAttackers': return { type: 'declareAttackers', attacks: [] }
     case 'declareBlockers': return { type: 'declareBlockers', blocks: [] }
     case 'confirmDamage': return { type: 'assignDamage', assignments: game.pending.proposal.assignments }
@@ -28,6 +29,18 @@ function randomIntent(game: GameState, player: string, r: () => number): ActionI
     default: break
   }
   const own = Object.values(game.objects).filter((o) => o.owner === player && o.zone !== 'library')
+  const hand = game.zones[player]?.hand ?? []
+  const lands = game.battlefield.filter((id) => game.objects[id]!.controller === player)
+  // Épico 09 actions, with every turn rule on: playing, casting, mana and asking for exceptions.
+  if (r() < 0.35) {
+    switch (Math.floor(r() * 5)) {
+      case 0: if (hand.length) return { type: 'playLand', objectId: pick(hand) }; break
+      case 1: if (hand.length) return { type: 'castSpell', objectId: pick(hand) }; break
+      case 2: if (lands.length) return { type: 'activateMana', objectId: pick(lands), abilityIndex: 0 }; break
+      case 3: if (hand.length) return { type: 'requestException', action: { type: 'castSpell', objectId: pick(hand) }, reason: 'fuzz' }; break
+      default: break
+    }
+  }
   switch (Math.floor(r() * 6)) {
     case 0: return { type: 'passPriority' }
     case 1: return { type: 'advanceStep' }
@@ -40,10 +53,12 @@ function randomIntent(game: GameState, player: string, r: () => number): ActionI
 
 function hiddenFrom(game: GameState, viewer: string | null): Set<string> {
   const hidden = new Set<string>()
+  // A rule-exception request reveals the card it is about, on purpose (épico 09): approvers see what they approve.
+  const revealed = game.pending?.kind === 'exception' && 'objectId' in game.pending.action ? game.pending.action.objectId : null
   for (const seat of game.seats) {
     if (seat === viewer) continue // you know which of your own cards you moved, even into your library
     game.zones[seat]!.library.forEach((id) => hidden.add(id))
-    game.zones[seat]!.hand.forEach((id) => hidden.add(id))
+    game.zones[seat]!.hand.forEach((id) => id !== revealed && hidden.add(id))
   }
   return hidden
 }
@@ -71,7 +86,9 @@ describe('protocol leak fitness function', () => {
       for (let i = 0; i < 400 && room.snapshot().status === 'playing'; i++) {
         check(out, room.snapshot().game!, viewerOf)
         const game = room.snapshot().game!
-        const player = game.pending?.player ?? (r() < 0.7 ? game.priority?.player : undefined) ?? `p${1 + Math.floor(r() * 4)}`
+        // An open exception request waits on the other players; any other decision on its decider.
+        const voter = game.pending?.kind === 'exception' ? game.seats.find((id) => id !== game.pending!.player && !game.players[id]!.lost) : undefined
+        const player = voter ?? game.pending?.player ?? (r() < 0.7 ? game.priority?.player : undefined) ?? `p${1 + Math.floor(r() * 4)}`
         out = room.receive(`c${Number(player.slice(1)) - 1}`, msg({ t: 'act', seq: i, action: randomIntent(game, player, r) }))
         sent += out.filter((o) => o.msg.t === 'state').length
       }

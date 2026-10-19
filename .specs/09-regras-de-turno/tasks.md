@@ -236,12 +236,23 @@ depois paradas.
       descarte da limpeza.
 
 ## Fechamento
-- [ ] **T9.19 — Revisão de segurança e de vazamento do online com as ações novas**
+- [x] **T9.19 — Revisão de segurança e de vazamento do online com as ações novas**
   - Escopo:
     - limites do protocolo;
     - regras das cartas vindas do servidor;
     - pedidos de exceção não travam a sala para sempre (quem pediu cancela; a sala expira pelo TTL).
-- [ ] **T9.20 — Atualizar o roadmap e o README** (o que o jogo automatiza e o que ainda é manual)
+  - Feito:
+    - revisão das visões e dos eventos novos: só objetos públicos aparecem, e a única revelação é a do pedido de
+      exceção, de propósito;
+    - o teste de vazamento do servidor passou a jogar com as regras em `block`, jogando terrenos, lançando,
+      gerando mana e pedindo/respondendo exceções;
+    - pedido de exceção não trava a sala: qualquer outro jogador recusa, e quem pediu desiste;
+    - **risco conhecido:** uma declaração (bloqueio, dano, descarte) espera o jogador que precisa decidir; se ele
+      cair e não voltar, a sala espera até ele voltar ou conceder (como já acontecia com a prioridade no modo
+      estrito). Fica para uma próxima onda: tempo limite ou o host poder pular quem saiu.
+- [x] **T9.20 — Atualizar o roadmap e o README** (o que o jogo automatiza e o que ainda é manual)
+  - Feito: o README lista o que o jogo faz sozinho, o que ainda é manual e as regras da casa; no roadmap, a fase 3a
+    está marcada como feita.
 
 ## Estratégia de testes
 - O motor é testado com unidades por política e por etapa. Há property-based para conservação de mana, legalidade
