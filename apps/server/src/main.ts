@@ -8,6 +8,7 @@ import { CARD_FORMAT } from './catalog/normalize'
 import { CatalogStore } from './catalog/store'
 import { openDatabase, type Db } from './db'
 import { DEFAULT_CONFIG, startServer, type ServerCatalog } from './server'
+import { importLegacyRooms } from './legacy'
 import { DbRoomStore } from './store'
 
 const env = process.env
@@ -39,8 +40,23 @@ try {
 }
 
 const store = new DbRoomStore(db)
+
+// First start after the move to Postgres: bring over the rooms of the old SQLite file, once.
+const legacy = await importLegacyRooms(db, store, env.DB_PATH ?? join(dataDir, 'rooms.db')).catch((err) => {
+  console.error('salas antigas: não foi possível copiar do SQLite', err)
+  return null
+})
+if (legacy) console.log(`salas antigas: ${legacy.copied} copiada(s) do SQLite${legacy.skipped ? `, ${legacy.skipped} ignorada(s)` : ''}`)
+
+// The full catalog needs a real Postgres: PGlite holds it all in WebAssembly memory (about 1.5 GB during an import).
+// Without DATABASE_URL the catalog stays off unless CATALOG=on; the app then uses Scryfall directly, as it already can.
+const catalogOn = env.CATALOG ? env.CATALOG !== 'off' : db.kind === 'postgres'
+if (db.kind === 'pglite') {
+  console.warn('banco: sem DATABASE_URL, usando PGlite local (bom para desenvolvimento; em produção, configure o Postgres).')
+  if (!env.CATALOG) console.warn('catálogo: desligado com PGlite (defina DATABASE_URL, ou CATALOG=on se houver ~2 GB de memória).')
+}
 let catalog: ServerCatalog | null = null
-if (env.CATALOG !== 'off') {
+if (catalogOn) {
   const catalogStore = new CatalogStore(db)
   catalog = { store: catalogStore, cache: new CatalogCache(catalogStore) }
   await catalog.cache.refreshCount()

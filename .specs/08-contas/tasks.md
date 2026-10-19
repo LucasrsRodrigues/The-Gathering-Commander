@@ -41,7 +41,7 @@ chaves de login configuradas.
   - **Risco para a T8.3:** o PGlite chega a cerca de 1,5 GB de memória numa importação completa, porque a transação
     fica inteira dentro do WebAssembly. Em produção, o caminho é Postgres (`DATABASE_URL`). Sem ele, o deploy
     precisa avisar ou desligar a importação automática.
-- [ ] **T8.3 — Transferência dos dados antigos e deploy** _(req: 3)_ · depende de T8.2
+- [x] **T8.3 — Transferência dos dados antigos e deploy** _(req: 3)_ · depende de T8.2
   - Escopo:
     - copiar as salas do `rooms.db` no primeiro start;
     - reimportar o catálogo;
@@ -50,6 +50,13 @@ chaves de login configuradas.
     - uma sala salva no SQLite abre depois da migração;
     - rodar duas vezes não duplica nada;
     - sem `DATABASE_URL`, o servidor sobe com PGlite.
+  - Feito:
+    - `importLegacyRooms` copia as salas do `rooms.db` uma vez, marcada em `catalog_meta`, sem tocar no arquivo antigo;
+    - o catálogo é reimportado do Scryfall;
+    - **decisão:** sem `DATABASE_URL` (PGlite), o catálogo próprio fica desligado, a não ser que `CATALOG=on`, porque
+      o PGlite precisa de cerca de 2 GB para o catálogo inteiro (medido: cerca de 1,8 GB, igual com ou sem lotes);
+    - o DEPLOY explica o Postgres no EasyPanel, a `DATABASE_URL` interna, a mudança de SQLite e o backup.
+  - Verificado: o servidor real sobe no PGlite, copia as salas antigas e responde no `/api/health`.
 
 ## Onda 1 — Conta
 - [ ] **T8.4 — OAuth (Discord e Google) com PKCE, sessão por cookie** _(req: 5–8)_ · depende de T8.1

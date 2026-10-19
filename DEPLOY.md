@@ -14,22 +14,26 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
 
 ## EasyPanel
 
+0. **Banco (Postgres):** no mesmo projeto, clique em **+ Service → Postgres** e dê um nome, por exemplo `db`.
+   Depois de criado, copie a **Internal Connection URL** (algo como `postgres://postgres:senha@projeto_db:5432/projeto`).
+   Ela vai na variável `DATABASE_URL` do app (passo 4). A URL interna não sai da rede do EasyPanel e dispensa SSL.
 1. **Criar o serviço:** no projeto, clique em **+ Service → App**. Dê um nome, por exemplo `gathering-hall`.
 2. **Source:** **GitHub**, com o repositório `LucasrsRodrigues/The-Gathering-Commander`, branch `main` e
    Build Path `/`.
 3. **Build:** **Dockerfile** (o EasyPanel escolhe sozinho, porque há um `Dockerfile` na raiz).
-4. **Environment:** nenhuma variável é obrigatória. As opcionais:
+4. **Environment:**
 
    | Variável | Padrão | Para quê |
    |---|---|---|
+   | `DATABASE_URL` | (vazio) | **Recomendada.** URL do Postgres (passo 0). Sem ela, o servidor usa um banco local (PGlite) no volume e deixa o catálogo próprio desligado |
+   | `DATABASE_SSL` | (vazio) | `1` para exigir SSL (Postgres fora do EasyPanel) |
    | `ROOM_TTL_HOURS` | `24` | Horas de inatividade até a sala ser apagada |
    | `MAX_ROOMS` | `500` | Número máximo de salas ao mesmo tempo |
    | `ALLOWED_ORIGINS` | (vazio) | Outras origens que podem usar o servidor (o próprio domínio já é aceito) |
-   | `CATALOG` | (ligado) | `off` desliga o catálogo próprio; o app passa a usar só o Scryfall |
-   | `CATALOG_DB_PATH` | `/data/catalog.db` | Onde fica o banco do catálogo versionado |
+   | `CATALOG` | ligado com Postgres | `off` desliga o catálogo próprio (o app usa só o Scryfall); `on` força com PGlite (precisa de ~2 GB de memória) |
 
-5. **Mounts:** adicione um **Volume** com Mount Path `/data`. É onde ficam o `rooms.db`, o `catalog.db`
-   (cerca de 160 MB) e, em `/data/raw`, os últimos 7 arquivos baixados do Scryfall.
+5. **Mounts:** adicione um **Volume** com Mount Path `/data`. Com Postgres, ele guarda só os últimos 7 arquivos
+   baixados do Scryfall (`/data/raw`, cerca de 25 MB cada). Sem Postgres, guarda também o banco local (`/data/pg`).
 6. **Domains:** adicione o seu domínio (ou use o domínio automático do EasyPanel) com **porta 8787** e HTTPS
    ligado. O WebSocket funciona pelo mesmo domínio, sem configuração extra.
 7. Clique em **Deploy**. Para conferir, abra `https://seu-dominio/api/health`, que deve responder `{"ok":true,...}`.
@@ -37,8 +41,22 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
 **Se aparecer "502" ou "Not Found" do EasyPanel:**
 - Em **Domains**, confira se a porta é **8787**, e não a 80 que o EasyPanel sugere.
 - Em **Deployments**, veja se o build terminou. Em **Logs**, a linha esperada é
-  `The Gathering Hall server on :8787`. Se aparecer "Não foi possível abrir o banco das salas", o volume `/data`
-  não está montado direito.
+  `The Gathering Hall server on :8787 (postgres; …)`.
+- "Não foi possível conectar ao Postgres": confira a `DATABASE_URL` (use a URL **interna**) e se o serviço do banco
+  está no ar. "Não foi possível abrir o banco local": o volume `/data` não está montado direito.
+
+**Mudando de SQLite para Postgres (deploys de antes de outubro de 2026):**
+1. crie o Postgres (passo 0) e ponha a `DATABASE_URL` no app;
+2. faça o deploy;
+3. no primeiro start, o servidor copia as salas do `/data/rooms.db` antigo (os Logs dizem quantas) e reimporta o
+   catálogo do Scryfall em cerca de 15 s;
+4. os arquivos `rooms.db` e `catalog.db` ficam no volume, intactos, como caminho de volta. Depois de alguns dias,
+   podem ser apagados.
+
+**Backup do banco:** no serviço do Postgres no EasyPanel, aba **Backups**, agende um backup diário (o EasyPanel
+guarda num destino S3 que você configura). Para um backup na mão, pelo terminal do serviço:
+`pg_dump -U postgres -Fc nome_do_banco > /tmp/gathering-hall.dump`. As salas duram 24 h e o catálogo se reconstrói
+sozinho; com as contas (próxima fase), o backup passa a guardar decks de jogadores e fica obrigatório.
 
 **Catálogo de cartas:** uns 5 segundos depois de subir, o servidor baixa o bulk "oracle-cards" do Scryfall
 (cerca de 25 MB) e importa. Depois confere a cada 6 horas e só reimporta quando o Scryfall publica um arquivo novo.
@@ -88,3 +106,8 @@ npm run dev
 
 O servidor sobe em `http://localhost:8787` e aceita o app de desenvolvimento (`http://localhost:5180` e
 `http://localhost:5173`), configurado em `apps/web/.env`.
+
+Sem `DATABASE_URL`, o servidor usa um Postgres embutido (PGlite) em `apps/server/data/pg`, sem instalar nada, e o
+catálogo próprio fica desligado (o app usa o Scryfall direto). Para testar o catálogo localmente, aponte
+`DATABASE_URL` para um Postgres (por exemplo, `docker run -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16`) ou
+use `CATALOG=on` (o PGlite precisa de cerca de 2 GB de memória para importar o catálogo).
