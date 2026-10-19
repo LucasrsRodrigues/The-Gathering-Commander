@@ -45,8 +45,16 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
 O andamento aparece nos Logs, e `/api/catalog/status` mostra quantas cartas há e quando foi o último import.
 Enquanto o primeiro import não termina, o app usa o Scryfall direto.
 
-**Atualizações:** cada push na `main` pode disparar o deploy, se o auto deploy estiver ligado no EasyPanel. Se não
-estiver, clique em **Deploy**. As salas em andamento continuam, porque são recarregadas do volume.
+**Deploy automático:** o GitHub Actions publica sozinho a cada push na `main`, mas só depois que lint,
+typecheck, testes e build passam. Assim, um commit quebrado não chega ao site. Para ligar:
+1. No EasyPanel, abra o serviço, vá em **Deployments** e copie a **Deploy Webhook** URL.
+2. No GitHub, abra o repositório e vá em **Settings → Secrets and variables → Actions → New repository secret**.
+   Use o nome `EASYPANEL_DEPLOY_URL` e cole a URL como valor.
+3. Deixe o **Auto Deploy** do EasyPanel desligado; senão cada push faz dois deploys, e um deles sem passar
+   pelas checagens.
+
+Sem o secret, o passo de deploy só é pulado. Para publicar na mão, clique em **Deploy** no EasyPanel. As salas em
+andamento continuam, porque são recarregadas do volume.
 
 ## Outro host com Docker
 ```bash

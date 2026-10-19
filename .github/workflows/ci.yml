@@ -19,3 +19,24 @@ jobs:
       - run: npm run typecheck
       - run: npm test # includes the engine fitness functions
       - run: npm run build
+
+  # Deploys only after every check passed on main. The EasyPanel deploy webhook stays in the repository
+  # secret EASYPANEL_DEPLOY_URL (Settings → Secrets and variables → Actions); without it this job just skips.
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}
+    steps:
+      - name: Trigger EasyPanel deploy
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::notice::EASYPANEL_DEPLOY_URL não configurado; deploy pulado."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 30 -X POST "$DEPLOY_URL" > /dev/null
+          echo "Deploy disparado no EasyPanel."
