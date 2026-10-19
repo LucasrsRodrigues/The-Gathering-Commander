@@ -1,6 +1,7 @@
-// Catalog port (ACL): the rest of the app only knows CardRef + images, never the Scryfall format.
+// Catalog port (ACL): the rest of the app only knows CardRef, images and CardFacts, never the Scryfall format.
 
 import type { CardRef } from '@gathering-hall/engine'
+import type { CardFacts } from '@gathering-hall/formats'
 
 export interface CardImages {
   small: string
@@ -11,6 +12,8 @@ export interface CardImages {
 export interface CatalogCard {
   ref: CardRef
   images: CardImages | null
+  facts: CardFacts | null // null when the source has no oracle id
+  manaValue: number
 }
 
 export interface ResolveResult {
@@ -18,8 +21,22 @@ export interface ResolveResult {
   missing: string[]
 }
 
+export interface SearchPage {
+  cards: CatalogCard[]
+  total: number
+}
+
+export interface RequestOptions {
+  signal?: AbortSignal
+}
+
 export interface CatalogPort {
   resolve(names: string[], onProgress?: (done: number, total: number) => void): Promise<ResolveResult>
+  // Specific printings (chosen art), keyed by Scryfall id.
+  resolvePrintings(scryfallIds: string[]): Promise<Map<string, CatalogCard>>
+  search(query: string, opts?: RequestOptions): Promise<SearchPage>
+  autocomplete(prefix: string, opts?: RequestOptions): Promise<string[]>
+  printings(oracleId: string, opts?: RequestOptions): Promise<CatalogCard[]>
 }
 
 export function normalizeName(name: string): string {

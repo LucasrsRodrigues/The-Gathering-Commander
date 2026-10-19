@@ -32,11 +32,15 @@ export function closeTopmost(): boolean {
 export interface Toast {
   id: number
   text: string
+  action?: { label: string; run: () => void } // e.g. "Desfazer"
 }
 export const toastStore = createStore<Toast[]>([])
 let toastId = 0
-export function toast(text: string) {
+export function toast(text: string, action?: Toast['action'], ms = action ? 10_000 : 3200) {
   const id = ++toastId
-  toastStore.set([...toastStore.get(), { id, text }].slice(-3))
-  setTimeout(() => toastStore.set(toastStore.get().filter((t) => t.id !== id)), 3200)
+  toastStore.set([...toastStore.get(), { id, text, ...(action ? { action } : {}) }].slice(-3))
+  setTimeout(() => dismissToast(id), ms)
+}
+export function dismissToast(id: number) {
+  toastStore.set(toastStore.get().filter((t) => t.id !== id))
 }

@@ -1,9 +1,8 @@
 import { FanContentNotice } from '../legal/FanContentNotice'
 
-export function AboutScreen({ onBack }: { onBack: () => void }) {
+export function AboutScreen() {
   return (
     <main className="about">
-      <button className="link" onClick={onBack}>← Voltar</button>
       <h1>Sobre</h1>
       <p>
         The Gathering Hall é um fan game gratuito e de código aberto (licença MIT) para jogar Commander numa mesa

@@ -1,73 +1,88 @@
-import { useState } from 'react'
-import { createGame, MAX_PLAYERS, type GameState } from '@gathering-hall/engine'
-import type { CatalogPort } from '../catalog/catalog'
-import { parseDecklist } from '../decks/parseDecklist'
-import { SAMPLE_DECKS, sampleDecklist } from '../decks/samples'
-import { FanContentNotice } from '../legal/FanContentNotice'
-import { buildDeck } from '../session/buildDeck'
+import { useEffect, useState } from 'react'
+import { MAX_PLAYERS, type GameState } from '@gathering-hall/engine'
+import { OFFICIAL_PRESET_ID } from '@gathering-hall/formats'
+import { AppFooter } from '../app/AppNav'
+import type { Services } from '../app/services'
+import type { Deck } from '../decks/model'
+import { SAMPLE_DECKS } from '../decks/samples'
+import { prepareGame, randomSeed, type SeatChoice, type SeatReport } from '../session/prepareGame'
 
 interface Seat {
   name: string
-  deckId: string // a sample id or 'custom'
-  custom: string
+  source: string // 'saved:<id>' | 'sample:<id>' | 'text'
+  text: string
 }
 
 const DEFAULT_NAMES = ['Jogador 1', 'Jogador 2', 'Jogador 3', 'Jogador 4']
 
-export function SetupScreen({ catalog, onStart, onAbout }: {
-  catalog: CatalogPort
+export function SetupScreen({ services, onStart, onManagePresets }: {
+  services: Services
   onStart: (game: GameState, notes: string[]) => void
-  onAbout: () => void
+  onManagePresets: () => void
 }) {
+  const [saved, setSaved] = useState<Deck[]>([])
   const [count, setCount] = useState(4)
   const [seats, setSeats] = useState<Seat[]>(
-    DEFAULT_NAMES.map((name, i) => ({ name, deckId: SAMPLE_DECKS[i % SAMPLE_DECKS.length]!.id, custom: '' })),
+    DEFAULT_NAMES.map((name, i) => ({ name, source: `sample:${SAMPLE_DECKS[i % SAMPLE_DECKS.length]!.id}`, text: '' })),
   )
-  const [life, setLife] = useState(40)
-  const [restrict, setRestrict] = useState(false)
+  const presets = services.presets.list()
+  const [presetId, setPresetId] = useState(OFFICIAL_PRESET_ID)
   const [status, setStatus] = useState<string | null>(null)
+  const [blocked, setBlocked] = useState<SeatReport[]>([])
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    services.decks.list().then((decks) => {
+      setSaved(decks)
+      // With saved decks, the first seat defaults to the most recent one.
+      if (decks[0]) setSeats((s) => s.map((seat, i) => (i === 0 ? { ...seat, source: `saved:${decks[0]!.id}` } : seat)))
+    })
+  }, [services])
 
   const update = (i: number, patch: Partial<Seat>) => setSeats((s) => s.map((seat, k) => (k === i ? { ...seat, ...patch } : seat)))
 
+  function choiceFor(seat: Seat): SeatChoice | null {
+    const name = seat.name.trim() || 'Jogador'
+    if (seat.source.startsWith('saved:')) {
+      const deck = saved.find((d) => `saved:${d.id}` === seat.source)
+      return deck ? { name, deck: { kind: 'saved', deck } } : null
+    }
+    if (seat.source.startsWith('sample:')) return { name, deck: { kind: 'sample', sampleId: seat.source.slice(7) } }
+    return seat.text.trim() ? { name, deck: { kind: 'text', text: seat.text } } : null
+  }
+
   async function start() {
+    const choices = seats.slice(0, count).map(choiceFor)
+    if (choices.some((c) => !c)) {
+      setStatus('Cada lugar precisa de um deck.')
+      return
+    }
     setBusy(true)
-    setStatus('Buscando cartas no Scryfall…')
+    setBlocked([])
+    setStatus('Buscando cartas no Scryfall e conferindo os decks…')
     try {
-      const active = seats.slice(0, count)
-      const parsed = active.map((s) => parseDecklist(s.deckId === 'custom' ? s.custom : sampleDecklist(s.deckId)))
-      const problems = parsed.flatMap((p, i) => p.errors.map((e) => `${active[i]!.name}: ${e}`))
-      if (parsed.some((p) => p.cards.length === 0)) {
-        setStatus('Cada lugar precisa de um deck com cartas.')
+      const preset = services.presets.get(presetId)
+      const result = await prepareGame(choices as SeatChoice[], preset, services.catalog, randomSeed(), Date.now())
+      if (!result.ok) {
+        setBlocked(result.reports.filter((r) => r.violations.some((v) => v.level === 'block')))
+        setStatus(`Algum deck não passa nas regras "${preset.name}".`)
         return
       }
-      const names = parsed.flatMap((p) => [...p.commanders, ...p.cards].map((e) => e.name))
-      const { found, missing } = await catalog.resolve(names, (done, total) => setStatus(`Buscando cartas no Scryfall… ${done}/${total}`))
-      const decks = parsed.map((p) => buildDeck(p, found))
-      const notes = [
-        ...problems,
-        ...decks.flatMap((d, i) => (d.note ? [`${active[i]!.name}: ${d.note}`] : [])),
-        ...(missing.length ? [`Não encontradas (entram como cartas genéricas): ${missing.slice(0, 8).join(', ')}${missing.length > 8 ? '…' : ''}`] : []),
-      ]
-      const game = createGame({
-        seed: crypto.getRandomValues(new Uint32Array(1))[0]!,
-        ruleset: { startingLife: life, restrictToController: restrict },
-        players: active.map((s, i) => ({ id: `p${i + 1}`, name: s.name.trim() || `Jogador ${i + 1}`, deck: decks[i]! })),
-      })
-      onStart(game, notes)
-    } catch (err) {
-      setStatus(`Não foi possível carregar as cartas (${err instanceof Error ? err.message : 'erro'}). Verifique a conexão e tente de novo.`)
+      const notes = result.reports.flatMap((r) => [...r.notes, ...r.violations.map((v) => v.message)].map((n) => `${r.name}: ${n}`))
+      onStart(result.game, notes)
+    } catch {
+      setStatus('Não foi possível carregar as cartas. Verifique a conexão e tente de novo.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <main className="setup">
+    <main className="page setup">
       <header className="setup-head">
         <p className="eyebrow">Commander · mesa sandbox</p>
-        <h1>The Gathering Hall</h1>
-        <p className="muted">Monte a mesa, escolha os decks e jogue no mesmo dispositivo. Com 1 lugar, você testa o deck sozinho.</p>
+        <h1>Montar a mesa</h1>
+        <p className="muted">Escolha os decks e jogue no mesmo dispositivo. Com 1 lugar, você testa o deck sozinho.</p>
       </header>
 
       <section className="setup-card">
@@ -78,6 +93,12 @@ export function SetupScreen({ catalog, onStart, onAbout }: {
               <button key={n} aria-pressed={count === n} onClick={() => setCount(n)}>{n}</button>
             ))}
           </div>
+          <label className="field inline">Regras
+            <select value={presetId} onChange={(e) => setPresetId(e.target.value)}>
+              {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </label>
+          <button className="link" onClick={onManagePresets}>Gerenciar regras</button>
         </div>
 
         <div className="seats">
@@ -88,43 +109,46 @@ export function SetupScreen({ catalog, onStart, onAbout }: {
                 <input value={seat.name} maxLength={24} onChange={(e) => update(i, { name: e.target.value })} />
               </label>
               <label>Deck
-                <select value={seat.deckId} onChange={(e) => update(i, { deckId: e.target.value })}>
-                  {SAMPLE_DECKS.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
-                  <option value="custom">Colar minha lista…</option>
+                <select value={seat.source} onChange={(e) => update(i, { source: e.target.value })}>
+                  {saved.length > 0 && (
+                    <optgroup label="Meus decks">
+                      {saved.map((d) => <option key={d.id} value={`saved:${d.id}`}>{d.name}</option>)}
+                    </optgroup>
+                  )}
+                  <optgroup label="Exemplos">
+                    {SAMPLE_DECKS.map((d) => <option key={d.id} value={`sample:${d.id}`}>{d.title}</option>)}
+                  </optgroup>
+                  <option value="text">Colar uma lista…</option>
                 </select>
               </label>
-              {seat.deckId === 'custom' && (
-                <label>Lista (texto do Moxfield, Archidekt…)
-                  <textarea rows={6} value={seat.custom} maxLength={12000} spellCheck={false}
+              {seat.source === 'text' && (
+                <label>Lista (Moxfield, Archidekt…)
+                  <textarea rows={6} value={seat.text} maxLength={12000} spellCheck={false}
                     placeholder={'Commander\n1 Krenko, Mob Boss\n\nDeck\n1 Sol Ring\n35 Mountain'}
-                    onChange={(e) => update(i, { custom: e.target.value })} />
+                    onChange={(e) => update(i, { text: e.target.value })} />
                 </label>
               )}
             </fieldset>
           ))}
         </div>
 
-        <details className="house-rules">
-          <summary>Regras da casa</summary>
-          <label>Vida inicial
-            <input type="number" min={1} max={999} value={life} onChange={(e) => setLife(Math.max(1, Math.min(999, Number(e.target.value) || 40)))} />
-          </label>
-          <label className="check">
-            <input type="checkbox" checked={restrict} onChange={(e) => setRestrict(e.target.checked)} />
-            Só o controlador mexe nas próprias permanentes
-          </label>
-        </details>
+        {blocked.length > 0 && (
+          <div className="blocked" role="alert">
+            {blocked.map((r) => (
+              <div key={r.name}>
+                <strong>{r.name}</strong>
+                <ul>{r.violations.filter((v) => v.level === 'block').map((v, k) => <li key={k}>{v.message}</li>)}</ul>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="setup-actions">
           <button className="btn primary big" disabled={busy} onClick={start}>{busy ? 'Preparando…' : 'Começar partida'}</button>
           {status && <p className="muted" role="status">{status}</p>}
         </div>
       </section>
-
-      <footer className="setup-foot">
-        <button className="link" onClick={onAbout}>Sobre e aviso legal</button>
-        <FanContentNotice />
-      </footer>
+      <AppFooter />
     </main>
   )
 }

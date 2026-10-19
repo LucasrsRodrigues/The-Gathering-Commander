@@ -3,7 +3,7 @@ import type { PlayerView } from '@gathering-hall/engine'
 import { imagesFor } from '../catalog/catalog'
 import { ZONE_LABELS } from '../session/describe'
 import type { LogEntry } from '../session/GameSession'
-import { closeTopmost, menuStore, previewStore, toastStore, zoneViewerStore } from '../ui/stores'
+import { closeTopmost, dismissToast, menuStore, previewStore, toastStore, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { libraryMenu, menuFor, type MenuGroup } from './actions'
 import { cardLabel, zoneIds } from './labels'
@@ -149,7 +149,17 @@ export function Toasts() {
   const toasts = useStore(toastStore)
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => <div key={t.id} className="toast">{t.text}</div>)}
+      {toasts.map((t) => (
+        <div key={t.id} className={`toast${t.action ? ' has-action' : ''}`}>
+          {t.text}
+          {t.action && (
+            <button className="link" onClick={() => {
+              dismissToast(t.id)
+              t.action!.run()
+            }}>{t.action.label}</button>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

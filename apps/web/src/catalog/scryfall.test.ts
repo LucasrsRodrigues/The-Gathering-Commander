@@ -94,9 +94,9 @@ describe('ScryfallCatalog', () => {
 
   it('ignores tampered cache entries', async () => {
     const storage = new MemoryStorage() as unknown as Storage
-    storage.setItem('gh-catalog-v1', JSON.stringify({
-      'sol ring': { ref: { name: 'Sol Ring', scryfallId: uuid('Sol Ring') }, images: { small: 'https://evil.example/a', normal: 'x', large: 'y' } },
-      ['__proto__']: { ref: { name: 'Polluted', scryfallId: uuid('P') }, images: null },
+    storage.setItem('gh-catalog-v2', JSON.stringify({
+      'sol ring': { id: uuid('Sol Ring'), name: 'Sol Ring', image_uris: { small: 'https://evil.example/a', normal: 'x', large: 'y' } },
+      ['__proto__']: { id: uuid('P'), name: 'Polluted' },
     }))
     const fetchFn = fakeApi()
     const { found } = await new ScryfallCatalog({ fetchFn, storage, sleep: async () => {} }).resolve(['Sol Ring'])

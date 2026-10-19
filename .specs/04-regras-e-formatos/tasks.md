@@ -17,10 +17,10 @@
   - Verificação: decks de teste com 0, 2 e 5 Game Changers; turnos extras; destruição em massa de terrenos.
 - [x] **T4.7 — `presetCodec` (exportar/importar)** _(req: 9, NFR segurança)_ · depende de T4.2
   - Verificação: ida e volta preserva o preset; chaves desconhecidas descartadas; valores fora de limite recusados.
-- [ ] **T4.8 — UI de presets** _(req: 2, 9, 10)_ · depende de T4.7 e do épico 05 (T5.1)
+- [x] **T4.8 — UI de presets** _(req: 2, 9, 10)_ · depende de T4.7 e do épico 05 (T5.1)
   - O que fazer: tela "Regras da casa", com criar, editar, duplicar, exportar e importar; seletor de preset no setup.
   - Verificação: criar "Regras de sexta" e usá-lo numa partida (a vida inicial aplicada).
-- [ ] **T4.9 — Bloqueio na entrada da partida** _(req: 7)_ · depende de T4.8 e T5.6
+- [x] **T4.9 — Bloqueio na entrada da partida** _(req: 7)_ · depende de T4.8 e T5.6
   - Verificação: um deck com violação `block` não começa; com `warn`, começa mostrando o aviso.
 
 ## Estratégia de testes
