@@ -20,12 +20,13 @@ jobs:
       - run: npm test # includes the engine fitness functions
       - run: npm run build
 
-  # Deploys only after every check passed on main. The EasyPanel deploy webhook stays in the repository
-  # secret EASYPANEL_DEPLOY_URL (Settings → Secrets and variables → Actions); without it this job just skips.
+  # Deploys only after every check passed on main. The EasyPanel deploy webhook stays in the secret
+  # EASYPANEL_DEPLOY_URL of the GitHub environment "devel"; without it this job just skips.
   deploy:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: devel
     concurrency:
       group: deploy-production
       cancel-in-progress: false

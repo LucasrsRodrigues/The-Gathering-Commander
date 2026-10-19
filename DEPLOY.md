@@ -48,8 +48,8 @@ Enquanto o primeiro import não termina, o app usa o Scryfall direto.
 **Deploy automático:** o GitHub Actions publica sozinho a cada push na `main`, mas só depois que lint,
 typecheck, testes e build passam. Assim, um commit quebrado não chega ao site. Para ligar:
 1. No EasyPanel, abra o serviço, vá em **Deployments** e copie a **Deploy Webhook** URL.
-2. No GitHub, abra o repositório e vá em **Settings → Secrets and variables → Actions → New repository secret**.
-   Use o nome `EASYPANEL_DEPLOY_URL` e cole a URL como valor.
+2. No GitHub, abra o repositório e vá em **Settings → Environments → devel**. Crie lá o secret
+   `EASYPANEL_DEPLOY_URL` e cole a URL como valor.
 3. Deixe o **Auto Deploy** do EasyPanel desligado; senão cada push faz dois deploys, e um deles sem passar
    pelas checagens.
 
