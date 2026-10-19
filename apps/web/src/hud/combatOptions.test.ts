@@ -10,7 +10,7 @@ const obj = (id: string, controller: string, name: string, r: CardRules, extra: 
 })
 const player = (id: string, name: string) => ({
   id, name, life: 40, poison: 0, commanderDamage: {}, mulligans: 0, hasKept: true, lost: false,
-  manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, landsPlayed: 0, handCount: 0, libraryCount: 0, hand: [], graveyard: [], exile: [], command: [],
+  manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, landsPlayed: 0, stops: null, passUntil: null, handCount: 0, libraryCount: 0, hand: [], graveyard: [], exile: [], command: [],
 })
 
 function view(objects: ObjectView[], combat: PlayerView['turn']['combat'] = null): PlayerView {

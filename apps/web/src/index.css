@@ -193,6 +193,11 @@ button.stack-item { cursor: pointer; }
 .damage-row { display: inline-flex; gap: 6px; align-items: center; }
 .damage-preview { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: rgb(0 0 0 / 0.25); }
 .damage-preview:empty { display: none; }
+.pass-shortcuts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.stops-grid { width: 100%; border-collapse: collapse; }
+.stops-grid th, .stops-grid td { padding: 4px 8px; text-align: center; border-bottom: 1px solid var(--line); }
+.stops-grid th[scope='row'] { text-align: left; font-weight: 500; }
 .mana-pool {
   margin-left: auto; padding: 2px 8px; border-radius: 999px; font-weight: 600; letter-spacing: 0.04em;
   background: var(--surface-solid); border: 1px solid var(--gold); color: var(--gold);

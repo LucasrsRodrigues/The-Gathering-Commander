@@ -226,8 +226,14 @@ depois paradas.
     - o evento `priorityPassed` ganhou `auto: true` quando foi a parada que passou;
     - "passar até…" termina quando outro jogador põe algo na pilha ou ataca, e no início do turno certo;
     - um turno sem nada a fazer leva 2 cliques (fase principal 1 e fase principal 2).
-- [ ] **T9.18 — Mesa: grade de paradas nas opções e botões de passar** · depende de T9.17
+- [x] **T9.18 — Mesa: grade de paradas nas opções e botões de passar** · depende de T9.17
   - Verificação: com as paradas padrão, um turno sem nada a fazer passa com no máximo 2 cliques.
+  - Feito:
+    - a barra de fases ganhou "Passar até o fim do turno", "Passar até o meu turno" (no turno dos outros) e
+      "Paradas…", uma grade de etapas × meu turno/turno dos outros, com o botão "Padrão";
+    - cada jogador vê só as próprias paradas na visão;
+    - verificado no navegador: a partida começa na fase principal 1 e "Passar até o fim do turno" corre até o
+      descarte da limpeza.
 
 ## Fechamento
 - [ ] **T9.19 — Revisão de segurança e de vazamento do online com as ações novas**

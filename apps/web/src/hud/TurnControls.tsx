@@ -5,6 +5,7 @@ import { menuStore, previewStore } from '../ui/stores'
 import type { Dispatch } from './PlayerPanels'
 import { menuAnchor } from './a11y'
 import { primaryAction } from './primaryAction'
+import { PassShortcuts } from './Stops'
 
 // The 12 steps grouped into the 5 phases players think in (CR 500.1).
 const PHASES: { label: string; steps: Step[] }[] = [
@@ -35,6 +36,7 @@ export function PhaseBar({ view, viewer, dispatch }: { view: PlayerView; viewer:
           )
         })}
       </ol>
+      <PassShortcuts view={view} viewer={viewer} dispatch={dispatch} />
       <div className="phase-actions">
         {showPass && <button className="btn ghost" onClick={() => dispatch({ type: 'passPriority' })}>Passar prioridade</button>}
         <button className="btn primary" disabled={!primary.run} onClick={() => primary.run?.()} title="Atalho: espaço" aria-keyshortcuts="Space">

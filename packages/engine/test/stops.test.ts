@@ -97,3 +97,14 @@ describe('stops never stall the game (fitness function)', () => {
     expect(again.ok && again.state).toEqual(state)
   })
 })
+
+describe('stops in the view', () => {
+  it('each player sees only their own stop settings', async () => {
+    const { viewFor } = await import('../src')
+    const { state } = game()
+    const view = viewFor(state, 'p1')
+    expect(view.players.p1!.stops).toEqual(state.players.p1!.stops)
+    expect(view.players.p2!.stops).toBeNull()
+    expect(viewFor(state, null).players.p1!.stops).toBeNull()
+  })
+})

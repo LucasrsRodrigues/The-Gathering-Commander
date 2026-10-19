@@ -5,7 +5,7 @@ import { commanderTax } from './commander'
 import { isSummoningSick } from './mana'
 import { isCreature, powerOf, toughnessOf } from './stats'
 import type {
-  Arrangement, CardRef, GameEvent, GameState, ManaPool, ObjectId, PendingDecision, PlayerId, PriorityState, Ruleset,
+  Arrangement, CardRef, GameEvent, GameState, ManaPool, ObjectId, PlayerState, StopSettings, PendingDecision, PlayerId, PriorityState, Ruleset,
   StackItem, TurnState, ZoneKind,
 } from './types'
 
@@ -39,6 +39,8 @@ export interface PlayerPublicView {
   lost: boolean
   manaPool: ManaPool // public (CR 106.4)
   landsPlayed: number
+  stops: StopSettings | null // own preferences: only for the viewer
+  passUntil: PlayerState['passUntil'] // only for the viewer
   handCount: number
   libraryCount: number
   hand: ObjectId[] // only filled for the viewer
@@ -95,6 +97,7 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
     players[id] = {
       id, name: p.name, life: p.life, poison: p.poison, commanderDamage: p.commanderDamage,
       mulligans: p.mulligans, hasKept: p.hasKept, lost: p.lost, manaPool: p.manaPool, landsPlayed: p.landsPlayed,
+      stops: id === viewer ? p.stops : null, passUntil: id === viewer ? p.passUntil : null,
       handCount: zones.hand.length, libraryCount: zones.library.length,
       hand: ownHand ? zones.hand : [],
       graveyard: zones.graveyard, exile: zones.exile, command: zones.command,
