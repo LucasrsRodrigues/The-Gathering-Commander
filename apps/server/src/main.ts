@@ -14,7 +14,14 @@ const config = {
   staticDir: env.STATIC_DIR || null,
 }
 
-const store = new SqliteRoomStore(env.DB_PATH ?? './data/rooms.db')
+const dbPath = env.DB_PATH ?? './data/rooms.db'
+let store: SqliteRoomStore
+try {
+  store = new SqliteRoomStore(dbPath)
+} catch (err) {
+  console.error(`Não foi possível abrir o banco das salas em ${dbPath}. A pasta existe e tem permissão de escrita?`, err)
+  process.exit(1)
+}
 const server = await startServer(config, store)
 console.log(`The Gathering Hall server on :${server.port} (origens: ${config.allowedOrigins.join(', ')}${config.staticDir ? ' + mesma origem' : ''})`)
 

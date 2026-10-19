@@ -31,6 +31,12 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
    ligado. O WebSocket funciona pelo mesmo domínio, sem configuração extra.
 7. Clique em **Deploy**. Para conferir, abra `https://seu-dominio/api/health`, que deve responder `{"ok":true,...}`.
 
+**Se aparecer "502" ou "Not Found" do EasyPanel:**
+- Em **Domains**, confira se a porta é **8787**, e não a 80 que o EasyPanel sugere.
+- Em **Deployments**, veja se o build terminou. Em **Logs**, a linha esperada é
+  `The Gathering Hall server on :8787`. Se aparecer "Não foi possível abrir o banco das salas", o volume `/data`
+  não está montado direito.
+
 **Atualizações:** cada push na `main` pode disparar o deploy, se o auto deploy estiver ligado no EasyPanel. Se não
 estiver, clique em **Deploy**. As salas em andamento continuam, porque são recarregadas do volume.
 

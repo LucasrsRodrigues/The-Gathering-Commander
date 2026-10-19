@@ -30,8 +30,9 @@ ENV NODE_ENV=production \
     TRUST_PROXY=1
 RUN mkdir -p /data && chown node:node /data
 VOLUME /data
-USER node
 EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||8787)+'/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-CMD ["npx", "tsx", "apps/server/src/main.ts"]
+# Panels like EasyPanel mount /data owned by root: fix ownership at start, then drop to the unprivileged
+# "node" user to run the server (setpriv comes with util-linux in the Debian base image).
+ENTRYPOINT ["/bin/sh", "-c", "mkdir -p \"$(dirname \"$DB_PATH\")\" && chown -R node:node \"$(dirname \"$DB_PATH\")\" && exec setpriv --reuid=node --regid=node --init-groups env HOME=/home/node node_modules/.bin/tsx apps/server/src/main.ts"]
