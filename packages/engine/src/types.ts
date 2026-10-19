@@ -158,6 +158,7 @@ export type PendingDecision =
   | { kind: 'declareAttackers'; player: PlayerId } // CR 508.1: the active player declares (an empty list is fine)
   | { kind: 'declareBlockers'; player: PlayerId; players: PlayerId[] } // CR 509.1: each attacked player; `player` = next
   | { kind: 'confirmDamage'; player: PlayerId; proposal: DamageProposal } // CR 510.1: the active player confirms or adjusts
+  | { kind: 'discard'; player: PlayerId; count: number } // CR 514.1: discard down to the maximum hand size
   | ExceptionRequest
 
 // "Fazer mesmo assim" (épico 09): an action a 'block' policy rejected, waiting for the other players' approval.
@@ -305,6 +306,7 @@ export type Action =
   | ActionOf<'declareAttackers', { attacks: Attack[] }> // CR 508
   | ActionOf<'declareBlockers', { blocks: Block[] }> // CR 509
   | ActionOf<'assignDamage', { assignments: DamageAssignment[] }> // CR 510.1: confirm (or adjust) the proposal
+  | ActionOf<'discard', { objectIds: ObjectId[] }> // answers the cleanup discard
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>

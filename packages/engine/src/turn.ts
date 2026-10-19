@@ -66,24 +66,37 @@ function enterStep(tx: Tx, step: Step) {
   if (step === 'draw' && s.ruleset.autoDraw && !skipsFirstDraw(s)) drawCards(tx, active, 1)
 
   if (step === 'cleanup') {
-    // CR 514.2: damage wears off and "until end of turn" effects end.
-    for (const id of s.battlefield) {
-      const obj = s.objects[id]!
-      if (obj.damage || obj.deathtouchDamage || obj.ptMods.length) {
-        const w = tx.object(id)
-        w.damage = 0
-        w.deathtouchDamage = false
-        w.ptMods = []
-      }
+    // CR 514.1: the active player discards down to the maximum hand size (with turn rules on; sandbox: by hand).
+    const excess = (s.zones[active]?.hand.length ?? 0) - s.ruleset.maxHandSize
+    if (s.ruleset.timingRules !== 'off' && excess > 0) {
+      s.priority = null
+      s.pending = { kind: 'discard', player: active, count: excess }
+      return
     }
-    // CR 514.3: normally no priority in cleanup. Discarding to hand size stays manual in the sandbox.
-    const next = nextPlayerAfter(s, active)
-    if (next) beginTurn(tx, next, s.turn.number + 1)
+    finishCleanup(tx)
     return
   }
 
   if (onCombatStep(tx, step)) return
   givePriority(tx, active)
+}
+
+// CR 514.2–514.3: the rest of cleanup, then the next player's turn.
+export function finishCleanup(tx: Tx) {
+  const s = tx.s
+  // CR 514.2: damage wears off and "until end of turn" effects end.
+  for (const id of s.battlefield) {
+    const obj = s.objects[id]!
+    if (obj.damage || obj.deathtouchDamage || obj.ptMods.length) {
+      const w = tx.object(id)
+      w.damage = 0
+      w.deathtouchDamage = false
+      w.ptMods = []
+    }
+  }
+  // CR 514.3: normally no priority in cleanup.
+  const next = nextPlayerAfter(s, s.turn.active)
+  if (next) beginTurn(tx, next, s.turn.number + 1)
 }
 
 // CR 103.8a: in a two-player game the starting player skips the draw of their first turn.

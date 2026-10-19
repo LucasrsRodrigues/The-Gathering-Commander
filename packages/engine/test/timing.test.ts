@@ -16,7 +16,11 @@ function toStep(state: GameState, step: Step): GameState {
 function nextTurn(state: GameState): GameState {
   let s = state
   const active = s.turn.active
-  for (let i = 0; i < 20 && s.turn.active === active; i++) s = act(s, { type: 'advanceStep', player: s.turn.active }).state
+  for (let i = 0; i < 20 && s.turn.active === active; i++) {
+    s = s.pending?.kind === 'discard'
+      ? act(s, { type: 'discard', player: s.pending.player, objectIds: s.zones[s.pending.player]!.hand.slice(0, s.pending.count) }).state
+      : act(s, { type: 'advanceStep', player: s.turn.active }).state
+  }
   return s
 }
 

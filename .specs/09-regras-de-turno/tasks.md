@@ -189,8 +189,13 @@ depois paradas.
       exceção;
     - atacante bloqueado cujo bloqueador sumiu não causa dano, salvo Trample (CR 509.1h, 702.19e);
     - criatura sem dados ou com `*` recebe "dano letal" indefinido: o jogador ativo distribui à mão.
-- [ ] **T9.15 — Cleanup com descarte** _(req: 25)_ · depende de T9.2
+- [x] **T9.15 — Cleanup com descarte** _(req: 25)_ · depende de T9.2
   - Verificação: com 9 cartas e máximo 7, pede 2; a escolha não vaza para os outros antes de ser feita.
+  - Feito:
+    - o descarte só é pedido com `timingRules` diferente de `off` (no sandbox continua manual);
+    - ficar com mais cartas ("sem tamanho máximo de mão") é a política `discardCount` e passa por exceção;
+    - a mão da mesa reaproveita a seleção do mulligan;
+    - verificado no navegador: com 8 cartas, pede 1, descarta e o turno seguinte começa.
 - [ ] **T9.16 — Mesa: modo de ataque, modo de bloqueio e painel de dano (DOM primeiro)** · depende de T9.14
   - Verificação: critério de aceite da fase, com uma partida de 2 jogadores até a morte por combate sem ajuste
     manual de vida.

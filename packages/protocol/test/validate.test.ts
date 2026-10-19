@@ -27,6 +27,7 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'act', seq: 18, action: { type: 'declareAttackers', attacks: [{ attacker: 'o4', target: 'p2' }] } },
       { v: 1, t: 'act', seq: 19, action: { type: 'declareBlockers', blocks: [{ blocker: 'o9', attacker: 'o4' }] } },
       { v: 1, t: 'act', seq: 20, action: { type: 'assignDamage', assignments: [{ source: 'o4', to: 'p2', amount: 3 }] } },
+      { v: 1, t: 'act', seq: 21, action: { type: 'discard', objectIds: ['o3', 'o5'] } },
       { v: 1, t: 'act', seq: 13, action: { type: 'activateMana', objectId: 'o6', abilityIndex: 1, color: 'G' } },
       { v: 1, t: 'act', seq: 14, action: { type: 'declareMana', objectId: 'o7', mana: { B: 2, C: 1 } } },
     ]) {

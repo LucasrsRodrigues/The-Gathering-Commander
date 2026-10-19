@@ -120,6 +120,10 @@ export function actionIntent(v: unknown): ActionIntent {
       const reason = a.reason === undefined || a.reason === '' ? '' : text(a.reason, 'motivo', 200)
       return { type, action: inner, reason }
     }
+    case 'discard': {
+      if (!Array.isArray(a.objectIds) || a.objectIds.length > 100) bad('objectIds inválido')
+      return { type, objectIds: (a.objectIds as unknown[]).map((x) => id(x, 'objectId')) }
+    }
     case 'bottomCards': {
       if (!Array.isArray(a.objectIds) || a.objectIds.length > 20) bad('objectIds inválido')
       return { type, objectIds: (a.objectIds as unknown[]).map((x) => id(x, 'objectId')) }

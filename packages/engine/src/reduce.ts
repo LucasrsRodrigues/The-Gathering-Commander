@@ -12,7 +12,7 @@ import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, producti
 import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
-import { advanceStep, givePriority, passPriority } from './turn'
+import { advanceStep, finishCleanup, givePriority, passPriority } from './turn'
 import { Tx } from './tx'
 import type { Action, CardRef, GameObject, GameState, ManaActivation, PlayerId, ReduceResult, ZoneKind } from './types'
 import { drawCards, moveObject, shuffleLibrary } from './zones'
@@ -25,7 +25,7 @@ const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
   'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
 ])
 // While combat waits for a declaration, only that (and leaving or making mana) can happen.
-const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'assignDamage', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
+const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
 const MAX_COUNTER_NAME = 40
@@ -39,9 +39,15 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
-  'declareAttackers', 'declareBlockers', 'assignDamage',
+  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard',
 ])
 const MAX_PT_DELTA = 100
+const WAITING: Record<string, string> = {
+  declareAttackers: 'Declare os atacantes primeiro.',
+  declareBlockers: 'Esperando os bloqueios.',
+  confirmDamage: 'Confirme o dano de combate primeiro.',
+  discard: 'Descarte até o tamanho máximo da mão primeiro.',
+}
 const MAX_X = 100
 const MAX_PAY_WITH = 60
 
@@ -83,11 +89,8 @@ function apply(tx: Tx, action: Action, skipPolicies: boolean) {
     return
   }
   if (pendingException(s)) fail('pendingException', 'Há um pedido de exceção esperando resposta.')
-  const declaring = s.pending?.kind === 'declareAttackers' || s.pending?.kind === 'declareBlockers' || s.pending?.kind === 'confirmDamage'
-  if (declaring && !DURING_DECLARATION.has(action.type)) {
-    fail('notYourDecision', s.pending!.kind === 'declareAttackers' ? 'Declare os atacantes primeiro.'
-      : s.pending!.kind === 'declareBlockers' ? 'Esperando os bloqueios.' : 'Confirme o dano de combate primeiro.')
-  }
+  const waiting = s.pending && s.pending.kind !== 'mulligan' && s.pending.kind !== 'bottomCards' ? WAITING[s.pending.kind] : null
+  if (waiting && !DURING_DECLARATION.has(action.type)) fail('notYourDecision', waiting)
 
   if (s.status === 'mulligan') {
     if (!MULLIGAN_ACTIONS.has(action.type)) fail('wrongPhase', 'Termine os mulligans antes de jogar.')
@@ -302,6 +305,20 @@ function applyGameAction(tx: Tx, action: Action) {
     case 'declareBlockers':
       declareBlockers(tx, actor, action.blocks)
       return
+
+    // CR 514.1: discard down to the maximum hand size, then cleanup goes on.
+    case 'discard': {
+      if (s.pending?.kind !== 'discard' || s.pending.player !== actor) fail('notYourDecision', 'Não há descarte pendente para você.')
+      const ids = action.objectIds
+      const hand = s.zones[actor]!.hand
+      if (!Array.isArray(ids) || new Set(ids).size !== ids.length || !ids.every((id) => typeof id === 'string' && hand.includes(id)) || ids.length > s.pending.count) {
+        fail('invalidSelection', `Escolha ${s.pending.count} carta(s) da sua mão.`)
+      }
+      s.pending = null
+      for (const id of ids) moveObject(tx, id, 'graveyard')
+      finishCleanup(tx)
+      return
+    }
 
     case 'assignDamage':
       if (s.pending?.kind !== 'confirmDamage' || s.pending.player !== actor) fail('notYourDecision', 'Quem confirma o dano é o jogador ativo.')

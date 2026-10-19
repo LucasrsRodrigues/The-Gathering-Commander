@@ -10,9 +10,10 @@ import type { Dispatch } from './PlayerPanels'
 export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer: PlayerId; dispatch: Dispatch }) {
   const hand = view.players[viewer]?.hand ?? []
   // Opening-hand decisions only; exceptions and combat declarations have their own UI.
-  const pending = view.pending?.player === viewer && (view.pending.kind === 'mulligan' || view.pending.kind === 'bottomCards') ? view.pending : null
+  const pending = view.pending?.player === viewer && (view.pending.kind === 'mulligan' || view.pending.kind === 'bottomCards' || view.pending.kind === 'discard') ? view.pending : null
   const [selected, setSelected] = useState<string[]>([])
-  const choosingBottom = pending?.kind === 'bottomCards'
+  // Picking cards from hand: for the bottom of the library (mulligan) or to discard in cleanup.
+  const choosingBottom = pending?.kind === 'bottomCards' || pending?.kind === 'discard'
   const mid = (hand.length - 1) / 2
 
   function onCard(id: string) {
@@ -33,7 +34,7 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
   return (
     <>
       {pending && (
-        <div className="mulligan" role="dialog" aria-label="Mulligan">
+        <div className="mulligan" role="dialog" aria-label={pending.kind === 'discard' ? 'Descarte' : 'Mulligan'}>
           {pending.kind === 'mulligan' ? (
             <>
               <p>
@@ -44,6 +45,18 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
                 <button className="btn primary" onClick={() => dispatch({ type: 'keepHand' })}>Manter</button>
                 <button className="btn" onClick={() => dispatch({ type: 'mulligan' })}>Mulligan</button>
               </div>
+            </>
+          ) : pending.kind === 'discard' ? (
+            <>
+              <p>Fim do turno: descarte {pending.count} carta(s) para ficar com {view.ruleset.maxHandSize} ({selected.length}/{pending.count}).</p>
+              {/* Fewer cards (an effect like "no maximum hand size") goes through the rules dialog and its exception. */}
+              <button className="btn primary" disabled={selected.length > pending.count}
+                onClick={() => {
+                  dispatch({ type: 'discard', objectIds: selected })
+                  setSelected([])
+                }}>
+                Descartar
+              </button>
             </>
           ) : (
             <>
@@ -59,7 +72,7 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
           )}
         </div>
       )}
-      <div className="hand" role="group" aria-label={choosingBottom ? 'Sua mão: escolha as cartas para o fundo' : 'Sua mão'}>
+      <div className="hand" role="group" aria-label={!choosingBottom ? 'Sua mão' : pending?.kind === 'discard' ? 'Sua mão: escolha as cartas para descartar' : 'Sua mão: escolha as cartas para o fundo'}>
         {hand.map((id, i) => {
           const obj = view.objects[id]
           const img = imagesFor(obj?.card ?? null)

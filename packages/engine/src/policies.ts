@@ -136,7 +136,15 @@ const blockLegality: Policy = (state, action) => {
 const damageLegality: Policy = (state, action) =>
   action.type === 'assignDamage' && Array.isArray(action.assignments) ? assignmentFinding(state, action.assignments) : null
 
+// CR 514.1: exactly down to the maximum hand size; keeping more ("no maximum hand size") is an exception.
+const discardCount: Policy = (state, action) => {
+  if (action.type !== 'discard' || state.pending?.kind !== 'discard' || state.pending.player !== action.player || !Array.isArray(action.objectIds)) return null
+  const { count } = state.pending
+  return action.objectIds.length < count ? timing('discardCount', `Descarte ${count} carta(s) para ficar com ${state.ruleset.maxHandSize}.`) : null
+}
+
 const POLICIES: { area: RuleArea; check: Policy }[] = [
+  { area: 'timing', check: discardCount },
   { area: 'combat', check: attackLegality },
   { area: 'combat', check: damageLegality },
   { area: 'combat', check: blockLegality },
