@@ -5,7 +5,9 @@ import type { ServerMessage } from '@gathering-hall/protocol'
 import { afterEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
 import { CONNECTION_LIMITS, DEFAULT_CONFIG, startServer, type RunningServer } from '../src/server'
-import { SqliteRoomStore } from '../src/store'
+import { migrate } from '../src/db'
+import { openPglite } from '../src/db/pglite'
+import { DbRoomStore } from '../src/store'
 import { deck } from './helpers'
 
 const ORIGIN = 'http://localhost:5180'
@@ -14,11 +16,20 @@ afterEach(async () => {
   while (cleanup.length) await cleanup.pop()!()
 })
 
-async function boot(dbPath: string, overrides = {}): Promise<{ server: RunningServer; base: string }> {
-  const store = new SqliteRoomStore(dbPath)
-  const server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [ORIGIN], ...overrides }, store)
-  cleanup.push(() => store.close(), () => server.close())
-  return { server, base: `127.0.0.1:${server.port}` }
+// The server on a PGlite database kept in `dataDir`, so a "restart" reopens the same data.
+async function boot(dataDir: string, overrides = {}): Promise<{ server: RunningServer; base: string; stop: () => Promise<void> }> {
+  const db = await openPglite(join(dataDir, 'pg'))
+  await migrate(db, join(import.meta.dirname, '..', 'migrations'))
+  const server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [ORIGIN], ...overrides }, new DbRoomStore(db))
+  let stopped = false
+  const stop = async () => {
+    if (stopped) return
+    stopped = true
+    await server.close()
+    await db.close()
+  }
+  cleanup.push(stop)
+  return { server, base: `127.0.0.1:${server.port}`, stop }
 }
 
 // Minimal test client: collects every server message and waits for the next one of a type.
@@ -57,8 +68,7 @@ describe('online server', () => {
   it('plays through a real socket, survives a restart and lets the player reconnect', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'gh-server-'))
     cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
-    const db = join(dir, 'rooms.db')
-    const { base, server } = await boot(db)
+    const { base, stop } = await boot(dir)
 
     const res = await createRoom(base)
     expect(res.status).toBe(201)
@@ -82,11 +92,11 @@ describe('online server', () => {
     expect(state.view.viewer).toBe('p2')
     expect(state.view.players.p1!.hand).toEqual([]) // never the other hand
 
-    // Restart the whole process: the game must come back from SQLite.
+    // Restart the whole process: the game must come back from the database.
     host.close()
     guest.close()
-    await server.close()
-    const again = await boot(db)
+    await stop()
+    const again = await boot(dir)
     const back = client(again.base, room)
     await back.open
     back.send({ t: 'hello', room, token: guestToken })
@@ -98,7 +108,7 @@ describe('online server', () => {
   it('refuses other origins, unknown rooms and malformed messages', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'gh-server-'))
     cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
-    const { base } = await boot(join(dir, 'rooms.db'))
+    const { base } = await boot(dir)
 
     expect((await createRoom(base, 'https://evil.example')).status).toBe(403)
 
@@ -119,7 +129,7 @@ describe('online server', () => {
   it('limits how many rooms one IP can create', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'gh-server-'))
     cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
-    const { base } = await boot(join(dir, 'rooms.db'), { roomsPerIpPerHour: 2 })
+    const { base } = await boot(dir, { roomsPerIpPerHour: 2 })
     expect((await createRoom(base)).status).toBe(201)
     expect((await createRoom(base)).status).toBe(201)
     expect((await createRoom(base)).status).toBe(429)
@@ -128,7 +138,7 @@ describe('online server', () => {
   it('caps concurrent connections per IP', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'gh-server-'))
     cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
-    const { base } = await boot(join(dir, 'rooms.db'))
+    const { base } = await boot(dir)
     const { room } = (await (await createRoom(base)).json()) as { room: string }
     const before = CONNECTION_LIMITS.perIp
     CONNECTION_LIMITS.perIp = 2

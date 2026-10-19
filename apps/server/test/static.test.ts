@@ -4,11 +4,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { DEFAULT_CONFIG, startServer, type RunningServer } from '../src/server'
-import { SqliteRoomStore } from '../src/store'
+import type { Db } from '../src/db'
+import { migrate } from '../src/db'
+import { openPglite } from '../src/db/pglite'
+import { DbRoomStore } from '../src/store'
 
 let dir: string
 let server: RunningServer
-let store: SqliteRoomStore
+let db: Db
 
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'gh-static-'))
@@ -17,13 +20,14 @@ beforeAll(async () => {
   writeFileSync(join(web, 'index.html'), '<!doctype html><title>app</title>')
   writeFileSync(join(web, 'assets', 'app-123.js'), 'console.log(1)')
   writeFileSync(join(dir, 'secret.txt'), 'do not serve')
-  store = new SqliteRoomStore(join(dir, 'rooms.db'))
-  server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [], staticDir: web, trustProxy: true }, store)
+  db = await openPglite()
+  await migrate(db, join(import.meta.dirname, '..', 'migrations'))
+  server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [], staticDir: web, trustProxy: true }, new DbRoomStore(db))
 })
 
 afterAll(async () => {
   await server.close()
-  store.close()
+  await db.close()
   rmSync(dir, { recursive: true, force: true })
 })
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { SqliteRoomStore } from '../src/store'
+import { DbRoomStore } from '../src/store'
+import { testDb } from './db.helpers'
 import { msg, seatedRoom } from './helpers'
 
 // What the store held for a game started before épico 09 (engine schema 1).
@@ -14,20 +15,33 @@ function asV1(game: object): object {
   return s
 }
 
-describe('SqliteRoomStore', () => {
-  it('opens rooms saved by an older engine, with the new turn rules switched off', () => {
+describe('DbRoomStore', () => {
+  it('saves, loads, counts, expires and deletes rooms', async () => {
+    const store = new DbRoomStore(await testDb())
+    const { room } = seatedRoom(2)
+    const snap = room.snapshot()
+    await store.save(snap)
+    await store.save({ ...snap, lastActive: snap.lastActive + 1 }) // upsert
+    expect(await store.count()).toBe(1)
+    expect((await store.load(snap.id))?.seats).toEqual(snap.seats)
+    expect(await store.expired(snap.lastActive + 2)).toEqual([snap.id])
+    expect(await store.expired(snap.lastActive)).toEqual([])
+    await store.delete(snap.id)
+    expect(await store.load(snap.id)).toBeUndefined()
+  })
+
+  it('opens rooms saved by an older engine, with the new turn rules switched off', async () => {
     const { room } = seatedRoom(2)
     room.receive('c0', msg({ t: 'start' }))
     const snap = room.snapshot()
-    const store = new SqliteRoomStore(':memory:')
-    store.save({ ...snap, game: asV1(snap.game!) as never, initial: asV1(snap.initial!) as never })
+    const store = new DbRoomStore(await testDb())
+    await store.save({ ...snap, game: asV1(snap.game!) as never, initial: asV1(snap.initial!) as never })
 
-    const loaded = store.load(snap.id)!
+    const loaded = (await store.load(snap.id))!
     expect(loaded.game?.schemaVersion).toBe(2)
     expect(loaded.initial?.schemaVersion).toBe(2)
     expect(loaded.game?.ruleset).toMatchObject({ timingRules: 'off', manaRules: 'off', combatRules: 'off' })
     expect(loaded.game?.options).toEqual({ exceptionApproval: 'vote' })
-    store.close()
   })
 
   it('new online games vote on rule exceptions', () => {

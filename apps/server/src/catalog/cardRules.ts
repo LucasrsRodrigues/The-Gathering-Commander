@@ -4,7 +4,7 @@
 import { deriveCardRules, type CardRef, type DeckInput, type OracleFacts } from '@gathering-hall/engine'
 import { normalizeName, type ClientCard } from './normalize'
 import { stripRules } from '../room/room'
-import type { SqliteCatalogStore } from './store'
+import type { CatalogLookup } from './lookup'
 
 // Rules are read from the front face (the one cast normally); the keyword list is the card's.
 export function oracleFactsOf(card: ClientCard): OracleFacts {
@@ -23,7 +23,7 @@ export function oracleFactsOf(card: ClientCard): OracleFacts {
 
 export type DeckRulesFiller = (deck: DeckInput) => DeckInput
 
-export function makeRulesFiller(catalog: SqliteCatalogStore): DeckRulesFiller {
+export function makeRulesFiller(catalog: CatalogLookup): DeckRulesFiller {
   return (deck) => {
     const plain = stripRules(deck)
     const found = catalog.resolveNames([...new Set([...plain.commanders, ...plain.cards].map((c) => c.name))])

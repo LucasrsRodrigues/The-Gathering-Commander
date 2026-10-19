@@ -1,72 +1,58 @@
-// Room persistence on SQLite (node:sqlite, no native dependency). Each room is one row holding its
-// snapshot: lobby, game state, initial state and action log (enough to replay the game).
+// Room persistence (épico 08: Postgres, or PGlite in development). Each room is one row holding its snapshot:
+// lobby, game state, initial state and action log (enough to replay the game).
 
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 import { migrateState } from '@gathering-hall/engine'
+import type { Db } from './db'
 import type { RoomSnapshot } from './room/room'
 
 export interface RoomStore {
-  load(id: string): RoomSnapshot | undefined
-  save(snapshot: RoomSnapshot): void
-  delete(id: string): void
-  expired(before: number): string[]
-  count(): number
-  close(): void
+  load(id: string): Promise<RoomSnapshot | undefined>
+  save(snapshot: RoomSnapshot): Promise<void>
+  delete(id: string): Promise<void>
+  expired(before: number): Promise<string[]>
+  count(): Promise<number>
 }
 
-export class SqliteRoomStore implements RoomStore {
-  private readonly db: DatabaseSync
+// Snapshots saved by an older engine are migrated on read (new turn rules stay off for them); anything this
+// server does not understand is treated as missing.
+export function readSnapshot(raw: unknown): RoomSnapshot | undefined {
+  const snap = raw as RoomSnapshot | null
+  if (!snap || typeof snap !== 'object' || snap.schema !== 1) return undefined
+  const game = snap.game && migrateState(snap.game)
+  const initial = snap.initial && migrateState(snap.initial)
+  if ((snap.game && !game) || (snap.initial && !initial)) return undefined
+  return { ...snap, game: game ?? null, initial: initial ?? null }
+}
 
-  constructor(path: string) {
-    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
-    this.db = new DatabaseSync(path)
-    this.db.exec(`
-      PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS rooms (
-        id TEXT PRIMARY KEY,
-        snapshot TEXT NOT NULL,
-        last_active INTEGER NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS rooms_last_active ON rooms (last_active);
-    `)
+export class DbRoomStore implements RoomStore {
+  private readonly db: Db
+  constructor(db: Db) {
+    this.db = db
   }
 
-  load(id: string): RoomSnapshot | undefined {
-    const row = this.db.prepare('SELECT snapshot FROM rooms WHERE id = ?').get(id) as { snapshot: string } | undefined
-    if (!row) return undefined
-    try {
-      const snap = JSON.parse(row.snapshot) as RoomSnapshot
-      if (snap.schema !== 1) return undefined
-      // Games saved by an older engine are migrated on read (new turn rules stay off for them).
-      const game = snap.game && migrateState(snap.game)
-      const initial = snap.initial && migrateState(snap.initial)
-      if ((snap.game && !game) || (snap.initial && !initial)) return undefined
-      return { ...snap, game: game ?? null, initial: initial ?? null }
-    } catch {
-      return undefined
-    }
+  async load(id: string): Promise<RoomSnapshot | undefined> {
+    const [row] = await this.db.query<{ snapshot: unknown }>('SELECT snapshot FROM room WHERE id = $1', [id])
+    return row ? readSnapshot(row.snapshot) : undefined
   }
 
-  save(snapshot: RoomSnapshot) {
-    this.db.prepare('INSERT INTO rooms (id, snapshot, last_active) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET snapshot = excluded.snapshot, last_active = excluded.last_active')
-      .run(snapshot.id, JSON.stringify(snapshot), snapshot.lastActive)
+  async save(snapshot: RoomSnapshot): Promise<void> {
+    await this.db.query(
+      `INSERT INTO room (id, snapshot, last_active) VALUES ($1, $2::jsonb, $3)
+       ON CONFLICT (id) DO UPDATE SET snapshot = excluded.snapshot, last_active = excluded.last_active`,
+      [snapshot.id, JSON.stringify(snapshot), snapshot.lastActive],
+    )
   }
 
-  delete(id: string) {
-    this.db.prepare('DELETE FROM rooms WHERE id = ?').run(id)
+  async delete(id: string): Promise<void> {
+    await this.db.query('DELETE FROM room WHERE id = $1', [id])
   }
 
-  expired(before: number): string[] {
-    return (this.db.prepare('SELECT id FROM rooms WHERE last_active < ?').all(before) as { id: string }[]).map((r) => r.id)
+  async expired(before: number): Promise<string[]> {
+    return (await this.db.query<{ id: string }>('SELECT id FROM room WHERE last_active < $1', [before])).map((r) => r.id)
   }
 
-  count(): number {
-    return (this.db.prepare('SELECT COUNT(*) AS n FROM rooms').get() as { n: number }).n
-  }
-
-  close() {
-    this.db.close()
+  async count(): Promise<number> {
+    const [row] = await this.db.query<{ n: string | number }>('SELECT count(*) AS n FROM room')
+    return Number(row?.n ?? 0)
   }
 }

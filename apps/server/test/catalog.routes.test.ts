@@ -1,29 +1,34 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { diffCatalog } from '../src/catalog/diff'
 import { normalizeCard } from '../src/catalog/normalize'
-import { SqliteCatalogStore } from '../src/catalog/store'
+import { CatalogCache } from '../src/catalog/lookup'
+import { CatalogStore } from '../src/catalog/store'
+import { migrate, type Db } from '../src/db'
+import { openPglite } from '../src/db/pglite'
 import { DEFAULT_CONFIG, startServer, type RunningServer } from '../src/server'
-import { SqliteRoomStore } from '../src/store'
+import { DbRoomStore } from '../src/store'
+import { join } from 'node:path'
 import { krenko, manaCrypt, rhystic, solRing } from './catalog.fixtures'
 
 let server: RunningServer
-let catalog: SqliteCatalogStore
-let rooms: SqliteRoomStore
+let db: Db
 let base: string
 
 beforeAll(async () => {
-  catalog = new SqliteCatalogStore(':memory:')
+  db = await openPglite()
+  await migrate(db, join(import.meta.dirname, '..', 'migrations'))
+  const catalog = new CatalogStore(db)
   const records = [solRing, manaCrypt, rhystic, krenko].map((c) => normalizeCard(c)!)
-  catalog.apply(diffCatalog(new Map(), records), records, '2026-10-01')
-  rooms = new SqliteRoomStore(':memory:')
-  server = await startServer({ ...DEFAULT_CONFIG, port: 0, catalogRequestsPerMinute: 8 }, rooms, undefined, catalog)
+  await catalog.apply(diffCatalog(new Map(), records), records, '2026-10-01')
+  const cache = new CatalogCache(catalog)
+  await cache.refreshCount()
+  server = await startServer({ ...DEFAULT_CONFIG, port: 0, catalogRequestsPerMinute: 8 }, new DbRoomStore(db), undefined, { store: catalog, cache })
   base = `http://127.0.0.1:${server.port}/api/catalog`
 })
 
 afterAll(async () => {
   await server.close()
-  rooms.close()
-  catalog.close()
+  await db.close()
 })
 
 const resolve = (body: unknown) => fetch(`${base}/resolve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })

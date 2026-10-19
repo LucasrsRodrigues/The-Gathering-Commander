@@ -1,6 +1,7 @@
-// HTTP + WebSocket adapter around RoomCore. One process holds every live room in memory as an actor;
-// Node runs handlers one at a time, so each room sees its messages in a total order. Every change is
-// persisted to SQLite before replies go out, so a restart never loses a game.
+// HTTP + WebSocket adapter around RoomCore. One process holds every live room in memory as an actor. Each room has
+// a queue: loading it, preparing what a message needs from the catalog, handling the message and saving the snapshot
+// happen in order for that room (épico 08: the database is async), and replies go out only after the save, so a
+// restart never loses a game.
 
 import { createHash, randomBytes, randomInt } from 'node:crypto'
 import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'node:http'
@@ -11,10 +12,18 @@ import { TokenBucket, WindowLimiter } from './limits'
 import { securityHeaders, serveStatic } from './static'
 import { Room, type Outgoing, type RoomDeps } from './room/room'
 import type { RoomStore } from './store'
+import { resolvePreset } from '@gathering-hall/formats'
+import type { ClientMessage } from '@gathering-hall/protocol'
 import { makeRulesFiller } from './catalog/cardRules'
 import { makeDeckChecker } from './catalog/deckCheck'
+import type { CatalogCache } from './catalog/lookup'
 import { handleCatalog } from './catalog/routes'
-import type { SqliteCatalogStore } from './catalog/store'
+import type { CatalogStore } from './catalog/store'
+
+export interface ServerCatalog {
+  store: CatalogStore
+  cache: CatalogCache
+}
 
 export interface ServerConfig {
   port: number
@@ -54,9 +63,9 @@ export interface RunningServer {
   close(): Promise<void>
 }
 
-export function startServer(config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: SqliteCatalogStore | null = null): Promise<RunningServer> {
+export function startServer(config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null): Promise<RunningServer> {
   const deps: RoomDeps = catalog
-    ? { checkDeck: makeDeckChecker(catalog), cardRules: makeRulesFiller(catalog), ...baseDeps }
+    ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
     : baseDeps
   const rooms = new Map<string, Room>()
   const sockets = new Map<string, WebSocket>() // connId → socket
@@ -66,19 +75,46 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
 
-  const getRoom = (id: string): Room | undefined => {
+  // One promise chain per room: tasks for the same room run in order, other rooms are not held up.
+  const queues = new Map<string, Promise<void>>()
+  const enqueue = (roomId: string, task: () => Promise<void>): Promise<void> => {
+    const next = (queues.get(roomId) ?? Promise.resolve()).then(task).catch((err) => {
+      console.error(`sala ${roomId}:`, err instanceof Error ? err.message : err)
+    })
+    queues.set(roomId, next)
+    void next.finally(() => {
+      if (queues.get(roomId) === next) queues.delete(roomId)
+    })
+    return next
+  }
+
+  const getRoom = async (id: string): Promise<Room | undefined> => {
     let room = rooms.get(id)
     if (!room) {
-      const snap = store.load(id)
-      if (snap) rooms.set(id, (room = new Room(snap, deps)))
+      const snap = await store.load(id)
+      if (snap && !rooms.has(id)) rooms.set(id, new Room(snap, deps))
+      room = rooms.get(id)
     }
     return room
   }
 
-  const deliver = (room: Room, out: Outgoing[]) => {
+  const deliver = async (room: Room, out: Outgoing[]) => {
     if (closing) return
-    store.save(room.snapshot())
+    await store.save(room.snapshot())
     for (const { to, msg } of out) send(sockets.get(to), msg)
+  }
+
+  // The room core reads the catalog synchronously: fetch what this message needs into the cache first.
+  const prepare = async (room: Room, msg: ClientMessage) => {
+    if (!catalog) return
+    const snap = room.snapshot()
+    if (msg.t === 'sit') {
+      const asOf = resolvePreset(snap.preset).deckRules.banlist.asOf
+      await catalog.cache.warm([...msg.deck.commanders, ...msg.deck.cards].map((c) => c.name), [asOf])
+    } else if (msg.t === 'configure') {
+      const names = snap.seats.flatMap((seat) => (seat ? [...seat.deck.commanders, ...seat.deck.cards].map((c) => c.name) : []))
+      await catalog.cache.warm(names, [resolvePreset(msg.preset).deckRules.banlist.asOf])
+    }
   }
 
   const forwarded = (req: IncomingMessage, name: string) =>
@@ -111,21 +147,24 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
       res.setHeader('Access-Control-Max-Age', '600')
       return end(res, 204)
     }
-    if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size, catalog: catalog?.cardCount() ?? 0 })
+    if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size, catalog: catalog?.cache.cardCount() ?? 0 })
     if (req.url?.startsWith('/api/catalog/')) {
       if (!catalogLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas consultas; tente em instantes.' })
-      handleCatalog(catalog, req, res, json).catch(() => json(res, 500, { error: 'erro no catálogo' }))
+      handleCatalog(catalog?.store ?? null, req, res, json).catch(() => json(res, 500, { error: 'erro no catálogo' }))
       return
     }
     if (req.method === 'POST' && req.url === '/api/rooms') {
       if (!originAllowed(origin, req)) return json(res, 403, { error: 'origem não permitida' })
       if (!creation.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas salas criadas; tente mais tarde.' })
-      if (store.count() >= config.maxRooms) return json(res, 503, { error: 'O servidor está cheio; tente mais tarde.' })
-      const id = randomBytes(16).toString('base64url')
-      const { room, hostToken } = Room.create(id, deps)
-      rooms.set(id, room)
-      store.save(room.snapshot())
-      return json(res, 201, { room: id, token: hostToken })
+      void (async () => {
+        if ((await store.count()) >= config.maxRooms) return json(res, 503, { error: 'O servidor está cheio; tente mais tarde.' })
+        const id = randomBytes(16).toString('base64url')
+        const { room, hostToken } = Room.create(id, deps)
+        rooms.set(id, room)
+        await store.save(room.snapshot())
+        json(res, 201, { room: id, token: hostToken })
+      })().catch(() => json(res, 500, { error: 'Não foi possível criar a sala.' }))
+      return
     }
     if (config.staticDir && !req.url?.startsWith('/api/') && serveStatic(config.staticDir, req, res, isHttps(req))) return
     securityHeaders(res, isHttps(req))
@@ -159,12 +198,15 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
   })
 
   function onConnection(ws: WebSocket, roomId: string) {
-    const room = getRoom(roomId)
-    if (!room) {
-      send(ws, serverError('noRoom', 'Essa sala não existe ou expirou.'))
-      return ws.close(4404)
-    }
     const connId = `c${++nextConn}`
+    let room: Room | undefined
+    // Listeners go on at once (messages may arrive while the room loads); the room queue keeps the order.
+    void enqueue(roomId, async () => {
+      room = await getRoom(roomId)
+      if (room) return
+      send(ws, serverError('noRoom', 'Essa sala não existe ou expirou.'))
+      ws.close(4404)
+    })
     sockets.set(connId, ws)
     const bucket = new TokenBucket(MESSAGES_PER_SECOND, MESSAGES_PER_SECOND, deps.now())
     let alive = true
@@ -181,39 +223,50 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
       const decoded = decodeClientMessage(data.toString())
       if (!decoded.ok) return send(ws, serverError('badMessage', decoded.error))
       if (decoded.msg.t === 'hello' && decoded.msg.room !== roomId) return send(ws, serverError('noRoom', 'Sala diferente da conexão.'))
-      deliver(room, room.receive(connId, decoded.msg))
+      const msg = decoded.msg
+      void enqueue(roomId, async () => {
+        if (!room || closing) return
+        await prepare(room, msg)
+        await deliver(room, room.receive(connId, msg))
+      })
     })
     ws.on('close', () => {
       clearInterval(heartbeat)
       sockets.delete(connId)
-      deliver(room, room.disconnect(connId))
+      void enqueue(roomId, async () => {
+        if (room) await deliver(room, room.disconnect(connId))
+      })
     })
   }
 
   // ---- Expiry: rooms idle for longer than the TTL and with nobody connected are deleted ----
-  const sweeper = setInterval(() => {
+  const sweep = async () => {
     const now = deps.now()
     creation.sweep(now)
     catalogLimit.sweep(now)
-    for (const id of store.expired(now - config.roomTtlMs)) {
-      const live = rooms.get(id)
-      if (live && live.connectionCount > 0) continue
-      rooms.delete(id)
-      store.delete(id)
+    for (const id of await store.expired(now - config.roomTtlMs)) {
+      await enqueue(id, async () => {
+        const live = rooms.get(id)
+        if (live && live.connectionCount > 0) return
+        rooms.delete(id)
+        await store.delete(id)
+      })
     }
-  }, 10 * 60 * 1000)
+  }
+  const sweeper = setInterval(() => void sweep().catch(() => {}), 10 * 60 * 1000)
 
   return new Promise((resolve) => {
     http.listen(config.port, () => {
       resolve({
         port: (http.address() as AddressInfo).port,
-        close: () => new Promise<void>((done) => {
+        close: async () => {
           closing = true
           clearInterval(sweeper)
           for (const ws of wss.clients) ws.terminate()
           wss.close()
-          http.close(() => done())
-        }),
+          await new Promise<void>((done) => http.close(() => done()))
+          await Promise.all(queues.values()) // nothing half-written when the database closes
+        },
       })
     })
   })

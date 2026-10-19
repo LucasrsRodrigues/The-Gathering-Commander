@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadHistory, parseHistory } from '../src/catalog/history'
 import { runCatalogImport, type IngestDeps } from '../src/catalog/ingest'
 import type { BulkCard } from '../src/catalog/normalize'
-import { SqliteCatalogStore } from '../src/catalog/store'
+import { CatalogStore } from '../src/catalog/store'
+import { testDb } from './db.helpers'
 import { artSeries, manaCrypt, rhystic, solRing } from './catalog.fixtures'
 
 const cleanup: (() => void)[] = []
@@ -25,10 +26,10 @@ function fakeScryfall(days: { updatedAt: string; cards: BulkCard[] }[]) {
   return { fetchFn, nextDay: () => day++ }
 }
 
-function setup(days: Parameters<typeof fakeScryfall>[0], history: IngestDeps['history'] = []) {
+async function setup(days: Parameters<typeof fakeScryfall>[0], history: IngestDeps['history'] = []) {
   const dir = mkdtempSync(join(tmpdir(), 'gh-catalog-'))
-  const store = new SqliteCatalogStore(join(dir, 'catalog.db'))
-  cleanup.push(() => store.close(), () => rmSync(dir, { recursive: true, force: true }))
+  const store = new CatalogStore(await testDb())
+  cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
   const api = fakeScryfall(days)
   const deps: IngestDeps = { fetchFn: api.fetchFn as never, rawDir: join(dir, 'raw'), now: () => new Date('2026-10-19T12:00:00Z'), keepRaw: 2, history }
   return { store, deps, api, dir }
@@ -36,24 +37,24 @@ function setup(days: Parameters<typeof fakeScryfall>[0], history: IngestDeps['hi
 
 describe('catalog import', () => {
   it('imports, skips when the bulk did not change, then records only real changes', async () => {
-    const { store, deps, api } = setup([
+    const { store, deps, api } = await setup([
       { updatedAt: '2026-10-01T09:00:00Z', cards: [solRing, manaCrypt, rhystic, artSeries] },
       { updatedAt: '2026-11-01T09:00:00Z', cards: [solRing, { ...manaCrypt, legalities: { commander: 'legal' } }, rhystic] },
     ])
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', cards: 3 })
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'skipped' })
     // A catalog stored in an older card format is re-imported even when the bulk did not change.
-    store.setCardFormat(1)
+    await store.setCardFormat(1)
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', changes: 0 })
-    expect(store.resolveNames(['Sol Ring']).get('sol ring')).toMatchObject({ mana_cost: '{1}' })
+    expect((await store.resolveNames(['Sol Ring'])).get('sol ring')).toMatchObject({ mana_cost: '{1}' })
     api.nextDay()
     expect(await runCatalogImport(store, deps)).toMatchObject({ status: 'ok', changes: 1 })
-    expect(store.commanderAt('2026-10-15').banned.map((c) => c.name)).toEqual(['Mana Crypt'])
-    expect(store.commanderAt('2026-11-02').banned).toEqual([])
+    expect((await store.commanderAt('2026-10-15')).banned.map((c) => c.name)).toEqual(['Mana Crypt'])
+    expect((await store.commanderAt('2026-11-02')).banned).toEqual([])
   })
 
   it('keeps only the latest raw files and refuses downloads from other hosts', async () => {
-    const { store, deps, api } = setup([
+    const { store, deps, api } = await setup([
       { updatedAt: '2026-10-01T09:00:00Z', cards: [solRing] },
       { updatedAt: '2026-10-02T09:00:00Z', cards: [solRing] },
       { updatedAt: '2026-10-03T09:00:00Z', cards: [solRing] },
@@ -69,23 +70,23 @@ describe('catalog import', () => {
   })
 
   it('a failed download is recorded and leaves the catalog as it was', async () => {
-    const { store, deps } = setup([{ updatedAt: '2026-10-01T09:00:00Z', cards: [solRing] }])
+    const { store, deps } = await setup([{ updatedAt: '2026-10-01T09:00:00Z', cards: [solRing] }])
     await runCatalogImport(store, deps)
     const failing = { ...deps, fetchFn: (async (url: string) => url.includes('bulk-data')
       ? new Response(JSON.stringify({ updated_at: '2026-10-09T00:00:00Z', jsonl_download_uri: 'https://data.scryfall.io/x.gz' }))
       : new Response('nope', { status: 500 })) as never }
     expect(await runCatalogImport(store, failing)).toMatchObject({ status: 'failed' })
-    expect(store.lastRun()?.status).toBe('failed')
-    expect(store.cardCount()).toBe(1)
+    expect((await store.lastRun())?.status).toBe('failed')
+    expect(await store.cardCount()).toBe(1)
   })
 
   it('applies the dated history after the first import', async () => {
     const history = parseHistory(JSON.stringify({ entries: [
       { name: 'Mana Crypt', kind: 'banned', from: '2024-09-23', source: 'https://magic.wizards.com/x' },
     ] }))
-    const { store, deps } = setup([{ updatedAt: '2026-10-01T09:00:00Z', cards: [solRing, { ...manaCrypt, legalities: { commander: 'banned' } }] }], history)
+    const { store, deps } = await setup([{ updatedAt: '2026-10-01T09:00:00Z', cards: [solRing, { ...manaCrypt, legalities: { commander: 'banned' } }] }], history)
     await runCatalogImport(store, deps)
-    expect(store.commanderAt('2025-03-01').banned.map((c) => c.name)).toEqual(['Mana Crypt'])
+    expect((await store.commanderAt('2025-03-01')).banned.map((c) => c.name)).toEqual(['Mana Crypt'])
   })
 })
 

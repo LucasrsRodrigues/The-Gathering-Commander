@@ -19,7 +19,7 @@ chaves de login configuradas.
       (`@electric-sql/pglite` 0.5.8, em memória ou no diretório `pg` dos dados);
     - `migrate` aplica `migrations/NNNN-nome.sql` em ordem, cada uma numa transação;
     - os testes rodam no PGlite e repetem a suíte num Postgres real quando há `TEST_DATABASE_URL`.
-- [ ] **T8.2 — Stores assíncronos: salas e catálogo no Postgres** _(req: 1)_ · depende de T8.1
+- [x] **T8.2 — Stores assíncronos: salas e catálogo no Postgres** _(req: 1)_ · depende de T8.1
   - Escopo:
     - `RoomStore` e `CatalogStore` assíncronos;
     - import do catálogo em lotes;
@@ -29,6 +29,18 @@ chaves de login configuradas.
     - toda a suíte atual do servidor passa no PGlite;
     - import real do bulk em menos de 1 minuto;
     - fitness "núcleo sem I/O".
+  - Feito:
+    - migração `0001-rooms-and-catalog.sql`;
+    - `DbRoomStore` e `CatalogStore` assíncronos sobre a porta `Db`, com a importação em lotes de 1000 via `unnest`
+      e nomes resolvidos numa consulta só;
+    - `CatalogCache`: uma visão síncrona do catálogo para o RoomCore, aquecida pelo servidor antes do `sit` e do
+      `configure`;
+    - fila por sala no `server.ts` (carregar, preparar, processar, gravar e só então responder);
+    - fitness: os arquivos de `room/` não importam banco, rede nem Node e não têm código assíncrono.
+  - Medido (importação real do bulk, 34.998 cartas): cerca de 8 s no PGlite.
+  - **Risco para a T8.3:** o PGlite chega a cerca de 1,5 GB de memória numa importação completa, porque a transação
+    fica inteira dentro do WebAssembly. Em produção, o caminho é Postgres (`DATABASE_URL`). Sem ele, o deploy
+    precisa avisar ou desligar a importação automática.
 - [ ] **T8.3 — Transferência dos dados antigos e deploy** _(req: 3)_ · depende de T8.2
   - Escopo:
     - copiar as salas do `rooms.db` no primeiro start;

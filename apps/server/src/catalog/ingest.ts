@@ -10,7 +10,7 @@ import { pipeline } from 'node:stream/promises'
 import { createGunzip } from 'node:zlib'
 import { diffCatalog } from './diff'
 import { CARD_FORMAT, normalizeCard, type BulkCard, type CatalogRecord } from './normalize'
-import type { HistoryEntry, ImportRun, SqliteCatalogStore } from './store'
+import type { CatalogStore, HistoryEntry, ImportRun } from './store'
 
 const BULK_INFO = 'https://api.scryfall.com/bulk-data/oracle-cards'
 const USER_AGENT = 'TheGatheringHall/0.1 (+https://github.com/LucasrsRodrigues/The-Gathering-Commander)'
@@ -44,7 +44,7 @@ function allowedDownload(url: unknown): url is string {
   }
 }
 
-export async function runCatalogImport(store: SqliteCatalogStore, deps: IngestDeps, opts: { force?: boolean } = {}): Promise<IngestResult> {
+export async function runCatalogImport(store: CatalogStore, deps: IngestDeps, opts: { force?: boolean } = {}): Promise<IngestResult> {
   const log = deps.log ?? (() => {})
   const headers = { 'User-Agent': USER_AGENT, Accept: 'application/json' }
   const infoRes = await deps.fetchFn(BULK_INFO, { headers })
@@ -53,12 +53,12 @@ export async function runCatalogImport(store: SqliteCatalogStore, deps: IngestDe
   const updatedAt = typeof info.updated_at === 'string' ? info.updated_at : ''
   if (!updatedAt || !allowedDownload(info.jsonl_download_uri)) throw new Error('resposta inesperada do bulk-data')
 
-  if (!opts.force && store.lastRun('ok')?.bulkUpdatedAt === updatedAt && store.cardFormat() === CARD_FORMAT) {
+  if (!opts.force && (await store.lastRun('ok'))?.bulkUpdatedAt === updatedAt && (await store.cardFormat()) === CARD_FORMAT) {
     log('catálogo: bulk sem novidades')
     return { status: 'skipped', cards: 0, changes: 0 }
   }
 
-  const runId = store.startRun(deps.now().toISOString())
+  const runId = await store.startRun(deps.now().toISOString())
   try {
     mkdirSync(deps.rawDir, { recursive: true })
     const stamp = updatedAt.replace(/[^0-9]/g, '').slice(0, 14)
@@ -69,19 +69,19 @@ export async function runCatalogImport(store: SqliteCatalogStore, deps: IngestDe
 
     const records = await readBulk(rawPath)
     const date = updatedAt.slice(0, 10)
-    const changes = store.apply(diffCatalog(store.currentState(), records), records, date)
+    const changes = await store.apply(diffCatalog(await store.currentState(), records), records, date)
     if (deps.history?.length) {
-      const seeded = store.seedHistory(deps.history)
+      const seeded = await store.seedHistory(deps.history)
       if (seeded.unknown.length) log(`catálogo: histórico com nomes desconhecidos: ${seeded.unknown.join(', ')}`)
     }
-    store.setCardFormat(CARD_FORMAT)
+    await store.setCardFormat(CARD_FORMAT)
     pruneRaw(deps.rawDir, deps.keepRaw ?? 7)
-    store.finishRun(runId, { finishedAt: deps.now().toISOString(), status: 'ok', bulkUpdatedAt: updatedAt, cards: records.length, changes })
+    await store.finishRun(runId, { finishedAt: deps.now().toISOString(), status: 'ok', bulkUpdatedAt: updatedAt, cards: records.length, changes })
     log(`catálogo: ${records.length} cartas, ${changes} mudança(s) em ${date}`)
     return { status: 'ok', cards: records.length, changes }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    store.finishRun(runId, { finishedAt: deps.now().toISOString(), status: 'failed', error: message.slice(0, 500) })
+    await store.finishRun(runId, { finishedAt: deps.now().toISOString(), status: 'failed', error: message.slice(0, 500) })
     log(`catálogo: importação falhou: ${message}`)
     return { status: 'failed', cards: 0, changes: 0, error: message }
   }

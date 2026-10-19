@@ -1,24 +1,22 @@
 import type { DeckInput } from '@gathering-hall/engine'
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { makeRulesFiller, oracleFactsOf } from '../src/catalog/cardRules'
 import { diffCatalog } from '../src/catalog/diff'
 import { normalizeCard } from '../src/catalog/normalize'
-import { SqliteCatalogStore } from '../src/catalog/store'
+import { CatalogCache } from '../src/catalog/lookup'
+import { CatalogStore } from '../src/catalog/store'
+import { testDb } from './db.helpers'
 import { Room } from '../src/room/room'
 import { dfc, krenko, solRing } from './catalog.fixtures'
 import { msg, testDeps } from './helpers'
 
-let store: SqliteCatalogStore | undefined
-afterEach(() => {
-  store?.close()
-  store = undefined
-})
-
-function filler() {
-  store = new SqliteCatalogStore(':memory:')
+async function filler() {
+  const store = new CatalogStore(await testDb())
   const records = [solRing, krenko, dfc].map((c) => normalizeCard(c)!)
-  store.apply(diffCatalog(store.currentState(), records), records, '2026-10-01')
-  return makeRulesFiller(store)
+  await store.apply(diffCatalog(await store.currentState(), records), records, '2026-10-01')
+  const cache = new CatalogCache(store)
+  await cache.warm(['Sol Ring', 'Krenko, Mob Boss', 'Carta Inventada'])
+  return makeRulesFiller(cache)
 }
 
 // What a modified client could try: Sol Ring "adding" ten mana.
@@ -31,8 +29,8 @@ const forged: DeckInput = {
 }
 
 describe('card rules from the server catalog', () => {
-  it('replaces whatever rules the client sent with the catalog ones', () => {
-    const deck = filler()(forged)
+  it('replaces whatever rules the client sent with the catalog ones', async () => {
+    const deck = (await filler())(forged)
     expect(deck.cards[0]!.rules?.manaAbilities).toEqual([{ produces: { kind: 'fixed', mana: { C: 2 } } }])
     expect(deck.cards[0]!.rules?.cost).toMatchObject({ generic: 1 })
     expect(deck.commanders[0]!.rules).toMatchObject({ types: ['creature'], power: 3, toughness: 3, supertypes: ['legendary'] })
@@ -44,8 +42,8 @@ describe('card rules from the server catalog', () => {
     expect(oracleFactsOf(card)).toMatchObject({ typeLine: 'Legendary Creature — Elf', oracleText: 'Partner' })
   })
 
-  it('rooms store the trusted deck, and drop client rules without a catalog', () => {
-    const withCatalog = Room.create('r', { ...testDeps(), cardRules: filler() })
+  it('rooms store the trusted deck, and drop client rules without a catalog', async () => {
+    const withCatalog = Room.create('r', { ...testDeps(), cardRules: await filler() })
     withCatalog.room.receive('a', msg({ t: 'hello', room: 'r', token: withCatalog.hostToken }))
     withCatalog.room.receive('a', msg({ t: 'sit', seat: 0, name: 'Ana', deck: forged }))
     expect(withCatalog.room.snapshot().seats[0]?.deck.cards[0]?.rules?.manaAbilities[0]?.produces).toEqual({ kind: 'fixed', mana: { C: 2 } })

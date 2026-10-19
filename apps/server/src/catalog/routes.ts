@@ -2,7 +2,7 @@
 // date format and a per-IP request window.
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { SqliteCatalogStore } from './store'
+import type { CatalogStore } from './store'
 
 const MAX_BODY = 64 * 1024
 const MAX_NAMES = 300
@@ -27,7 +27,7 @@ async function readBody(req: IncomingMessage): Promise<string | null> {
 }
 
 // Returns true when the request was a catalog route (answered or rejected).
-export async function handleCatalog(store: SqliteCatalogStore | null, req: IncomingMessage, res: ServerResponse, json: Json): Promise<boolean> {
+export async function handleCatalog(store: CatalogStore | null, req: IncomingMessage, res: ServerResponse, json: Json): Promise<boolean> {
   const url = new URL(req.url ?? '/', 'http://x')
   if (!url.pathname.startsWith('/api/catalog/')) return false
   if (!store) {
@@ -41,7 +41,7 @@ export async function handleCatalog(store: SqliteCatalogStore | null, req: Incom
   }
 
   if (req.method === 'GET' && url.pathname === '/api/catalog/status') {
-    json(res, 200, { cards: store.cardCount(), since: store.firstImportDate(), lastRun: store.lastRun() }, 'no-store')
+    json(res, 200, { cards: await store.cardCount(), since: await store.firstImportDate(), lastRun: await store.lastRun() }, 'no-store')
     return true
   }
   if (req.method === 'POST' && url.pathname === '/api/catalog/resolve') {
@@ -56,7 +56,7 @@ export async function handleCatalog(store: SqliteCatalogStore | null, req: Incom
       json(res, 400, { error: `envie { names: [...] } com até ${MAX_NAMES} nomes` })
       return true
     }
-    json(res, 200, { cards: [...store.resolveNames(names as string[]).values()] }, 'no-store')
+    json(res, 200, { cards: [...(await store.resolveNames(names as string[])).values()] }, 'no-store')
     return true
   }
   const oracle = /^\/api\/catalog\/oracle\/([^/]+)$/.exec(url.pathname)
@@ -65,12 +65,12 @@ export async function handleCatalog(store: SqliteCatalogStore | null, req: Incom
       json(res, 400, { error: 'oracle id inválido' })
       return true
     }
-    const card = store.oracleAt(oracle[1]!, at)
+    const card = await store.oracleAt(oracle[1]!, at)
     json(res, card ? 200 : 404, card ?? { error: 'sem versão nessa data' }, at < today() ? 'public, max-age=86400' : 'public, max-age=3600')
     return true
   }
   if (req.method === 'GET' && url.pathname === '/api/catalog/commander') {
-    json(res, 200, store.commanderAt(at), at < today() ? 'public, max-age=86400' : 'public, max-age=3600')
+    json(res, 200, await store.commanderAt(at), at < today() ? 'public, max-age=86400' : 'public, max-age=3600')
     return true
   }
   json(res, 404, { error: 'não encontrado' })

@@ -1,9 +1,8 @@
-// Versioned card catalog on SQLite. Intervals are [valid_from, valid_to) in ISO dates; an open interval has
-// valid_to NULL. "As of D" = valid_from <= D AND (valid_to IS NULL OR valid_to > D).
+// Versioned card catalog (épico 01) on the Db port (épico 08: Postgres, or PGlite in development). Intervals are
+// [valid_from, valid_to) in ISO dates; an open interval has valid_to NULL. "As of D" = valid_from <= D AND
+// (valid_to IS NULL OR valid_to > D). Imports write in batches with unnest(), one transaction for the whole run.
 
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
+import type { Db } from '../db'
 import type { CatalogDiff, CurrentState } from './diff'
 import { normalizeName, type CatalogRecord, type ClientCard, type Legality } from './normalize'
 
@@ -32,139 +31,135 @@ export interface CommanderSnapshot {
   gameChangers: { oracleId: string; name: string }[]
 }
 
-export class SqliteCatalogStore {
-  private readonly db: DatabaseSync
+const BATCH = 1000
 
-  constructor(path: string) {
-    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
-    this.db = new DatabaseSync(path)
-    this.db.exec(`
-      PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS card_current (
-        oracle_id TEXT PRIMARY KEY, name TEXT NOT NULL, name_norm TEXT NOT NULL, front_norm TEXT,
-        hash TEXT NOT NULL, legal TEXT NOT NULL, game_changer INTEGER NOT NULL, data TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS card_current_name ON card_current (name_norm);
-      CREATE INDEX IF NOT EXISTS card_current_front ON card_current (front_norm);
-      CREATE TABLE IF NOT EXISTS oracle_version (
-        oracle_id TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, hash TEXT NOT NULL, data TEXT NOT NULL,
-        PRIMARY KEY (oracle_id, valid_from)
-      );
-      CREATE TABLE IF NOT EXISTS legality_version (
-        oracle_id TEXT NOT NULL, status TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, source TEXT NOT NULL,
-        UNIQUE (oracle_id, valid_from, source)
-      );
-      CREATE TABLE IF NOT EXISTS game_changer_version (
-        oracle_id TEXT NOT NULL, valid_from TEXT NOT NULL, valid_to TEXT, source TEXT NOT NULL,
-        UNIQUE (oracle_id, valid_from, source)
-      );
-      CREATE TABLE IF NOT EXISTS import_run (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, started_at TEXT NOT NULL, finished_at TEXT, bulk_updated_at TEXT,
-        status TEXT NOT NULL, cards INTEGER NOT NULL DEFAULT 0, changes INTEGER NOT NULL DEFAULT 0, error TEXT
-      );
-      CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    `)
+// Splits rows into batches and calls `fn` with one array per column (for unnest).
+async function inBatches<T>(rows: T[], fn: (batch: T[]) => Promise<void>) {
+  for (let i = 0; i < rows.length; i += BATCH) await fn(rows.slice(i, i + BATCH))
+}
+
+export class CatalogStore {
+  private readonly db: Db
+  constructor(db: Db) {
+    this.db = db
   }
 
   // Version of the stored ClientCard shape (see CARD_FORMAT); 1 for catalogs imported before it existed.
-  cardFormat(): number {
-    const row = this.db.prepare("SELECT value FROM meta WHERE key = 'cardFormat'").get() as { value: string } | undefined
+  async cardFormat(): Promise<number> {
+    const [row] = await this.db.query<{ value: string }>("SELECT value FROM catalog_meta WHERE key = 'cardFormat'")
     return row ? Number(row.value) : 1
   }
 
-  setCardFormat(format: number) {
-    this.db.prepare("INSERT INTO meta (key, value) VALUES ('cardFormat', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(format))
-  }
-
-  close() {
-    this.db.close()
+  async setCardFormat(format: number) {
+    await this.db.query(
+      "INSERT INTO catalog_meta (key, value) VALUES ('cardFormat', $1) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+      [String(format)],
+    )
   }
 
   // ---- import ----
 
-  currentState(): Map<string, CurrentState> {
-    const rows = this.db.prepare('SELECT oracle_id, hash, legal, game_changer FROM card_current').all() as
-      { oracle_id: string; hash: string; legal: Legality; game_changer: number }[]
-    return new Map(rows.map((r) => [r.oracle_id, { hash: r.hash, legal: r.legal, gameChanger: r.game_changer === 1 }]))
+  async currentState(): Promise<Map<string, CurrentState>> {
+    const rows = await this.db.query<{ oracle_id: string; hash: string; legal: Legality; game_changer: boolean }>(
+      'SELECT oracle_id, hash, legal, game_changer FROM card_current',
+    )
+    return new Map(rows.map((r) => [r.oracle_id, { hash: r.hash, legal: r.legal, gameChanger: r.game_changer }]))
   }
 
   // Applies a diff and refreshes the current cards in ONE transaction: a failure leaves nothing half done.
-  apply(diff: CatalogDiff, records: CatalogRecord[], date: string): number {
-    const tx = (fn: () => void) => {
-      this.db.exec('BEGIN')
-      try {
-        fn()
-        this.db.exec('COMMIT')
-      } catch (err) {
-        this.db.exec('ROLLBACK')
-        throw err
-      }
-    }
-    tx(() => {
-      const close = this.db.prepare('UPDATE oracle_version SET valid_to = ? WHERE oracle_id = ? AND valid_to IS NULL')
-      for (const id of diff.closedVersions) close.run(date, id)
-      const open = this.db.prepare('INSERT OR REPLACE INTO oracle_version (oracle_id, valid_from, valid_to, hash, data) VALUES (?, ?, NULL, ?, ?)')
-      for (const r of diff.newVersions) open.run(r.oracleId, date, r.hash, JSON.stringify(r.card))
+  async apply(diff: CatalogDiff, records: CatalogRecord[], date: string): Promise<number> {
+    await this.db.transaction(async (tx) => {
+      await inBatches(diff.closedVersions, (ids) =>
+        tx.query('UPDATE oracle_version SET valid_to = $1 WHERE oracle_id = ANY($2::text[]) AND valid_to IS NULL', [date, ids]).then(() => {}))
+      await inBatches(diff.newVersions, async (rs) => {
+        await tx.query(
+          `INSERT INTO oracle_version (oracle_id, valid_from, valid_to, hash, data)
+           SELECT id, $1, NULL, hash, data::jsonb FROM unnest($2::text[], $3::text[], $4::text[]) AS t(id, hash, data)
+           ON CONFLICT (oracle_id, valid_from) DO UPDATE SET valid_to = NULL, hash = excluded.hash, data = excluded.data`,
+          [date, rs.map((r) => r.oracleId), rs.map((r) => r.hash), rs.map((r) => JSON.stringify(r.card))],
+        )
+      })
 
-      const closeLegal = this.db.prepare("UPDATE legality_version SET valid_to = ? WHERE oracle_id = ? AND valid_to IS NULL AND source = 'scryfall'")
-      const openLegal = this.db.prepare("INSERT OR IGNORE INTO legality_version (oracle_id, status, valid_from, valid_to, source) VALUES (?, ?, ?, NULL, 'scryfall')")
-      for (const c of diff.legalityChanges) {
-        closeLegal.run(date, c.oracleId)
-        openLegal.run(c.oracleId, c.to, date)
-      }
-      const closeGc = this.db.prepare("UPDATE game_changer_version SET valid_to = ? WHERE oracle_id = ? AND valid_to IS NULL AND source = 'scryfall'")
-      const openGc = this.db.prepare("INSERT OR IGNORE INTO game_changer_version (oracle_id, valid_from, valid_to, source) VALUES (?, ?, NULL, 'scryfall')")
-      for (const c of diff.gameChangerChanges) {
-        closeGc.run(date, c.oracleId)
-        if (c.to) openGc.run(c.oracleId, date)
-      }
+      await inBatches(diff.legalityChanges, async (cs) => {
+        const ids = cs.map((c) => c.oracleId)
+        await tx.query("UPDATE legality_version SET valid_to = $1 WHERE oracle_id = ANY($2::text[]) AND valid_to IS NULL AND source = 'scryfall'", [date, ids])
+        await tx.query(
+          `INSERT INTO legality_version (oracle_id, status, valid_from, valid_to, source)
+           SELECT id, status, $1, NULL, 'scryfall' FROM unnest($2::text[], $3::text[]) AS t(id, status)
+           ON CONFLICT DO NOTHING`,
+          [date, ids, cs.map((c) => c.to)],
+        )
+      })
+      await inBatches(diff.gameChangerChanges, async (cs) => {
+        await tx.query("UPDATE game_changer_version SET valid_to = $1 WHERE oracle_id = ANY($2::text[]) AND valid_to IS NULL AND source = 'scryfall'", [date, cs.map((c) => c.oracleId)])
+        const opened = cs.filter((c) => c.to).map((c) => c.oracleId)
+        if (opened.length) {
+          await tx.query(
+            `INSERT INTO game_changer_version (oracle_id, valid_from, valid_to, source)
+             SELECT id, $1, NULL, 'scryfall' FROM unnest($2::text[]) AS t(id) ON CONFLICT DO NOTHING`,
+            [date, opened],
+          )
+        }
+      })
 
-      const upsert = this.db.prepare(`INSERT INTO card_current (oracle_id, name, name_norm, front_norm, hash, legal, game_changer, data)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(oracle_id) DO UPDATE SET name = excluded.name, name_norm = excluded.name_norm,
-        front_norm = excluded.front_norm, hash = excluded.hash, legal = excluded.legal, game_changer = excluded.game_changer, data = excluded.data`)
-      for (const r of records) {
-        upsert.run(r.oracleId, r.name, normalizeName(r.name), r.frontName ? normalizeName(r.frontName) : null, r.hash, r.legal, r.gameChanger ? 1 : 0, JSON.stringify(r.card))
-      }
+      await inBatches(records, async (rs) => {
+        await tx.query(
+          `INSERT INTO card_current (oracle_id, name, name_norm, front_norm, hash, legal, game_changer, data)
+           SELECT id, name, name_norm, front_norm, hash, legal, gc, data::jsonb
+           FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::boolean[], $8::text[])
+             AS t(id, name, name_norm, front_norm, hash, legal, gc, data)
+           ON CONFLICT (oracle_id) DO UPDATE SET name = excluded.name, name_norm = excluded.name_norm, front_norm = excluded.front_norm,
+             hash = excluded.hash, legal = excluded.legal, game_changer = excluded.game_changer, data = excluded.data`,
+          [
+            rs.map((r) => r.oracleId), rs.map((r) => r.name), rs.map((r) => normalizeName(r.name)),
+            rs.map((r) => (r.frontName ? normalizeName(r.frontName) : null)), rs.map((r) => r.hash), rs.map((r) => r.legal),
+            rs.map((r) => r.gameChanger), rs.map((r) => JSON.stringify(r.card)),
+          ],
+        )
+      })
     })
     return diff.newVersions.length + diff.closedVersions.length + diff.legalityChanges.length + diff.gameChangerChanges.length
   }
 
   // Dated entries from before the first import (announcements); intervals are clipped to that date so
   // they never overlap what Scryfall data says afterwards. Idempotent.
-  seedHistory(entries: HistoryEntry[]): { applied: number; unknown: string[] } {
-    const first = this.firstImportDate()
+  async seedHistory(entries: HistoryEntry[]): Promise<{ applied: number; unknown: string[] }> {
+    const first = await this.firstImportDate()
     if (!first) return { applied: 0, unknown: [] }
     const unknown: string[] = []
     let applied = 0
-    const legal = this.db.prepare('INSERT OR IGNORE INTO legality_version (oracle_id, status, valid_from, valid_to, source) VALUES (?, ?, ?, ?, ?)')
-    const gc = this.db.prepare('INSERT OR IGNORE INTO game_changer_version (oracle_id, valid_from, valid_to, source) VALUES (?, ?, ?, ?)')
     for (const e of entries) {
       if (e.from >= first) continue
-      const id = this.idByName(e.name)
+      const id = await this.idByName(e.name)
       if (!id) {
         unknown.push(e.name)
         continue
       }
       const to = !e.to || e.to > first ? first : e.to
-      const res = e.kind === 'banned' ? legal.run(id, 'banned', e.from, to, e.source) : gc.run(id, e.from, to, e.source)
-      applied += Number(res.changes)
+      const rows = e.kind === 'banned'
+        ? await this.db.query("INSERT INTO legality_version (oracle_id, status, valid_from, valid_to, source) VALUES ($1, 'banned', $2, $3, $4) ON CONFLICT DO NOTHING RETURNING 1", [id, e.from, to, e.source])
+        : await this.db.query('INSERT INTO game_changer_version (oracle_id, valid_from, valid_to, source) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING 1', [id, e.from, to, e.source])
+      applied += rows.length
     }
     return { applied, unknown }
   }
 
-  startRun(startedAt: string): number {
-    return Number(this.db.prepare("INSERT INTO import_run (started_at, status) VALUES (?, 'running')").run(startedAt).lastInsertRowid)
+  async startRun(startedAt: string): Promise<number> {
+    const [row] = await this.db.query<{ id: string | number }>("INSERT INTO import_run (started_at, status) VALUES ($1, 'running') RETURNING id", [startedAt])
+    return Number(row!.id)
   }
 
-  finishRun(id: number, patch: { finishedAt: string; status: ImportRun['status']; bulkUpdatedAt?: string | null; cards?: number; changes?: number; error?: string | null }) {
-    this.db.prepare('UPDATE import_run SET finished_at = ?, status = ?, bulk_updated_at = ?, cards = ?, changes = ?, error = ? WHERE id = ?')
-      .run(patch.finishedAt, patch.status, patch.bulkUpdatedAt ?? null, patch.cards ?? 0, patch.changes ?? 0, patch.error ?? null, id)
+  async finishRun(id: number, patch: { finishedAt: string; status: ImportRun['status']; bulkUpdatedAt?: string | null; cards?: number; changes?: number; error?: string | null }) {
+    await this.db.query(
+      'UPDATE import_run SET finished_at = $1, status = $2, bulk_updated_at = $3, cards = $4, changes = $5, error = $6 WHERE id = $7',
+      [patch.finishedAt, patch.status, patch.bulkUpdatedAt ?? null, patch.cards ?? 0, patch.changes ?? 0, patch.error ?? null, id],
+    )
   }
 
-  lastRun(status?: ImportRun['status']): ImportRun | null {
-    const row = (status
-      ? this.db.prepare('SELECT * FROM import_run WHERE status = ? ORDER BY id DESC LIMIT 1').get(status)
-      : this.db.prepare('SELECT * FROM import_run ORDER BY id DESC LIMIT 1').get()) as Record<string, unknown> | undefined
+  async lastRun(status?: ImportRun['status']): Promise<ImportRun | null> {
+    const [row] = status
+      ? await this.db.query('SELECT * FROM import_run WHERE status = $1 ORDER BY id DESC LIMIT 1', [status])
+      : await this.db.query('SELECT * FROM import_run ORDER BY id DESC LIMIT 1')
     if (!row) return null
     return {
       id: Number(row.id), startedAt: String(row.started_at), finishedAt: (row.finished_at as string) ?? null,
@@ -173,49 +168,53 @@ export class SqliteCatalogStore {
     }
   }
 
-  firstImportDate(): string | null {
-    const row = this.db.prepare("SELECT MIN(valid_from) AS d FROM legality_version WHERE source = 'scryfall'").get() as { d: string | null }
-    return row.d
+  async firstImportDate(): Promise<string | null> {
+    const [row] = await this.db.query<{ d: string | null }>("SELECT min(valid_from) AS d FROM legality_version WHERE source = 'scryfall'")
+    return row?.d ?? null
   }
 
-  cardCount(): number {
-    return Number((this.db.prepare('SELECT COUNT(*) AS n FROM card_current').get() as { n: number }).n)
+  async cardCount(): Promise<number> {
+    const [row] = await this.db.query<{ n: string | number }>('SELECT count(*) AS n FROM card_current')
+    return Number(row?.n ?? 0)
   }
 
   // ---- queries ----
 
-  private idByName(name: string): string | undefined {
+  private async idByName(name: string): Promise<string | undefined> {
     const key = normalizeName(name)
-    const row = this.db.prepare(`SELECT oracle_id FROM card_current WHERE name_norm = ? OR front_norm = ?
-      ORDER BY CASE legal WHEN 'not_legal' THEN 1 ELSE 0 END LIMIT 1`).get(key, key) as { oracle_id: string } | undefined
+    const [row] = await this.db.query<{ oracle_id: string }>(
+      `SELECT oracle_id FROM card_current WHERE name_norm = $1 OR front_norm = $1
+       ORDER BY (legal = 'not_legal') LIMIT 1`, [key])
     return row?.oracle_id
   }
 
   // Current cards by name (full name or front face), preferring Commander-relevant cards on name clashes.
-  resolveNames(names: string[]): Map<string, ClientCard> {
-    const found = new Map<string, ClientCard>()
-    const stmt = this.db.prepare(`SELECT data FROM card_current WHERE name_norm = ? OR front_norm = ?
-      ORDER BY CASE legal WHEN 'not_legal' THEN 1 ELSE 0 END LIMIT 1`)
-    for (const name of names) {
-      const key = normalizeName(name)
-      if (found.has(key)) continue
-      const row = stmt.get(key, key) as { data: string } | undefined
-      if (row) found.set(key, JSON.parse(row.data) as ClientCard)
-    }
-    return found
+  async resolveNames(names: string[]): Promise<Map<string, ClientCard>> {
+    const keys = [...new Set(names.map(normalizeName))]
+    if (!keys.length) return new Map()
+    const rows = await this.db.query<{ key: string; data: ClientCard }>(
+      `SELECT DISTINCT ON (k.key) k.key, c.data FROM unnest($1::text[]) AS k(key)
+       JOIN card_current c ON c.name_norm = k.key OR c.front_norm = k.key
+       ORDER BY k.key, (c.legal = 'not_legal')`, [keys])
+    const byKey = new Map(rows.map((r) => [r.key, r.data]))
+    // Keep the caller's order (the first spelling of each name wins), like the lookup it replaces.
+    return new Map(keys.flatMap((k) => (byKey.has(k) ? [[k, byKey.get(k)!] as const] : [])))
   }
 
-  oracleAt(oracleId: string, date: string): ClientCard | null {
-    const row = this.db.prepare('SELECT data FROM oracle_version WHERE oracle_id = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) ORDER BY valid_from DESC LIMIT 1')
-      .get(oracleId, date, date) as { data: string } | undefined
-    return row ? (JSON.parse(row.data) as ClientCard) : null
+  async oracleAt(oracleId: string, date: string): Promise<ClientCard | null> {
+    const [row] = await this.db.query<{ data: ClientCard }>(
+      `SELECT data FROM oracle_version WHERE oracle_id = $1 AND valid_from <= $2 AND (valid_to IS NULL OR valid_to > $2)
+       ORDER BY valid_from DESC LIMIT 1`, [oracleId, date])
+    return row?.data ?? null
   }
 
-  commanderAt(date: string): CommanderSnapshot {
-    const banned = this.db.prepare(`SELECT DISTINCT l.oracle_id AS id, c.name FROM legality_version l JOIN card_current c ON c.oracle_id = l.oracle_id
-      WHERE l.status = 'banned' AND l.valid_from <= ? AND (l.valid_to IS NULL OR l.valid_to > ?) ORDER BY c.name`).all(date, date) as { id: string; name: string }[]
-    const gcs = this.db.prepare(`SELECT DISTINCT g.oracle_id AS id, c.name FROM game_changer_version g JOIN card_current c ON c.oracle_id = g.oracle_id
-      WHERE g.valid_from <= ? AND (g.valid_to IS NULL OR g.valid_to > ?) ORDER BY c.name`).all(date, date) as { id: string; name: string }[]
+  async commanderAt(date: string): Promise<CommanderSnapshot> {
+    const banned = await this.db.query<{ id: string; name: string }>(
+      `SELECT DISTINCT l.oracle_id AS id, c.name FROM legality_version l JOIN card_current c ON c.oracle_id = l.oracle_id
+       WHERE l.status = 'banned' AND l.valid_from <= $1 AND (l.valid_to IS NULL OR l.valid_to > $1) ORDER BY c.name`, [date])
+    const gcs = await this.db.query<{ id: string; name: string }>(
+      `SELECT DISTINCT g.oracle_id AS id, c.name FROM game_changer_version g JOIN card_current c ON c.oracle_id = g.oracle_id
+       WHERE g.valid_from <= $1 AND (g.valid_to IS NULL OR g.valid_to > $1) ORDER BY c.name`, [date])
     return {
       date,
       banned: banned.map((r) => ({ oracleId: r.id, name: r.name })),

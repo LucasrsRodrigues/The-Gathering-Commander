@@ -6,7 +6,7 @@ import {
   factsAsOf, resolvePreset, validateDeck, type CardFacts, type Color, type DeckForValidation, type Preset, type Violation,
 } from '@gathering-hall/formats'
 import { normalizeName, type ClientCard } from './normalize'
-import type { SqliteCatalogStore } from './store'
+import type { CatalogLookup } from './lookup'
 
 const COLORS: Color[] = ['W', 'U', 'B', 'R', 'G']
 
@@ -22,7 +22,7 @@ export function factsFromCard(card: ClientCard): CardFacts {
 
 export type DeckChecker = (deck: DeckInput, preset: Preset) => Violation[] | null
 
-export function makeDeckChecker(catalog: SqliteCatalogStore): DeckChecker {
+export function makeDeckChecker(catalog: CatalogLookup): DeckChecker {
   return (deck, preset) => {
     if (catalog.cardCount() === 0) return null
     const { deckRules } = resolvePreset(preset)
