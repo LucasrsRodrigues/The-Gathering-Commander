@@ -47,7 +47,10 @@ mana" e "Combate" têm três níveis: bloqueia, só avisa ou desligada. Desligad
 ## Online
 Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do
 próprio dispositivo, sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
-ver. Tudo sobe num único container (há um `Dockerfile` na raiz); o passo a passo para o EasyPanel está no
+ver. Se a partida esperar a decisão de alguém que saiu da sala há mais de 30 segundos, quem criou a sala pode
+pular essa pessoa: o servidor responde com o padrão (manter a mão, não atacar nem bloquear, confirmar o dano
+proposto, descartar as últimas cartas da mão, recusar a exceção ou passar a prioridade), e o registro mostra isso.
+Tudo sobe num único container (há um `Dockerfile` na raiz); o passo a passo para o EasyPanel está no
 [DEPLOY.md](DEPLOY.md).
 
 ## Rodar

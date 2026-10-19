@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { CombatPanel } from '../hud/Combat'
+import { AwayNotice, type AwayControls } from '../hud/AwayNotice'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
 import { isInteractiveTarget } from '../hud/a11y'
@@ -16,10 +17,11 @@ import { manaItems, paymentFor, type PendingPayment } from '../hud/mana'
 
 const CONNECTION_LABELS = { connecting: 'Conectando…', online: 'Online', offline: 'Sem conexão: reconectando…' } as const
 
-export function GameScreen({ session, onExit, onRematch }: {
+export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
   session: GameSessionPort
   onExit: () => void
   onRematch?: () => void // online host: back to the room lobby with the same seats
+  away?: AwayControls // online: who left and, for the host, skipping them
 }) {
   useSessionVersion(session)
   const view = session.view()
@@ -88,6 +90,7 @@ export function GameScreen({ session, onExit, onRematch }: {
               {away.length > 0 && ` · fora: ${away.map((id) => view.players[id]?.name).join(', ')}`}
             </span>
           )}
+          {awayControls && view.status !== 'ended' && <AwayNotice view={view} away={awayControls} />}
           {connection === 'local' && (
             <button className="btn ghost" disabled={!session.canUndo()} onClick={() => session.undo()} title="Ctrl/Cmd + Z">Desfazer</button>
           )}

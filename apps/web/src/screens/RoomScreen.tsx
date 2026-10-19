@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState, useSyncExternalStore } from 'react'
+import type { PlayerId } from '@gathering-hall/engine'
 import { blocks, type Violation } from '@gathering-hall/formats'
 import type { LobbySeat } from '@gathering-hall/protocol'
 import type { Services } from '../app/services'
@@ -65,7 +66,8 @@ function RoomView({ room, services, roomId, onLeave }: { room: OnlineRoom; servi
   if (snap.view) {
     return (
       <Suspense fallback={<div className="loading">Montando a mesa…</div>}>
-        <GameScreen session={room} onExit={onLeave} onRematch={me?.host ? () => room.rematch() : undefined} />
+        <GameScreen session={room} onExit={onLeave} onRematch={me?.host ? () => room.rematch() : undefined}
+          away={{ ms: (id) => room.awayMs(id), ...(me?.host ? { skip: (id: PlayerId) => room.skip(id) } : {}) }} />
       </Suspense>
     )
   }

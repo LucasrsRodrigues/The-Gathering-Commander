@@ -4,7 +4,7 @@
 
 import type { ActionIntent, DeckInput, PlayerId, PlayerView } from '@gathering-hall/engine'
 import type { Preset } from '@gathering-hall/formats'
-import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage } from '@gathering-hall/protocol'
+import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage, type SkipDecision } from '@gathering-hall/protocol'
 import { describeEvents } from '../session/describe'
 import type { BlockedAction, ConnectionStatus, GameSessionPort, LogEntry } from '../session/port'
 
@@ -53,6 +53,18 @@ const MAX_BACKOFF_MS = 10_000
 const PING_MS = 20_000
 const MAX_LOG = 300
 
+// What the host answered for a player who left (log line).
+const SKIPPED: Record<SkipDecision, string> = {
+  mulligan: 'manteve a mão',
+  bottomCards: 'pôs as últimas cartas da mão no fundo',
+  declareAttackers: 'não atacou',
+  declareBlockers: 'não bloqueou',
+  confirmDamage: 'confirmou o dano proposto',
+  discard: 'descartou as últimas cartas da mão',
+  exception: 'recusou o pedido de exceção',
+  priority: 'passou a prioridade',
+}
+
 export class OnlineRoom implements GameSessionPort {
   readonly roomId: string
   private readonly connect: (url: string) => SocketLike
@@ -61,6 +73,7 @@ export class OnlineRoom implements GameSessionPort {
   private socket: SocketLike | null = null
   private snap: RoomSnapshot = { connection: 'connecting', welcome: null, lobby: null, view: null, error: null }
   private connected: PlayerId[] = []
+  private awaySince = new Map<PlayerId, number>() // seated players who left, by when (this browser's clock)
   private log: LogEntry[] = []
   private logId = 0
   private seq = 0
@@ -89,6 +102,11 @@ export class OnlineRoom implements GameSessionPort {
   configure(preset: Preset) { this.send({ v: 1, t: 'configure', preset }) }
   start() { this.send({ v: 1, t: 'start' }) }
   rematch() { this.send({ v: 1, t: 'rematch' }) }
+  skip(player: PlayerId) { this.send({ v: 1, t: 'skip', player }) }
+  awayMs(player: PlayerId): number | null {
+    const since = this.awaySince.get(player)
+    return since === undefined ? null : Date.now() - since
+  }
 
   close() {
     this.closed = true
@@ -211,8 +229,15 @@ export class OnlineRoom implements GameSessionPort {
       }
       case 'presence':
         this.connected = msg.connected
+        this.awaySince = new Map(msg.away.map((a) => [a.player, Date.now() - a.ms]))
         this.update({})
         return
+      case 'skipped': {
+        const name = this.snap.view?.players[msg.player]?.name ?? msg.player
+        this.appendLog([`Quem criou a sala respondeu por ${name}, que está fora: ${SKIPPED[msg.decision]}.`])
+        this.update({})
+        return
+      }
       case 'error':
         if (msg.code === 'noRoom') this.update({ error: msg.message })
         else this.onError(msg.message)

@@ -64,6 +64,23 @@ describe('OnlineRoom', () => {
     room.close()
   })
 
+  it('tracks who left, sends skip and logs what the host answered', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(100_000)
+    const { room, sockets } = setup()
+    sockets[0]!.onopen!()
+    sockets[0]!.serverSends({ v: 1, t: 'state', version: 1, view: viewFor(game, 'p1'), events: [] })
+    sockets[0]!.serverSends({ v: 1, t: 'presence', connected: ['p1'], away: [{ player: 'p2', ms: 5_000 }] })
+    vi.setSystemTime(110_000)
+    expect(room.awayMs('p2')).toBe(15_000)
+    expect(room.awayMs('p1')).toBeNull()
+    room.skip('p2')
+    expect(sockets[0]!.sent.at(-1)).toEqual({ v: 1, t: 'skip', player: 'p2' })
+    sockets[0]!.serverSends({ v: 1, t: 'skipped', player: 'p2', decision: 'declareBlockers' })
+    expect(room.getLog().map((l) => l.text)).toEqual(['Quem criou a sala respondeu por P2, que está fora: não bloqueou.'])
+    room.close()
+  })
+
   it('sends intents with increasing seq and surfaces refusals', () => {
     const { room, sockets } = setup()
     const errors: string[] = []

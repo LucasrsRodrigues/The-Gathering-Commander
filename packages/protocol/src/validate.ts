@@ -17,6 +17,7 @@ const MAX_COMMANDERS = 2
 // Control characters and bidi overrides are never accepted in names or free text.
 // oxlint-disable-next-line no-control-regex -- detecting control characters is the point
 const UNSAFE = /[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/
+const PLAYERS = Array.from({ length: MAX_SEATS }, (_, i) => `p${i + 1}`)
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 
 export type DecodeResult = { ok: true; msg: ClientMessage } | { ok: false; error: string }
@@ -248,6 +249,8 @@ export function decodeClientMessage(raw: string): DecodeResult {
       }
       case 'act':
         return { ok: true, msg: { v: 1, t: 'act', seq: int(m.seq, 'seq', 0, Number.MAX_SAFE_INTEGER), action: actionIntent(m.action) } }
+      case 'skip':
+        return { ok: true, msg: { v: 1, t: 'skip', player: oneOf(m.player, 'jogador', PLAYERS) } }
       case 'stand': case 'start': case 'rematch': case 'ping':
         return { ok: true, msg: { v: 1, t: m.t } }
       default:

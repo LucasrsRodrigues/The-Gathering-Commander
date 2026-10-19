@@ -396,3 +396,4 @@ button.deck-open:hover { background: var(--surface-hi); }
 .net-status { align-self: center; padding: 4px 10px; border-radius: 99px; font-size: 13px; background: var(--surface-hi); }
 .net-status.online { color: var(--ok); }
 .net-status.offline, .net-status.connecting { color: var(--danger); }
+.away-notice { color: var(--text); display: inline-flex; align-items: center; gap: 6px; }

@@ -7,8 +7,9 @@ import {
 } from '@gathering-hall/engine'
 import { blocks, officialPreset, resolvePreset, type Preset, type Violation } from '@gathering-hall/formats'
 import {
-  MAX_SEATS, serverError, type ClientMessage, type LobbySeat, type RoomStatus, type ServerMessage,
+  MAX_SEATS, serverError, SKIP_AFTER_MS, waitingOn, type ClientMessage, type LobbySeat, type RoomStatus, type ServerMessage,
 } from '@gathering-hall/protocol'
+import { defaultAnswer } from './skip'
 
 // Card rules never come from the client: protocol validation already drops them; this keeps the room safe
 // on its own when no catalog fills them.
@@ -73,10 +74,14 @@ export class Room {
   private s: RoomSnapshot
   private readonly deps: RoomDeps
   private readonly conns = new Map<string, Conn>()
+  // When each member's last connection closed. Members never seen since the room was loaded count from then.
+  private readonly awaySince = new Map<string, number>()
+  private readonly loadedAt: number
 
   constructor(snapshot: RoomSnapshot, deps: RoomDeps) {
     this.s = snapshot
     this.deps = deps
+    this.loadedAt = deps.now()
   }
 
   static create(id: string, deps: RoomDeps): { room: Room; hostToken: string } {
@@ -99,7 +104,9 @@ export class Room {
   }
 
   disconnect(connId: string): Outgoing[] {
-    if (!this.conns.delete(connId)) return []
+    const conn = this.conns.get(connId)
+    if (!conn || !this.conns.delete(connId)) return []
+    if (conn.member && !this.connectedMembers().has(conn.member)) this.awaySince.set(conn.member, this.deps.now())
     return this.broadcast(() => this.presence())
   }
 
@@ -125,6 +132,7 @@ export class Room {
         return this.broadcast(() => this.lobby())
       case 'start': return this.start(connId, member)
       case 'act': return this.act(connId, member, msg.seq, msg.action)
+      case 'skip': return this.skip(connId, member, msg.player)
       case 'rematch':
         if (!member.host) return [this.err(connId, 'notHost', 'Só quem criou a sala pode recomeçar.')]
         if (this.s.status !== 'ended') return [this.err(connId, 'wrongPhase', 'A partida ainda não acabou.')]
@@ -149,6 +157,7 @@ export class Room {
       this.s = { ...this.s, members: [...this.s.members, member] }
     }
     this.conns.set(connId, { member: member?.tokenHash ?? null })
+    if (member) this.awaySince.delete(member.tokenHash)
     const out: Outgoing[] = [{
       to: connId,
       msg: {
@@ -214,6 +223,33 @@ export class Room {
     const action = { ...intent, player } as Action
     const result = reduce(game, action)
     if (!result.ok) return [{ to: connId, msg: { v: 1, t: 'rejected', seq, error: result.error } }]
+    return this.commit(action, result)
+  }
+
+  // The host answers for a seated player who left, with the default answer (skip.ts). Only for a player the game
+  // is waiting on, who is disconnected and has been away for SKIP_AFTER_MS.
+  private skip(connId: string, member: Member, player: PlayerId): Outgoing[] {
+    if (!member.host) return [this.err(connId, 'notHost', 'Só quem criou a sala pode pular um jogador.')]
+    const game = this.s.game
+    if (this.s.status !== 'playing' || !game) return [this.err(connId, 'wrongPhase', 'Não há partida em andamento.')]
+    const waiting = waitingOn(game).find((w) => w.player === player)
+    if (!waiting) return [this.err(connId, 'cannotSkip', 'A partida não está esperando esse jogador.')]
+    const seat = this.s.seats.findIndex((_, i) => playerOf(i) === player)
+    const hash = this.s.seats[seat]?.member
+    if (!hash || this.connectedMembers().has(hash)) return [this.err(connId, 'cannotSkip', 'Esse jogador está conectado.')]
+    const away = this.deps.now() - (this.awaySince.get(hash) ?? this.loadedAt)
+    if (away < SKIP_AFTER_MS) {
+      const seconds = Math.ceil((SKIP_AFTER_MS - away) / 1000)
+      return [this.err(connId, 'cannotSkip', `Espere mais ${seconds} s: o jogador pode estar voltando.`)]
+    }
+    const action = defaultAnswer(game, player, waiting.decision)
+    const result = action ? reduce(game, action) : null
+    if (!action || !result?.ok) return [this.err(connId, 'cannotSkip', 'Não foi possível responder por esse jogador.')]
+    const notice: ServerMessage = { v: 1, t: 'skipped', player, decision: waiting.decision }
+    return [...this.broadcast(() => notice), ...this.commit(action, result)]
+  }
+
+  private commit(action: Action, result: { state: GameState; events: GameEvent[] }): Outgoing[] {
     // Replays record up to LIMITS.loggedActions actions; past that the game goes on without a full log.
     const actions = this.s.actions.length < LIMITS.loggedActions ? [...this.s.actions, action] : this.s.actions
     this.s = {
@@ -236,7 +272,7 @@ export class Room {
 
   // Frees room for newcomers: forget members who are not seated, not the host and not connected.
   private pruneMembers() {
-    const connected = new Set([...this.conns.values()].map((c) => c.member))
+    const connected = this.connectedMembers()
     this.s = { ...this.s, members: this.s.members.filter((m) => m.host || m.seat !== null || connected.has(m.tokenHash)) }
   }
 
@@ -256,7 +292,7 @@ export class Room {
   }
 
   private lobby(): ServerMessage {
-    const connected = new Set([...this.conns.values()].map((c) => c.member))
+    const connected = this.connectedMembers()
     const seats: LobbySeat[] = this.s.seats.map((s, index) => ({
       index, player: playerOf(index), name: s?.name ?? null, taken: !!s, connected: !!s && connected.has(s.member),
       deckSize: s ? s.deck.commanders.length + s.deck.cards.length : 0,
@@ -266,9 +302,17 @@ export class Room {
   }
 
   private presence(): ServerMessage {
-    const connected = new Set([...this.conns.values()].map((c) => c.member))
+    const connected = this.connectedMembers()
+    const now = this.deps.now()
     const players = this.s.seats.flatMap((s, i) => (s && connected.has(s.member) ? [playerOf(i)] : []))
-    return { v: 1, t: 'presence', connected: players }
+    const away = this.s.seats.flatMap((s, i) => (
+      s && !connected.has(s.member) ? [{ player: playerOf(i), ms: now - (this.awaySince.get(s.member) ?? this.loadedAt) }] : []
+    ))
+    return { v: 1, t: 'presence', connected: players, away }
+  }
+
+  private connectedMembers(): Set<string | null> {
+    return new Set([...this.conns.values()].map((c) => c.member))
   }
 
   private welcomeAgain(connId: string, hash: string): Outgoing {

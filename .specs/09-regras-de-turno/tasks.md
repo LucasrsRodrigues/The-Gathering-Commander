@@ -249,10 +249,24 @@ depois paradas.
     - pedido de exceção não trava a sala: qualquer outro jogador recusa, e quem pediu desiste;
     - **risco conhecido:** uma declaração (bloqueio, dano, descarte) espera o jogador que precisa decidir; se ele
       cair e não voltar, a sala espera até ele voltar ou conceder (como já acontecia com a prioridade no modo
-      estrito). Fica para uma próxima onda: tempo limite ou o host poder pular quem saiu.
+      estrito). Fica para uma próxima onda: tempo limite ou o host poder pular quem saiu. Resolvido na T9.21.
 - [x] **T9.20 — Atualizar o roadmap e o README** (o que o jogo automatiza e o que ainda é manual)
   - Feito: o README lista o que o jogo faz sozinho, o que ainda é manual e as regras da casa; no roadmap, a fase 3a
     está marcada como feita.
+- [x] **T9.21 — O host pula quem saiu e está travando a partida**
+  - Decisão: o host pula, sem tempo limite automático. Só vale para um jogador sentado que a partida espera, que
+    está desconectado há pelo menos 30 s (`SKIP_AFTER_MS`). Vale para todas as decisões com resposta padrão.
+  - Feito:
+    - protocolo: mensagem `skip` (host → servidor), aviso `skipped` para todos e `presence` com `away` (há quanto
+      tempo cada um saiu); `waitingOn` diz quem a partida espera e é usado pelo servidor e pela web;
+    - servidor: a resposta padrão é uma ação normal do motor em nome do ausente (`keepHand`, últimas cartas para o
+      fundo, `declareAttackers []`, `declareBlockers []`, `assignDamage` com a proposta, descarte das últimas
+      cartas da mão, `answerException` recusando, `passPriority`). O replay não muda. O tempo fora conta desde a
+      queda ou, depois de recarregar a sala, desde a recarga;
+    - web: na barra de cima, "Esperando X, que está fora." Para o host aparece "Pular em N s" e, depois, "Pular X".
+      O registro mostra "Quem criou a sala respondeu por X, que está fora: …";
+    - testes em `apps/server/test/skip.test.ts`. Verificado no navegador: o host pulou o mulligan de quem saiu.
+  - Limite: se quem caiu for o próprio host, ninguém pula. A sala espera a volta do host ou expira pelo TTL.
 
 ## Estratégia de testes
 - O motor é testado com unidades por política e por etapa. Há property-based para conservação de mana, legalidade

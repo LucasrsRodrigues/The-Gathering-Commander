@@ -13,7 +13,7 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'hello', room: ROOM },
       { v: 1, t: 'hello', room: ROOM, token: 'ABCDEFGHIJKLMNOPQRSTUV', spectator: true },
       { v: 1, t: 'sit', seat: 3, name: 'Ana', deck },
-      { v: 1, t: 'stand' }, { v: 1, t: 'start' }, { v: 1, t: 'rematch' }, { v: 1, t: 'ping' },
+      { v: 1, t: 'stand' }, { v: 1, t: 'start' }, { v: 1, t: 'rematch' }, { v: 1, t: 'ping' }, { v: 1, t: 'skip', player: 'p4' },
       { v: 1, t: 'configure', preset: { ...officialPreset(), id: 'g', name: 'Grupo', ruleset: { startingLife: 30 } } },
       { v: 1, t: 'act', seq: 7, action: { type: 'moveObject', objectId: 'o12', to: 'battlefield', faceDown: false } },
       { v: 1, t: 'act', seq: 8, action: { type: 'playLand', objectId: 'o3' } },
@@ -36,6 +36,10 @@ describe('decodeClientMessage', () => {
     ]) {
       expect(decode(m), JSON.stringify(m)).toEqual({ ok: true, msg: m })
     }
+  })
+
+  it('skips only a seat that can exist', () => {
+    for (const player of ['p0', 'p5', 'P1', 1, undefined]) expect(decode({ v: 1, t: 'skip', player }).ok).toBe(false)
   })
 
   it('drops unknown keys everywhere, including inside actions and cards', () => {
