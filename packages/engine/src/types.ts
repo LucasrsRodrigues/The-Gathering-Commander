@@ -157,6 +157,7 @@ export type PendingDecision =
   | { kind: 'bottomCards'; player: PlayerId; count: number }
   | { kind: 'declareAttackers'; player: PlayerId } // CR 508.1: the active player declares (an empty list is fine)
   | { kind: 'declareBlockers'; player: PlayerId; players: PlayerId[] } // CR 509.1: each attacked player; `player` = next
+  | { kind: 'confirmDamage'; player: PlayerId; proposal: DamageProposal } // CR 510.1: the active player confirms or adjusts
   | ExceptionRequest
 
 // "Fazer mesmo assim" (épico 09): an action a 'block' policy rejected, waiting for the other players' approval.
@@ -173,6 +174,17 @@ export interface ExceptionRequest {
 }
 
 export type Attack = { attacker: ObjectId; target: PlayerId | ObjectId } // a player or a planeswalker
+
+// Combat damage the engine proposes for one damage step (first strike or regular).
+export interface DamageAssignment {
+  source: ObjectId
+  to: ObjectId | PlayerId
+  amount: number
+}
+export interface DamageProposal {
+  phase: 'first' | 'regular'
+  assignments: DamageAssignment[]
+}
 export type Block = { blocker: ObjectId; attacker: ObjectId }
 
 export type PriorityMode = 'relaxed' | 'strict'
@@ -221,7 +233,8 @@ export interface CombatState {
   attacks: Attack[]
   blocks: Block[]
   damageOrder: Record<ObjectId, ObjectId[]> // attacker → its blockers, in damage assignment order
-  firstStrikeDealt: boolean
+  firstStrikeDealt: boolean // the first-strike damage step happened (CR 510.4)
+  regularDealt: boolean
 }
 
 // Session options set by whoever creates the game (not house rules).
@@ -291,6 +304,7 @@ export type Action =
   | ActionOf<'dealDamage', { objectId: ObjectId; amount: number; deathtouch?: boolean }> // to a creature or planeswalker
   | ActionOf<'declareAttackers', { attacks: Attack[] }> // CR 508
   | ActionOf<'declareBlockers', { blocks: Block[] }> // CR 509
+  | ActionOf<'assignDamage', { assignments: DamageAssignment[] }> // CR 510.1: confirm (or adjust) the proposal
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>
@@ -346,6 +360,7 @@ export type GameEvent =
   | { type: 'destroyed'; objectId: ObjectId; reason: 'damage' | 'toughness' | 'loyalty' } // by a state-based action
   | { type: 'attackersDeclared'; player: PlayerId; attacks: Attack[] }
   | { type: 'blockersDeclared'; player: PlayerId; blocks: Block[] }
+  | { type: 'combatDamage'; phase: DamageProposal['phase']; assignments: DamageAssignment[] }
   | { type: 'exceptionRequested'; player: PlayerId; reason: string }
   | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
   | { type: 'exceptionCancelled'; player: PlayerId }

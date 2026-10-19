@@ -153,6 +153,16 @@ export function actionIntent(v: unknown): ActionIntent {
       if (!Array.isArray(a.blocks) || a.blocks.length > 200) bad('blocks inválido')
       return { type, blocks: (a.blocks as unknown[]).map((x) => { const m = obj(x, 'bloqueio'); return { blocker: id(m.blocker, 'blocker'), attacker: id(m.attacker, 'attacker') } }) }
     }
+    case 'assignDamage': {
+      if (!Array.isArray(a.assignments) || a.assignments.length > 400) bad('assignments inválido')
+      return {
+        type,
+        assignments: (a.assignments as unknown[]).map((x) => {
+          const m = obj(x, 'dano')
+          return { source: id(m.source, 'source'), to: id(m.to, 'to'), amount: int(m.amount, 'amount', 0, 9999) }
+        }),
+      }
+    }
     case 'adjustPT':
       return { type, objectId: id(a.objectId, 'objectId'), power: int(a.power, 'power', -100, 100), toughness: int(a.toughness, 'toughness', -100, 100) }
     case 'dealDamage':

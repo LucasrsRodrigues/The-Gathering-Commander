@@ -5,6 +5,7 @@ import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
 import { declareAttackers, declareBlockers } from './combat'
+import { applyCombatDamage, checkAssignmentShape } from './damage'
 import { findPayment, formatCost, spellCost } from './cost'
 import { dealDamageTo } from './stats'
 import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
@@ -24,7 +25,7 @@ const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
   'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
 ])
 // While combat waits for a declaration, only that (and leaving or making mana) can happen.
-const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
+const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'assignDamage', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
 const MAX_COUNTER_NAME = 40
@@ -38,7 +39,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
-  'declareAttackers', 'declareBlockers',
+  'declareAttackers', 'declareBlockers', 'assignDamage',
 ])
 const MAX_PT_DELTA = 100
 const MAX_X = 100
@@ -82,9 +83,10 @@ function apply(tx: Tx, action: Action, skipPolicies: boolean) {
     return
   }
   if (pendingException(s)) fail('pendingException', 'Há um pedido de exceção esperando resposta.')
-  const declaring = s.pending?.kind === 'declareAttackers' || s.pending?.kind === 'declareBlockers'
+  const declaring = s.pending?.kind === 'declareAttackers' || s.pending?.kind === 'declareBlockers' || s.pending?.kind === 'confirmDamage'
   if (declaring && !DURING_DECLARATION.has(action.type)) {
-    fail('notYourDecision', s.pending!.kind === 'declareAttackers' ? 'Declare os atacantes primeiro.' : 'Esperando os bloqueios.')
+    fail('notYourDecision', s.pending!.kind === 'declareAttackers' ? 'Declare os atacantes primeiro.'
+      : s.pending!.kind === 'declareBlockers' ? 'Esperando os bloqueios.' : 'Confirme o dano de combate primeiro.')
   }
 
   if (s.status === 'mulligan') {
@@ -299,6 +301,12 @@ function applyGameAction(tx: Tx, action: Action) {
 
     case 'declareBlockers':
       declareBlockers(tx, actor, action.blocks)
+      return
+
+    case 'assignDamage':
+      if (s.pending?.kind !== 'confirmDamage' || s.pending.player !== actor) fail('notYourDecision', 'Quem confirma o dano é o jogador ativo.')
+      checkAssignmentShape(s, action.assignments)
+      applyCombatDamage(tx, action.assignments)
       return
 
     case 'createToken': {

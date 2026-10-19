@@ -3,6 +3,7 @@
 import type { Tx } from './tx'
 import { STEPS, type GameState, type PlayerId, type Step } from './types'
 import { onCombatStep } from './combat'
+import { nextDamagePhase } from './damage'
 import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
 
@@ -91,6 +92,11 @@ function skipsFirstDraw(s: GameState): boolean {
 }
 
 export function advanceStep(tx: Tx) {
+  // CR 510.4: after the first-strike damage step comes a second combat damage step.
+  if (tx.s.turn.step === 'combatDamage' && nextDamagePhase(tx.s)) {
+    enterStep(tx, 'combatDamage')
+    return
+  }
   const index = STEPS.indexOf(tx.s.turn.step)
   const next = STEPS[index + 1] ?? 'cleanup'
   enterStep(tx, next)

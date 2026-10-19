@@ -39,7 +39,7 @@ export function requestException(state: GameState, a: Extract<Action, { type: 'r
   playing(state, a.player)
   if (pendingException(state)) fail('pendingException', 'Já há um pedido de exceção esperando resposta.')
   // A combat declaration can be the subject of a request by whoever is declaring; anything else must wait.
-  const declaring = state.pending?.kind === 'declareAttackers' || state.pending?.kind === 'declareBlockers'
+  const declaring = state.pending?.kind === 'declareAttackers' || state.pending?.kind === 'declareBlockers' || state.pending?.kind === 'confirmDamage'
   const decider = state.pending?.kind === 'declareBlockers' ? state.pending.players.includes(a.player) : state.pending?.player === a.player
   if (state.pending && !(declaring && decider)) fail('notYourDecision', 'Há uma decisão pendente na partida.')
   if (typeof a.reason !== 'string' || a.reason.length > MAX_REASON) fail('invalidAction', 'Motivo inválido.')

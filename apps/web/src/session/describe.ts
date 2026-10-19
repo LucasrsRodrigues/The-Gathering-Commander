@@ -78,6 +78,15 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
       }
       case 'damageDealt': lines.push(`${cardName(e.objectId)} sofreu ${e.amount} de dano.`); break
       case 'destroyed': lines.push(`${cardName(e.objectId)} ${DESTROYED[e.reason]}.`); break
+      case 'attackersDeclared':
+        lines.push(e.attacks.length ? `${name(e.player)} atacou com ${e.attacks.map((x) => cardName(x.attacker)).join(', ')}.` : `${name(e.player)} não atacou.`)
+        break
+      case 'blockersDeclared':
+        if (e.blocks.length) lines.push(`${name(e.player)} bloqueou: ${e.blocks.map((b) => `${cardName(b.blocker)} → ${cardName(b.attacker)}`).join(', ')}.`)
+        break
+      case 'combatDamage':
+        for (const d of e.assignments) lines.push(`${cardName(d.source)} causou ${d.amount} de dano a ${after.players[d.to] ? name(d.to) : cardName(d.to)}.`)
+        break
       case 'manaDeclared': lines.push(`${name(e.player)} declarou mana de ${cardName(e.objectId)} (fonte sem automação).`); break
       case 'exceptionRequested': lines.push(`${name(e.player)} pediu uma exceção às regras${e.reason ? `: “${e.reason}”` : ''}.`); break
       case 'exceptionAnswered': lines.push(`${name(e.player)} ${e.approve ? 'aprovou' : 'recusou'} o pedido.`); break

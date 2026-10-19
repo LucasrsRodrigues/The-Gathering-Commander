@@ -3,6 +3,7 @@
 
 import { hasInstantSpeed, hasKeyword } from './cards'
 import { findPayment, formatCost, spellCost } from './cost'
+import { assignmentFinding } from './damage'
 import { isSummoningSick, poolTotal, simulatePool } from './mana'
 import type { Action, GameState, PlayerId, RuleArea, RuleFinding, RuleLevel, Ruleset } from './types'
 
@@ -132,8 +133,12 @@ const blockLegality: Policy = (state, action) => {
   return null
 }
 
+const damageLegality: Policy = (state, action) =>
+  action.type === 'assignDamage' && Array.isArray(action.assignments) ? assignmentFinding(state, action.assignments) : null
+
 const POLICIES: { area: RuleArea; check: Policy }[] = [
   { area: 'combat', check: attackLegality },
+  { area: 'combat', check: damageLegality },
   { area: 'combat', check: blockLegality },
   { area: 'mana', check: manaSickness },
   { area: 'mana', check: spellPayment },

@@ -4,6 +4,7 @@
 // Only while combat rules are on: with 'off' the combat steps stay the sandbox they were.
 
 import { fail } from './errors'
+import { nextDamagePhase, proposeDamage } from './damage'
 import { isCreature, isPlaneswalker } from './stats'
 import { givePriority, goToStep } from './turn'
 import type { Tx } from './tx'
@@ -33,7 +34,7 @@ export function onCombatStep(tx: Tx, step: Step): boolean {
   const active = s.turn.active
   switch (step) {
     case 'beginCombat':
-      s.turn = { ...s.turn, combat: { attacks: [], blocks: [], damageOrder: {}, firstStrikeDealt: false } }
+      s.turn = { ...s.turn, combat: { attacks: [], blocks: [], damageOrder: {}, firstStrikeDealt: false, regularDealt: false } }
       return false
     case 'declareAttackers':
       // Nothing that could attack: no attackers, and the combat damage steps are skipped (CR 508.8).
@@ -53,6 +54,20 @@ export function onCombatStep(tx: Tx, step: Step): boolean {
       s.priority = null
       s.pending = { kind: 'declareBlockers', player: defenders[0]!, players: defenders }
       return true
+    }
+    case 'combatDamage': {
+      // CR 510: propose this step's damage; the active player confirms it. A step with nothing to deal just passes.
+      for (let phase = nextDamagePhase(s); phase; phase = nextDamagePhase(s)) {
+        const proposal = proposeDamage(s, phase)
+        if (proposal.assignments.length) {
+          s.priority = null
+          s.pending = { kind: 'confirmDamage', player: active, proposal }
+          return true
+        }
+        const c = s.turn.combat!
+        s.turn = { ...s.turn, combat: { ...c, ...(phase === 'first' ? { firstStrikeDealt: true } : { regularDealt: true }) } }
+      }
+      return false
     }
     case 'main2':
       s.turn = { ...s.turn, combat: null } // CR 511.3: creatures leave combat when the phase ends
@@ -84,7 +99,7 @@ export function declareAttackers(tx: Tx, player: PlayerId, attacks: Attack[]) {
       tx.emit({ type: 'tapped', objectId: obj.id })
     }
   }
-  s.turn = { ...s.turn, combat: { ...(s.turn.combat ?? { blocks: [], damageOrder: {}, firstStrikeDealt: false }), attacks: attacks.map(({ attacker, target }) => ({ attacker, target })) } }
+  s.turn = { ...s.turn, combat: { ...(s.turn.combat ?? { blocks: [], damageOrder: {}, firstStrikeDealt: false, regularDealt: false }), attacks: attacks.map(({ attacker, target }) => ({ attacker, target })) } }
   tx.emit({ type: 'attackersDeclared', player, attacks: s.turn.combat!.attacks })
   if (!attacks.length) goToStep(tx, 'endCombat') // CR 508.8
   else givePriority(tx, player)

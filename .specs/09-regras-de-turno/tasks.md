@@ -174,7 +174,7 @@ depois paradas.
     - a ordem de dano entre bloqueadores é a ordem da declaração, e o ajuste fica para a T9.14;
     - um pedido de exceção pode ser feito no meio da declaração e, se recusado, a declaração volta a esperar;
     - as políticas só julgam ataques e bloqueios possíveis: o que é impossível falha com o motivo próprio.
-- [ ] **T9.14 — Proposta de dano, `assignDamage` e aplicação** _(req: 20–22)_ · depende de T9.13
+- [x] **T9.14 — Proposta de dano, `assignDamage` e aplicação** _(req: 20–22)_ · depende de T9.13
   - Verificação:
     - First strike e Double strike com duas etapas;
     - Trample com Deathtouch;
@@ -182,6 +182,13 @@ depois paradas.
     - dano de comandante somado sem duplicar a vida;
     - ajuste fora das regras recusado;
     - fitness "dano proposto é legal".
+  - Feito:
+    - a confirmação é uma decisão pendente do jogador ativo, uma por etapa de dano; uma etapa sem dano a causar
+      passa sozinha;
+    - um ajuste fora das regras (prevenção, dano a menos) é a política `damageAssignment` e pode ser pedido como
+      exceção;
+    - atacante bloqueado cujo bloqueador sumiu não causa dano, salvo Trample (CR 509.1h, 702.19e);
+    - criatura sem dados ou com `*` recebe "dano letal" indefinido: o jogador ativo distribui à mão.
 - [ ] **T9.15 — Cleanup com descarte** _(req: 25)_ · depende de T9.2
   - Verificação: com 9 cartas e máximo 7, pede 2; a escolha não vaza para os outros antes de ser feita.
 - [ ] **T9.16 — Mesa: modo de ataque, modo de bloqueio e painel de dano (DOM primeiro)** · depende de T9.14
