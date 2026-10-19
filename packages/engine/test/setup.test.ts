@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createGame } from '../src'
 import { shuffle } from '../src/rng'
-import { act, expectError, newGame } from './helpers'
+import { act, expectError, keepAll, newGame } from './helpers'
 
 describe('rng', () => {
   it('shuffles deterministically per seed', () => {
@@ -53,7 +53,7 @@ describe('London mulligan', () => {
     expect(s.pending).toEqual({ kind: 'mulligan', player: 'p2' })
     const { state, events } = act(s, { type: 'keepHand', player: 'p2' })
     expect(state.status).toBe('playing')
-    expect(state.turn).toEqual({ number: 1, active: 'p1', step: 'upkeep' })
+    expect(state.turn).toEqual({ number: 1, active: 'p1', step: 'upkeep', combat: null })
     expect(state.priority).toEqual({ player: 'p1', passed: [] })
     expect(events.map((e) => e.type)).toContain('gameStarted')
   })
@@ -80,5 +80,25 @@ describe('London mulligan', () => {
     const s = newGame(2)
     expectError(s, { type: 'keepHand', player: 'p2' }, 'notYourDecision')
     expectError(s, { type: 'draw', player: 'p1', count: 1 }, 'wrongPhase')
+  })
+})
+
+describe('turn-rule state (épico 09)', () => {
+  it('starts with empty pools, default stops and official turn rules', async () => {
+    const { COMMANDER_RULESET, defaultStops } = await import('../src')
+    const s = newGame(2)
+    expect(s.schemaVersion).toBe(2)
+    expect(s.options).toEqual({ exceptionApproval: 'auto' })
+    expect(COMMANDER_RULESET).toMatchObject({ landsPerTurn: 1, timingRules: 'block', manaRules: 'block', combatRules: 'block' })
+    expect(s.players.p1).toMatchObject({ manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, landsPlayed: 0, stops: defaultStops(), passUntil: null })
+    expect(Object.values(s.objects).every((o) => o.damage === 0 && o.ptMods.length === 0)).toBe(true)
+  })
+
+  it('records when a permanent came under its controller and resets lands each turn', () => {
+    let s = keepAll(newGame(2))
+    const card = s.zones.p1!.hand[0]!
+    s = act(s, { type: 'moveObject', player: 'p1', objectId: card, to: 'battlefield' }).state
+    expect(s.objects[card]!.controlledSince).toBe(s.turn.number)
+    expect(s.players.p1!.lastTurnStarted).toBe(1)
   })
 })

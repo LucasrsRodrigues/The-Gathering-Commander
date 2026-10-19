@@ -21,7 +21,7 @@ depois paradas.
     - "doesn't untap" (Mana Vault);
     - mana de gatilho (Lotus Cobra);
     - fontes que dependem de escolha ou de outras cartas (Coldsteel Heart, Exotic Orchard), que viram mana declarada.
-- [ ] **T9.2 — Estado v2 e migração** _(req: 32, 39)_ · depende de T9.1
+- [x] **T9.2 — Estado v2 e migração** _(req: 32, 39)_ · depende de T9.1
   - Escopo:
     - campos novos em `GameState`, `PlayerState` e `GameObject`;
     - `Ruleset.landsPerTurn` e `Ruleset.enforcement`;
@@ -33,6 +33,11 @@ depois paradas.
   - Verificação:
     - fitness: todo estado v1 dos testes migra, serializa e faz replay;
     - uma sala salva antes da mudança abre com as regras novas `off`.
+  - Feito, com dois desvios:
+    - os níveis viraram campos simples do `Ruleset` (`timingRules`, `manaRules`, `combatRules`), em vez do objeto
+      `enforcement`, para encaixar direto no codec e no editor de presets;
+    - os controles no editor de presets entram junto com cada onda (T9.7, T9.11, T9.16), para não mostrar opções
+      que ainda não fazem nada.
 - [ ] **T9.3 — Regras das cartas no preparo e no servidor** _(req: 37, 38)_ · depende de T9.1
   - Escopo:
     - `prepareSeatDeck` preenche `rules` com o catálogo;

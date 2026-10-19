@@ -61,6 +61,10 @@ export function moveObject(tx: Tx, id: ObjectId, to: ZoneKind, opts: MoveOptions
   obj.faceDown = opts.faceDown ?? false
   obj.controller = to === 'battlefield' || to === 'stack' ? (opts.controller ?? obj.owner) : obj.owner
   obj.timestamp = tx.tick()
+  obj.damage = 0
+  obj.deathtouchDamage = false
+  obj.ptMods = []
+  obj.controlledSince = tx.s.turn.number
 
   if (to === 'battlefield') {
     tx.battlefield().push(id)

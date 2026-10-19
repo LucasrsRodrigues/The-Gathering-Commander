@@ -25,7 +25,10 @@ export function givePriority(tx: Tx, player: PlayerId) {
 }
 
 export function beginTurn(tx: Tx, player: PlayerId, number: number) {
-  tx.s.turn = { number, active: player, step: 'untap' }
+  tx.s.turn = { number, active: player, step: 'untap', combat: null }
+  const p = tx.player(player)
+  p.landsPlayed = 0
+  p.lastTurnStarted = number
   tx.emit({ type: 'turnStarted', player, turn: number })
   enterStep(tx, 'untap')
 }

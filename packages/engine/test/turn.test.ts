@@ -12,7 +12,7 @@ describe('turn structure and priority', () => {
     }
     expect(seen).toEqual(STEPS.filter((st) => st !== 'untap' && st !== 'cleanup'))
     s = act(s, { type: 'advanceStep', player: 'p1' }).state
-    expect(s.turn).toEqual({ number: 2, active: 'p2', step: 'upkeep' })
+    expect(s.turn).toEqual({ number: 2, active: 'p2', step: 'upkeep', combat: null })
   })
 
   it('draws automatically in the draw step', () => {

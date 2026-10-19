@@ -184,6 +184,7 @@ export class Room {
       game = createGame({
         seed: this.deps.seed(),
         ruleset: resolvePreset(this.s.preset).ruleset,
+        options: { exceptionApproval: 'vote' }, // online: rule exceptions need the other players' approval
         players: seated.map((s) => ({ id: playerOf(s.index), name: s.name, deck: s.deck })),
       })
     } catch {

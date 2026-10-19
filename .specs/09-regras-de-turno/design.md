@@ -125,7 +125,7 @@ TurnState { ...; combat: CombatState | null; firstStrikeDealt: boolean }
 Ruleset {
   ...;
   landsPerTurn: number                                   // 1
-  enforcement: { timing: RuleLevel; mana: RuleLevel; combat: RuleLevel } // 'block' | 'warn' | 'off'
+  timingRules: RuleLevel; manaRules: RuleLevel; combatRules: RuleLevel // 'block' | 'warn' | 'off'
 }
 PendingDecision |=
   | { kind: 'declareBlockers'; players: PlayerId[] }     // atacados que ainda não declararam
@@ -137,7 +137,7 @@ PendingDecision |=
 - `RuleLevel` passa a existir no motor. `formats` reaproveita como `Enforcement` (mesmo literal).
 - `schemaVersion: 2`, com migração `migrateState(v1) → v2`:
   - os campos novos recebem valores neutros;
-  - `enforcement` vira `off` nas três áreas (req. 39).
+  - os três níveis viram `off` (req. 39).
   - O `SqliteRoomStore` migra na leitura.
 
 ## Ações novas
@@ -271,7 +271,7 @@ O comandante continua emitindo `commanderMayReturn`. Tudo é feito em laço até
   ataques e bloqueios, 60 ativações). A semântica fica com o motor.
 - **`sit`:** substitui `rules` pelas do catálogo (ver Confiança online).
 - **`createGame`:** a sala passa `options.exceptionApproval = 'vote'`; o jogo local passa `'auto'`.
-- **Regras da sala:** o `presetCodec` aceita `landsPerTurn` (1–5) e `enforcement.{timing,mana,combat}`.
+- **Regras da sala:** o `presetCodec` aceita `landsPerTurn` (1–5) e `timingRules`/`manaRules`/`combatRules`.
 
 ## Web (mesa)
 - **Mão:**

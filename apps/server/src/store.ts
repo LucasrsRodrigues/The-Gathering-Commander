@@ -4,6 +4,7 @@
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
+import { migrateState } from '@gathering-hall/engine'
 import type { RoomSnapshot } from './room/room'
 
 export interface RoomStore {
@@ -37,7 +38,12 @@ export class SqliteRoomStore implements RoomStore {
     if (!row) return undefined
     try {
       const snap = JSON.parse(row.snapshot) as RoomSnapshot
-      return snap.schema === 1 ? snap : undefined
+      if (snap.schema !== 1) return undefined
+      // Games saved by an older engine are migrated on read (new turn rules stay off for them).
+      const game = snap.game && migrateState(snap.game)
+      const initial = snap.initial && migrateState(snap.initial)
+      if ((snap.game && !game) || (snap.initial && !initial)) return undefined
+      return { ...snap, game: game ?? null, initial: initial ?? null }
     } catch {
       return undefined
     }

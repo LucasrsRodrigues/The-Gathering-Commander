@@ -2,8 +2,13 @@ import { continueMulligans } from './mulligan'
 import { randomIndex, shuffle } from './rng'
 import { makeRuleset } from './ruleset'
 import { Tx } from './tx'
-import type { CardRef, GameObject, GameState, PlayerId, PlayerZoneKind, Ruleset } from './types'
+import { defaultStops } from './ruleset'
+import { SCHEMA_VERSION, type CardRef, type GameObject, type GameOptions, type GameState, type PlayerId, type PlayerZoneKind, type Ruleset } from './types'
 import { drawCards } from './zones'
+
+export function emptyPool(): GameState['players'][string]['manaPool'] {
+  return { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }
+}
 
 export const ENGINE_VERSION = '0.1.0'
 export const MAX_PLAYERS = 4
@@ -18,7 +23,10 @@ export interface GameConfig {
   players: { id: PlayerId; name: string; deck: DeckInput }[]
   ruleset?: Partial<Ruleset>
   startingPlayer?: PlayerId
+  options?: Partial<GameOptions>
 }
+
+export const DEFAULT_OPTIONS: GameOptions = { exceptionApproval: 'auto' }
 
 export function createGame(config: GameConfig): GameState {
   const { players } = config
@@ -42,6 +50,7 @@ export function createGame(config: GameConfig): GameState {
     objects[id] = {
       id, owner, controller: owner, card: { ...card }, zone, tapped: false, faceDown: false, counters: {},
       isToken: false, isCommander, commanderCasts: 0, timestamp: ++timestamp,
+      damage: 0, deathtouchDamage: false, controlledSince: 0, ptMods: [],
     }
     return id
   }
@@ -62,9 +71,10 @@ export function createGame(config: GameConfig): GameState {
   }
 
   const base: GameState = {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     engineVersion: ENGINE_VERSION,
     ruleset,
+    options: { ...DEFAULT_OPTIONS, ...config.options },
     rng,
     nextId,
     timestamp,
@@ -74,12 +84,13 @@ export function createGame(config: GameConfig): GameState {
     players: Object.fromEntries(players.map((p) => [p.id, {
       id: p.id, name: p.name, life: ruleset.startingLife, poison: 0, commanderDamage: {},
       mulligans: 0, hasKept: false, drewFromEmptyLibrary: false, lost: false,
+      manaPool: emptyPool(), landsPlayed: 0, lastTurnStarted: 0, stops: defaultStops(), passUntil: null,
     }])),
     objects,
     zones,
     battlefield: [],
     stack: [],
-    turn: { number: 0, active: starting, step: 'untap' },
+    turn: { number: 0, active: starting, step: 'untap', combat: null },
     priority: null,
     pending: null,
     winners: null,

@@ -30,7 +30,7 @@ describe('resolvePreset', () => {
 describe('preset codec', () => {
   const friday: Preset = {
     id: 'sexta', name: 'Regras de sexta', base: officialPreset().base,
-    ruleset: { startingLife: 30, priorityMode: 'strict', restrictToController: true },
+    ruleset: { startingLife: 30, priorityMode: 'strict', restrictToController: true, landsPerTurn: 2, timingRules: 'warn', combatRules: 'off' },
     deckRules: { colorIdentity: 'warn', banlist: { source: 'custom', extraBans: ['Sol Ring'], level: 'warn' } },
   }
 
@@ -51,6 +51,8 @@ describe('preset codec', () => {
     ['wrong level', JSON.stringify({ kind: 'gathering-hall/preset', v: 1, preset: { ...friday, deckRules: { singleton: 'maybe' } } })],
     ['too many bans', JSON.stringify({ kind: 'gathering-hall/preset', v: 1, preset: { ...friday, deckRules: { banlist: { extraBans: Array(201).fill('x') } } } })],
     ['huge text', 'x'.repeat(10_001)],
+    ['too many lands per turn', JSON.stringify({ kind: 'gathering-hall/preset', v: 1, preset: { ...friday, ruleset: { landsPerTurn: 9 } } })],
+    ['wrong rule level', JSON.stringify({ kind: 'gathering-hall/preset', v: 1, preset: { ...friday, ruleset: { combatRules: 'strict' } } })],
     ['empty name', JSON.stringify({ kind: 'gathering-hall/preset', v: 1, preset: { ...friday, name: '  ' } })],
   ])('rejects %s', (_label, text) => {
     expect(decodePreset(text).ok).toBe(false)

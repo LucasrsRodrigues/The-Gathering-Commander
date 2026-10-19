@@ -1,4 +1,4 @@
-import type { Ruleset } from './types'
+import type { Step, StopSettings, Ruleset } from './types'
 
 // Official multiplayer Commander defaults (CR 903, 103.5c). House rules only override values.
 export const COMMANDER_RULESET: Ruleset = {
@@ -17,6 +17,17 @@ export const COMMANDER_RULESET: Ruleset = {
   autoLoss: true,
   priorityMode: 'relaxed',
   restrictToController: false, // sandbox: anyone may move public cards; hidden zones stay owner-only
+  landsPerTurn: 1,
+  timingRules: 'block',
+  manaRules: 'block',
+  combatRules: 'block',
+}
+
+// Arena-style defaults (épico 09, req. 30): stop in your main phases and to declare attackers; on other
+// players' turns only when something goes on the stack or you are attacked.
+const OWN_STOPS: Step[] = ['main1', 'declareAttackers', 'main2']
+export function defaultStops(): StopSettings {
+  return { own: [...OWN_STOPS], others: [], passAfterOwnSpell: true }
 }
 
 export function makeRuleset(overrides: Partial<Ruleset> = {}): Ruleset {

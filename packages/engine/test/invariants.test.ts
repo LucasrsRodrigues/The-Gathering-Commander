@@ -2,7 +2,7 @@
 // These double as the fitness functions for hidden information, determinism and serializability.
 
 import { describe, expect, it } from 'vitest'
-import { eventsFor, reduce, replay, viewFor, type Action, type GameEvent, type GameState, type ZoneKind } from '../src'
+import { eventsFor, migrateState, reduce, replay, viewFor, type Action, type GameEvent, type GameState, type ZoneKind } from '../src'
 import { nextRandom } from '../src/rng'
 import { deepFreeze, keepAll, newGame } from './helpers'
 
@@ -121,5 +121,45 @@ describe('invariants under random play', () => {
     const start = performance.now()
     for (let i = 0; i < 200; i++) reduce(state, { type: 'adjustLife', player: state.seats[0]!, target: state.seats[0]!, delta: 0 })
     expect((performance.now() - start) / 200).toBeLessThan(1)
+  })
+})
+
+// A state as engine schema 1 saved it (before épico 09).
+function toV1(state: GameState): unknown {
+  type Loose = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  const s = structuredClone(state) as unknown as Loose
+  s.schemaVersion = 1
+  delete s.options
+  for (const k of ['landsPerTurn', 'timingRules', 'manaRules', 'combatRules']) delete s.ruleset[k]
+  for (const p of Object.values(s.players) as Loose[]) for (const k of ['manaPool', 'landsPlayed', 'lastTurnStarted', 'stops', 'passUntil']) delete p[k]
+  for (const o of Object.values(s.objects) as Loose[]) for (const k of ['damage', 'deathtouchDamage', 'controlledSince', 'ptMods']) delete o[k]
+  delete s.turn.combat
+  return s
+}
+
+describe('schema migration (fitness function)', () => {
+  it.each([3, 11, 29])('v1 games (seed %i) migrate, keep replaying deterministically and switch the new rules off', (seed) => {
+    const { initial, state, applied } = simulate(seed, 150)
+    const migrated = migrateState(toV1(state))!
+    const start = migrateState(toV1(initial))!
+    expect(migrated.schemaVersion).toBe(2)
+    expect(JSON.parse(JSON.stringify(migrated))).toEqual(migrated)
+    expect(migrated.ruleset).toMatchObject({ timingRules: 'off', manaRules: 'off', combatRules: 'off', landsPerTurn: 1 })
+    checkInvariants(migrated)
+
+    const a = replay(start, applied)
+    const b = replay(start, applied)
+    expect(a.ok && b.ok).toBe(true)
+    expect(a.state).toEqual(b.state)
+    // The migrated game keeps going.
+    const next = reduce(migrated, { type: 'draw', player: migrated.turn.active, count: 1 })
+    expect(next.ok || migrated.status !== 'playing').toBe(true)
+  })
+
+  it('leaves current states alone and rejects unknown ones', () => {
+    const state = keepAll(newGame(2))
+    expect(migrateState(state)).toBe(state)
+    expect(migrateState({ schemaVersion: 99 })).toBeNull()
+    expect(migrateState('nope')).toBeNull()
   })
 })

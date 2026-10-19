@@ -105,6 +105,11 @@ export interface GameObject {
   commanderCasts: number
   arrangement?: Arrangement
   timestamp: number // CR 613.7: when the object entered its current zone
+  // Épico 09 (combat and timing). Reset whenever the object changes zones (CR 400.7).
+  damage: number // CR 120.6: marked damage, removed in cleanup
+  deathtouchDamage: boolean // CR 704.5h
+  controlledSince: number // turn number since which its controller has controlled it (CR 302.6)
+  ptMods: { power: number; toughness: number }[] // manual "until end of turn" adjustments
 }
 
 export type LossReason = 'life' | 'poison' | 'commanderDamage' | 'emptyLibrary' | 'conceded'
@@ -120,6 +125,21 @@ export interface PlayerState {
   drewFromEmptyLibrary: boolean
   lost: boolean
   lossReason?: LossReason
+  // Épico 09
+  manaPool: ManaPool // CR 106.4: empties between steps
+  landsPlayed: number // this turn (CR 305.2)
+  lastTurnStarted: number // number of this player's most recent turn (summoning sickness)
+  stops: StopSettings
+  passUntil: 'endOfTurn' | 'myTurn' | null
+}
+
+export type ManaPool = Record<ManaType, number>
+
+// Where a player wants to receive priority (Arena-style automatic passing).
+export interface StopSettings {
+  own: Step[] // steps of their own turn
+  others: Step[] // steps of other players' turns
+  passAfterOwnSpell: boolean // after casting, pass instead of holding priority
 }
 
 export interface StackItem {
@@ -137,6 +157,9 @@ export type PendingDecision =
 
 export type PriorityMode = 'relaxed' | 'strict'
 
+// How strictly an area of the rules is enforced (épico 09): block, allow with a logged warning, or not checked.
+export type RuleLevel = 'block' | 'warn' | 'off'
+
 export interface Ruleset {
   id: 'commander'
   version: string
@@ -153,12 +176,29 @@ export interface Ruleset {
   autoLoss: boolean
   priorityMode: PriorityMode
   restrictToController: boolean
+  landsPerTurn: number // CR 305.2
+  timingRules: RuleLevel // when lands and spells may be played (CR 117, 305, 307)
+  manaRules: RuleLevel // costs are paid from the mana pool (CR 601.2)
+  combatRules: RuleLevel // attack / block legality and calculated damage (CR 506–511)
 }
 
 export interface TurnState {
   number: number
   active: PlayerId
   step: Step
+  combat: CombatState | null // épico 09: only during the combat phase
+}
+
+export interface CombatState {
+  attacks: { attacker: ObjectId; target: PlayerId | ObjectId }[] // a player or a planeswalker
+  blocks: { blocker: ObjectId; attacker: ObjectId }[]
+  damageOrder: Record<ObjectId, ObjectId[]> // attacker → its blockers, in damage assignment order
+  firstStrikeDealt: boolean
+}
+
+// Session options set by whoever creates the game (not house rules).
+export interface GameOptions {
+  exceptionApproval: 'auto' | 'vote' // local games approve rule exceptions at once; online games vote
 }
 
 export interface PriorityState {
@@ -166,10 +206,13 @@ export interface PriorityState {
   passed: PlayerId[]
 }
 
+export const SCHEMA_VERSION = 2
+
 export interface GameState {
-  schemaVersion: 1
+  schemaVersion: typeof SCHEMA_VERSION
   engineVersion: string
   ruleset: Ruleset
+  options: GameOptions
   rng: number
   nextId: number
   timestamp: number

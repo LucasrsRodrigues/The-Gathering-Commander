@@ -186,7 +186,7 @@ function applyGameAction(tx: Tx, action: Action) {
       tx.addObject({
         id, owner: actor, controller: actor, card, zone: 'battlefield',
         tapped: !!action.tapped, faceDown: false, counters: {}, isToken: true, isCommander: false,
-        commanderCasts: 0, timestamp: tx.tick(),
+        commanderCasts: 0, timestamp: tx.tick(), damage: 0, deathtouchDamage: false, controlledSince: tx.s.turn.number, ptMods: [],
       })
       tx.battlefield().push(id)
       tx.emit({ type: 'tokenCreated', objectId: id })

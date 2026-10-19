@@ -11,10 +11,11 @@ const MAX_CARD_NAME = 200
 
 const NUMBER_RANGES = {
   startingLife: [1, 999], startingHandSize: [0, 15], maxHandSize: [0, 99], commanderDamageLimit: [1, 999],
-  poisonLimit: [1, 99], commanderTaxIncrement: [0, 20], freeMulligans: [0, 7],
+  poisonLimit: [1, 99], commanderTaxIncrement: [0, 20], freeMulligans: [0, 7], landsPerTurn: [1, 5],
 } as const
 const BOOLEANS = ['autoUntap', 'autoDraw', 'autoLoss', 'restrictToController'] as const
 const LEVEL_KEYS = ['sizeLevel', 'singleton', 'colorIdentity', 'commanderEligibility', 'pairing'] as const
+const RULE_LEVEL_KEYS = ['timingRules', 'manaRules', 'combatRules'] as const // épico 09
 const LEVELS: Enforcement[] = ['block', 'warn', 'off']
 const SOURCES: BanlistSource[] = ['official', 'none', 'custom']
 
@@ -65,6 +66,7 @@ function sanitize(p: Record<string, unknown>): Preset {
     for (const key of BOOLEANS) if (r[key] !== undefined) ruleset[key] = bool(r[key], key)
     if (r.priorityMode !== undefined) ruleset.priorityMode = oneOf(r.priorityMode, 'priorityMode', ['relaxed', 'strict'] as const)
     if (r.mulligan !== undefined) ruleset.mulligan = oneOf(r.mulligan, 'mulligan', ['london'] as const)
+    for (const key of RULE_LEVEL_KEYS) if (r[key] !== undefined) ruleset[key] = oneOf(r[key], key, LEVELS)
     preset.ruleset = ruleset
   }
 
