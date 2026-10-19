@@ -18,6 +18,9 @@ const NUMBERS: { key: keyof Ruleset; label: string; min: number; max: number }[]
   { key: 'startingHandSize', label: 'Cartas na mão inicial', min: 0, max: 15 },
   { key: 'freeMulligans', label: 'Mulligans grátis', min: 0, max: 7 },
 ]
+// Upper bound for the dated banlist field (no future banlists).
+const TODAY = new Date().toISOString().slice(0, 10)
+
 const LEVELS: { key: Exclude<keyof DeckRules, 'banlist' | 'deckSize'>; label: string }[] = [
   { key: 'sizeLevel', label: 'Exigir o tamanho exato' },
   { key: 'singleton', label: 'Uma cópia de cada carta' },
@@ -168,6 +171,13 @@ function PresetEditor({ preset, onClose, onSave }: { preset: Preset; onClose: ()
             <label className="field">Banir também (uma por linha)
               <textarea rows={4} value={bans} maxLength={8000} onChange={(e) => setBans(e.target.value)} placeholder="Sol Ring" />
             </label>
+            {values.deckRules.banlist.source === 'official' && (
+              <label className="field">Banlist oficial de uma data (opcional)
+                <input type="date" value={values.deckRules.banlist.asOf ?? ''} max={TODAY}
+                  onChange={(e) => setBanlist({ asOf: e.target.value || undefined })} />
+                <span className="muted small">Vazio = banlist de hoje. Útil para jogar com as regras de uma época.</span>
+              </label>
+            )}
             {values.deckRules.banlist.source === 'official' && (
               <label className="field">Liberar do banimento oficial (uma por linha)
                 <textarea rows={4} value={unbans} maxLength={8000} onChange={(e) => setUnbans(e.target.value)} />

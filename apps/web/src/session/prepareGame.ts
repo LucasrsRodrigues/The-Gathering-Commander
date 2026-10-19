@@ -4,6 +4,8 @@
 import { createGame, type DeckInput, type GameState } from '@gathering-hall/engine'
 import { blocks, resolvePreset, validateDeck, type Preset, type Violation } from '@gathering-hall/formats'
 import type { CatalogPort } from '../catalog/catalog'
+import type { LegalityPort } from '../catalog/gatheringHall'
+import { factsForDate } from '../catalog/legality'
 import { loadDeckCards, toGameDeck } from '../decks/cardData'
 import { importDecklist } from '../decks/importExport'
 import { moveCard, toValidation, type Deck } from '../decks/model'
@@ -54,21 +56,25 @@ export interface PreparedSeat {
 }
 
 // One seat's deck: resolved in the catalog, validated against the preset, converted to engine input.
-export async function prepareSeatDeck(choice: SeatDeck, preset: Preset, catalog: CatalogPort, now: number): Promise<PreparedSeat> {
+export async function prepareSeatDeck(
+  choice: SeatDeck, preset: Preset, catalog: CatalogPort, now: number, legality?: LegalityPort,
+): Promise<PreparedSeat> {
   const { deckRules } = resolvePreset(preset)
   const { deck, notes } = await deckFor(choice, catalog, now)
   const data = await loadDeckCards(deck, catalog)
-  return { input: toGameDeck(deck, data), violations: validateDeck(toValidation(deck), data.facts, deckRules), notes }
+  const dated = await factsForDate(data.facts, deckRules.banlist.asOf, legality)
+  if (dated.note) notes.push(dated.note)
+  return { input: toGameDeck(deck, data), violations: validateDeck(toValidation(deck), dated.facts, deckRules), notes }
 }
 
 export async function prepareGame(
-  seats: SeatChoice[], preset: Preset, catalog: CatalogPort, seed: number, now: number, enforce = true,
+  seats: SeatChoice[], preset: Preset, catalog: CatalogPort, seed: number, now: number, enforce = true, legality?: LegalityPort,
 ): Promise<PrepareResult> {
   const { ruleset } = resolvePreset(preset)
   const reports: SeatReport[] = []
   const inputs: DeckInput[] = []
   for (const seat of seats) {
-    const prepared = await prepareSeatDeck(seat.deck, preset, catalog, now)
+    const prepared = await prepareSeatDeck(seat.deck, preset, catalog, now, legality)
     reports.push({ name: seat.name, violations: prepared.violations, notes: prepared.notes })
     inputs.push(prepared.input)
   }

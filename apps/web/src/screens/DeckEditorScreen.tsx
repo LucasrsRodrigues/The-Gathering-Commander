@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { commanderIdentity, OFFICIAL_PRESET_ID, resolvePreset, suggestBracket, validateDeck } from '@gathering-hall/formats'
 import type { Services } from '../app/services'
 import type { CatalogCard } from '../catalog/catalog'
+import { factsForDate, type DatedFacts } from '../catalog/legality'
 import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../decks/cardData'
 import { exportDecklist } from '../decks/importExport'
 import { addCard, deckStats, moveCard, removeCard, renameDeck, setPrinting, toValidation, type Deck, type DeckCard } from '../decks/model'
@@ -57,17 +58,29 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const presets = services.presets.list()
   const preset = services.presets.get(deck?.presetId)
   const { deckRules } = useMemo(() => resolvePreset(preset), [preset])
+  const asOf = deckRules.banlist.asOf
+  const [dated, setDated] = useState<DatedFacts | null>(null)
+  useEffect(() => {
+    let live = true
+    factsForDate(data.facts, asOf, services.legality).then((d) => {
+      if (!live) return
+      setDated(d)
+      if (d.note) toast(d.note)
+    })
+    return () => { live = false }
+  }, [data.facts, asOf, services])
+  const facts = dated?.facts ?? data.facts
   const derived = useMemo(() => {
     if (!deck) return null
     const validation = toValidation(deck)
-    const commanders = deck.commanders.flatMap((c) => data.facts.get(c.oracleId) ?? [])
+    const commanders = deck.commanders.flatMap((c) => facts.get(c.oracleId) ?? [])
     return {
-      violations: validateDeck(validation, data.facts, deckRules),
-      bracket: suggestBracket(validation, data.facts),
+      violations: validateDeck(validation, facts, deckRules),
+      bracket: suggestBracket(validation, facts),
       stats: deckStats(deck, data.info),
       identity: commanders.length ? [...commanderIdentity(commanders)] : null,
     }
-  }, [deck, data, deckRules])
+  }, [deck, data, facts, deckRules])
 
   if (missing) return <main className="page"><p>Esse deck não existe mais.</p><button className="btn" onClick={onBack}>Voltar</button></main>
   if (!deck || !derived) return <main className="page"><p className="muted">Carregando deck…</p></main>

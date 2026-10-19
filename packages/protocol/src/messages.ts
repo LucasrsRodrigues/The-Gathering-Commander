@@ -45,7 +45,7 @@ export type ServerMessage =
 
 export type ProtocolErrorCode =
   | 'badMessage' | 'version' | 'noRoom' | 'notMember' | 'notHost' | 'wrongPhase' | 'seatTaken' | 'notSeated'
-  | 'tooFewPlayers' | 'rateLimited' | 'roomFull'
+  | 'tooFewPlayers' | 'rateLimited' | 'roomFull' | 'deckInvalid'
 
 export function serverError(code: ProtocolErrorCode, message: string): ServerMessage {
   return { v: 1, t: 'error', code, message }

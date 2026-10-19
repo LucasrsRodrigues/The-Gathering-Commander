@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { GatheringHallCatalog } from '../catalog/gatheringHall'
 import { ScryfallCatalog } from '../catalog/scryfall'
+import { SERVER_HTTP } from '../net/config'
 import type { Deck } from '../decks/model'
 import { openDeckRepository, type DeckRepository } from '../decks/repository'
 import { CardPreview, Toasts } from '../hud/Overlays'
@@ -38,7 +40,7 @@ function screenFromHash(): Screen | null {
 }
 
 export default function App() {
-  const catalog = useMemo(() => new ScryfallCatalog(), [])
+  const catalog = useMemo(() => new GatheringHallCatalog(SERVER_HTTP, new ScryfallCatalog()), [])
   const presets = useMemo(() => new LocalPresetRepository(), [])
   const [decks, setDecks] = useState<DeckRepository | null>(null)
   const [screen, setScreen] = useState<Screen>(() => screenFromHash() ?? { kind: 'setup' })
@@ -60,7 +62,7 @@ export default function App() {
   }, [])
 
   if (!decks) return <div className="loading">Carregando…</div>
-  const services: Services = { catalog, decks, presets }
+  const services: Services = { catalog, legality: catalog, decks, presets }
   const go = (target: NavTarget) => {
     if (location.hash) history.replaceState(null, '', location.pathname + location.search)
     setScreen({ kind: target })
@@ -70,7 +72,7 @@ export default function App() {
   async function testDeck(deck: Deck) {
     try {
       const preset = presets.get(deck.presetId)
-      const result = await prepareGame([{ name: 'Você', deck: { kind: 'saved', deck } }], preset, catalog, randomSeed(), Date.now(), false)
+      const result = await prepareGame([{ name: 'Você', deck: { kind: 'saved', deck } }], preset, catalog, randomSeed(), Date.now(), false, catalog)
       if (!result.ok) return
       const problems = result.reports.flatMap((r) => r.violations)
       if (problems.length) toast(`Testando mesmo com ${problems.length} problema(s) nas regras "${preset.name}".`)

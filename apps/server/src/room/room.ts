@@ -5,7 +5,7 @@
 import {
   createGame, eventsFor, reduce, viewFor, type Action, type DeckInput, type GameEvent, type GameState, type PlayerId,
 } from '@gathering-hall/engine'
-import { officialPreset, resolvePreset, type Preset } from '@gathering-hall/formats'
+import { blocks, officialPreset, resolvePreset, type Preset, type Violation } from '@gathering-hall/formats'
 import {
   MAX_SEATS, serverError, type ClientMessage, type LobbySeat, type RoomStatus, type ServerMessage,
 } from '@gathering-hall/protocol'
@@ -15,6 +15,8 @@ export interface RoomDeps {
   hash(token: string): string
   seed(): number
   now(): number
+  // Server-side deck check against the room rules (needs the catalog); null = could not check.
+  checkDeck?(deck: DeckInput, preset: Preset): Violation[] | null
 }
 
 export interface Member {
@@ -108,6 +110,9 @@ export class Room {
         if (!member.host) return [this.err(connId, 'notHost', 'Só quem criou a sala muda as regras.')]
         if (this.s.status !== 'lobby') return [this.err(connId, 'wrongPhase', 'A partida já começou.')]
         this.s = { ...this.s, preset: msg.preset }
+        // Seated decks that no longer pass the new rules lose their seat (their players can sit again).
+        this.s = { ...this.s, seats: this.s.seats.map((seat) => (seat && blocks(this.deps.checkDeck?.(seat.deck, msg.preset) ?? []) ? null : seat)) }
+        this.s = { ...this.s, members: this.s.members.map((m) => (m.seat !== null && !this.s.seats[m.seat] ? { ...m, seat: null } : m)) }
         return this.broadcast(() => this.lobby())
       case 'start': return this.start(connId, member)
       case 'act': return this.act(connId, member, msg.seq, msg.action)
@@ -150,6 +155,11 @@ export class Room {
     if (this.s.status !== 'lobby') return [this.err(connId, 'wrongPhase', 'A partida já começou.')]
     const current = this.s.seats[seat]
     if (current && current.member !== member.tokenHash) return [this.err(connId, 'seatTaken', 'Esse lugar já está ocupado.')]
+    const violations = this.deps.checkDeck?.(deck, this.s.preset) ?? null
+    if (violations && blocks(violations)) {
+      const reasons = violations.filter((v) => v.level === 'block').map((v) => v.message).join(' ')
+      return [this.err(connId, 'deckInvalid', `O deck não passa nas regras "${this.s.preset.name}": ${reasons}`.slice(0, 500))]
+    }
     const seats = this.s.seats.map((s, i) => (s?.member === member.tokenHash && i !== seat ? null : s))
     seats[seat] = { name, deck, member: member.tokenHash }
     this.updateMember(member, { seat })

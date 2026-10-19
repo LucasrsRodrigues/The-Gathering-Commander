@@ -62,7 +62,7 @@ export function SetupScreen({ services, onStart, onManagePresets }: {
     setStatus('Buscando cartas no Scryfall e conferindo os decks…')
     try {
       const preset = services.presets.get(presetId)
-      const result = await prepareGame(choices as SeatChoice[], preset, services.catalog, randomSeed(), Date.now())
+      const result = await prepareGame(choices as SeatChoice[], preset, services.catalog, randomSeed(), Date.now(), true, services.legality)
       if (!result.ok) {
         setBlocked(result.reports.filter((r) => r.violations.some((v) => v.level === 'block')))
         setStatus(`Algum deck não passa nas regras "${preset.name}".`)

@@ -174,7 +174,7 @@ function SitDialog({ services, seat, preset, onClose, onSit }: {
     if (!choice || !name.trim()) return
     setBusy(true)
     try {
-      const prepared = await prepareSeatDeck(choice, preset, services.catalog, Date.now())
+      const prepared = await prepareSeatDeck(choice, preset, services.catalog, Date.now(), services.legality)
       if (blocks(prepared.violations)) {
         setProblems(prepared.violations.filter((v) => v.level === 'block'))
         return

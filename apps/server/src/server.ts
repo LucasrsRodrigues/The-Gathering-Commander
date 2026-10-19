@@ -11,6 +11,9 @@ import { TokenBucket, WindowLimiter } from './limits'
 import { securityHeaders, serveStatic } from './static'
 import { Room, type Outgoing, type RoomDeps } from './room/room'
 import type { RoomStore } from './store'
+import { makeDeckChecker } from './catalog/deckCheck'
+import { handleCatalog } from './catalog/routes'
+import type { SqliteCatalogStore } from './catalog/store'
 
 export interface ServerConfig {
   port: number
@@ -20,6 +23,7 @@ export interface ServerConfig {
   roomsPerIpPerHour: number
   trustProxy: boolean // read the client IP / host / protocol from X-Forwarded-* (behind Caddy, Traefik…)
   staticDir: string | null // built web app to serve from the same origin (single-container deploys)
+  catalogRequestsPerMinute: number
 }
 
 export const DEFAULT_CONFIG: ServerConfig = {
@@ -30,6 +34,7 @@ export const DEFAULT_CONFIG: ServerConfig = {
   roomsPerIpPerHour: 20,
   trustProxy: false,
   staticDir: null,
+  catalogRequestsPerMinute: 300,
 }
 
 const MESSAGES_PER_SECOND = 20
@@ -48,11 +53,13 @@ export interface RunningServer {
   close(): Promise<void>
 }
 
-export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDeps = cryptoDeps): Promise<RunningServer> {
+export function startServer(config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: SqliteCatalogStore | null = null): Promise<RunningServer> {
+  const deps: RoomDeps = catalog && !baseDeps.checkDeck ? { ...baseDeps, checkDeck: makeDeckChecker(catalog) } : baseDeps
   const rooms = new Map<string, Room>()
   const sockets = new Map<string, WebSocket>() // connId → socket
   const connectionsByIp = new Map<string, number>()
   const creation = new WindowLimiter(config.roomsPerIpPerHour, 60 * 60 * 1000)
+  const catalogLimit = new WindowLimiter(config.catalogRequestsPerMinute, 60 * 1000)
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
 
@@ -96,11 +103,17 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
       res.setHeader('Vary', 'Origin')
     }
     if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Methods', 'POST')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
       res.setHeader('Access-Control-Max-Age', '600')
       return end(res, 204)
     }
-    if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size })
+    if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size, catalog: catalog?.cardCount() ?? 0 })
+    if (req.url?.startsWith('/api/catalog/')) {
+      if (!catalogLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas consultas; tente em instantes.' })
+      handleCatalog(catalog, req, res, json).catch(() => json(res, 500, { error: 'erro no catálogo' }))
+      return
+    }
     if (req.method === 'POST' && req.url === '/api/rooms') {
       if (!originAllowed(origin, req)) return json(res, 403, { error: 'origem não permitida' })
       if (!creation.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas salas criadas; tente mais tarde.' })
@@ -178,6 +191,7 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
   const sweeper = setInterval(() => {
     const now = deps.now()
     creation.sweep(now)
+    catalogLimit.sweep(now)
     for (const id of store.expired(now - config.roomTtlMs)) {
       const live = rooms.get(id)
       if (live && live.connectionCount > 0) continue
@@ -206,8 +220,8 @@ function send(ws: WebSocket | undefined, msg: ServerMessage) {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg))
 }
 
-function json(res: ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
+function json(res: ServerResponse, status: number, body: unknown, cache = 'no-store') {
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': cache, 'X-Content-Type-Options': 'nosniff' })
   res.end(JSON.stringify(body))
 }
 

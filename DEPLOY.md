@@ -25,8 +25,11 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
    | `ROOM_TTL_HOURS` | `24` | Horas de inatividade até a sala ser apagada |
    | `MAX_ROOMS` | `500` | Número máximo de salas ao mesmo tempo |
    | `ALLOWED_ORIGINS` | (vazio) | Outras origens que podem usar o servidor (o próprio domínio já é aceito) |
+   | `CATALOG` | (ligado) | `off` desliga o catálogo próprio; o app passa a usar só o Scryfall |
+   | `CATALOG_DB_PATH` | `/data/catalog.db` | Onde fica o banco do catálogo versionado |
 
-5. **Mounts:** adicione um **Volume** com Mount Path `/data`. É onde fica o `rooms.db`.
+5. **Mounts:** adicione um **Volume** com Mount Path `/data`. É onde ficam o `rooms.db`, o `catalog.db`
+   (cerca de 160 MB) e, em `/data/raw`, os últimos 7 arquivos baixados do Scryfall.
 6. **Domains:** adicione o seu domínio (ou use o domínio automático do EasyPanel) com **porta 8787** e HTTPS
    ligado. O WebSocket funciona pelo mesmo domínio, sem configuração extra.
 7. Clique em **Deploy**. Para conferir, abra `https://seu-dominio/api/health`, que deve responder `{"ok":true,...}`.
@@ -36,6 +39,11 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
 - Em **Deployments**, veja se o build terminou. Em **Logs**, a linha esperada é
   `The Gathering Hall server on :8787`. Se aparecer "Não foi possível abrir o banco das salas", o volume `/data`
   não está montado direito.
+
+**Catálogo de cartas:** uns 5 segundos depois de subir, o servidor baixa o bulk "oracle-cards" do Scryfall
+(cerca de 25 MB) e importa. Depois confere a cada 6 horas e só reimporta quando o Scryfall publica um arquivo novo.
+O andamento aparece nos Logs, e `/api/catalog/status` mostra quantas cartas há e quando foi o último import.
+Enquanto o primeiro import não termina, o app usa o Scryfall direto.
 
 **Atualizações:** cada push na `main` pode disparar o deploy, se o auto deploy estiver ligado no EasyPanel. Se não
 estiver, clique em **Deploy**. As salas em andamento continuam, porque são recarregadas do volume.

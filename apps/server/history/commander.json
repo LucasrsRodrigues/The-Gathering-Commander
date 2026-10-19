@@ -1,0 +1,9 @@
+{
+  "description": "Mudanças de banlist e de Game Changers do Commander anteriores à primeira importação do catálogo. Só nomes, datas e a fonte oficial de cada mudança. Entradas posteriores à primeira importação são ignoradas (o Scryfall já informa).",
+  "entries": [
+    { "name": "Dockside Extortionist", "kind": "banned", "from": "2024-09-23", "source": "https://magic.wizards.com/en/news/announcements/commander-banned-and-restricted-announcement-september-23-2024" },
+    { "name": "Jeweled Lotus", "kind": "banned", "from": "2024-09-23", "source": "https://magic.wizards.com/en/news/announcements/commander-banned-and-restricted-announcement-september-23-2024" },
+    { "name": "Mana Crypt", "kind": "banned", "from": "2024-09-23", "source": "https://magic.wizards.com/en/news/announcements/commander-banned-and-restricted-announcement-september-23-2024" },
+    { "name": "Nadu, Winged Wisdom", "kind": "banned", "from": "2024-09-23", "source": "https://magic.wizards.com/en/news/announcements/commander-banned-and-restricted-announcement-september-23-2024" }
+  ]
+}

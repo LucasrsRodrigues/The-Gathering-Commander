@@ -56,3 +56,21 @@ describe('preset codec', () => {
     expect(decodePreset(text).ok).toBe(false)
   })
 })
+
+describe('banlist as of a date', () => {
+  it('round-trips asOf and rejects bad dates', async () => {
+    const { factsAsOf } = await import('../src')
+    const p: Preset = { ...officialPreset(), id: 'x', name: 'Banlist de 2025', deckRules: { banlist: { asOf: '2025-01-01' } } }
+    expect(decodePreset(encodePreset(p))).toEqual({ ok: true, preset: p })
+    expect(decodePreset(encodePreset({ ...p, deckRules: { banlist: { asOf: '2025-13-40' } } })).ok).toBe(false)
+    expect(resolvePreset(p).deckRules.banlist.asOf).toBe('2025-01-01')
+
+    const facts = new Map([
+      ['crypt', { oracleId: 'crypt', name: 'Mana Crypt', typeLine: 'Artifact', oracleText: '', colorIdentity: [], keywords: [], legalCommander: 'legal' as const, gameChanger: false }],
+      ['ring', { oracleId: 'ring', name: 'Sol Ring', typeLine: 'Artifact', oracleText: '', colorIdentity: [], keywords: [], legalCommander: 'banned' as const, gameChanger: true }],
+    ])
+    const past = factsAsOf(facts, { banned: new Set(['crypt']), gameChangers: new Set() })
+    expect(past.get('crypt')).toMatchObject({ legalCommander: 'banned' })
+    expect(past.get('ring')).toMatchObject({ legalCommander: 'legal', gameChanger: false })
+  })
+})

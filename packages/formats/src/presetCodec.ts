@@ -80,6 +80,7 @@ function sanitize(p: Record<string, unknown>): Preset {
         ...(b.level !== undefined ? { level: oneOf(b.level, 'level', LEVELS) } : {}),
         ...(b.extraBans !== undefined ? { extraBans: names(b.extraBans, 'extraBans') } : {}),
         ...(b.unbans !== undefined ? { unbans: names(b.unbans, 'unbans') } : {}),
+        ...(b.asOf !== undefined ? { asOf: date(b.asOf, 'asOf') } : {}),
       }
     }
     preset.deckRules = deckRules
@@ -110,6 +111,11 @@ function bool(v: unknown, what: string): boolean {
 function oneOf<T extends string>(v: unknown, what: string, options: readonly T[]): T {
   if (!options.includes(v as T)) bad(`Valor inválido em ${what}.`)
   return v as T
+}
+
+function date(v: unknown, what: string): string {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) bad(`Data inválida em ${what} (use AAAA-MM-DD).`)
+  return v as string
 }
 
 function names(v: unknown, what: string): string[] {

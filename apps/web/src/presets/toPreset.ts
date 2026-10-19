@@ -20,6 +20,7 @@ export function toPreset(base: Preset, values: ResolvedPreset): Preset {
   if (banlist.level !== ob.level) bl.level = banlist.level
   if (banlist.extraBans.length) bl.extraBans = banlist.extraBans
   if (banlist.unbans.length) bl.unbans = banlist.unbans
+  if (banlist.asOf) bl.asOf = banlist.asOf
   if (Object.keys(bl).length) deckRules.banlist = bl
   return {
     id: base.id, name: base.name, base: base.base,

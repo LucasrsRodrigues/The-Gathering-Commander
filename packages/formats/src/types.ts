@@ -41,6 +41,7 @@ export interface DeckRules {
     extraBans: string[]
     unbans: string[]
     level: Enforcement
+    asOf?: string // ISO date: use the official banlist / Game Changers of that day (needs the versioned catalog)
   }
 }
 
