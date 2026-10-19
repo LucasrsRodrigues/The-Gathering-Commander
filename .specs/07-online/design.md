@@ -82,7 +82,7 @@ flowchart LR
 - A **cortina de hot-seat não existe no online**: cada dispositivo é um lugar.
 
 ## Decisões
-- **ADR-07.1 — Hospedagem: VPS própria (decidido em 2026-10-19).** Servidor Node + `ws` + SQLite nativo do Node (`node:sqlite`), atrás de um proxy com TLS (Caddy). Abaixo, a comparação que embasou a escolha.
+- **ADR-07.1 — Hospedagem: VPS própria (decidido em 2026-10-19).** Servidor Node + `ws` + SQLite nativo do Node (`node:sqlite`), num container único publicado pelo EasyPanel (o proxy dele cuida do TLS); o servidor também entrega o app na mesma origem. Abaixo, a comparação que embasou a escolha.
 
   | | A. Servidor próprio (Node + `ws` + SQLite/Postgres) | B. Cloudflare Workers + Durable Objects ⭐ |
   |---|---|---|

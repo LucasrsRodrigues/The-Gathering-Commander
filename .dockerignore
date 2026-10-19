@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+apps/server/data
+spikes
+.git
+.github
+.claude
+.specs
+*.pdf
+.DS_Store

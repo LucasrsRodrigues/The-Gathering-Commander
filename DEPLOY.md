@@ -1,73 +1,59 @@
-# Deploy na VPS
+# Deploy
 
-O app (arquivos estáticos) e o servidor online rodam na mesma VPS, atrás do **Caddy**, que cuida do HTTPS
-sozinho. O servidor guarda as salas num arquivo SQLite, num volume do Docker.
+O jogo inteiro roda em **um único container**: o servidor Node entrega o app web, a API (`/api`) e o WebSocket
+(`/ws`) na mesma origem. O `Dockerfile` na raiz do repositório já faz o build do app e do servidor.
 
 ```
-navegador ──HTTPS──► Caddy ─┬─ /            → app (apps/web/dist)
-                            ├─ /api/*       → servidor Node :8787
-                            └─ /ws          → servidor Node :8787 (WebSocket)
+navegador ──HTTPS──► proxy do EasyPanel (Traefik) ──► container :8787
+                                                       ├─ /       app web (estático)
+                                                       ├─ /api/*  criar sala, health
+                                                       └─ /ws     WebSocket das salas
 ```
 
-## Pré-requisitos
-- Uma VPS com Docker e Docker Compose (Ubuntu 24.04 ou parecido, com 1 GB de RAM).
-- Um domínio (ou subdomínio) apontando para o IP da VPS: um registro `A` para `jogo.seudominio.com`.
-- Portas 80 e 443 liberadas no firewall.
+As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sobreviver a novos deploys.
 
-## 1. Build do app com o endereço do servidor
-No seu computador ou na VPS, a partir da raiz do repositório:
+## EasyPanel
+
+1. **Criar o serviço:** no projeto, clique em **+ Service → App**. Dê um nome, por exemplo `gathering-hall`.
+2. **Source:** **GitHub**, com o repositório `LucasrsRodrigues/The-Gathering-Commander`, branch `main` e
+   Build Path `/`.
+3. **Build:** **Dockerfile** (o EasyPanel escolhe sozinho, porque há um `Dockerfile` na raiz).
+4. **Environment:** nenhuma variável é obrigatória. As opcionais:
+
+   | Variável | Padrão | Para quê |
+   |---|---|---|
+   | `ROOM_TTL_HOURS` | `24` | Horas de inatividade até a sala ser apagada |
+   | `MAX_ROOMS` | `500` | Número máximo de salas ao mesmo tempo |
+   | `ALLOWED_ORIGINS` | (vazio) | Outras origens que podem usar o servidor (o próprio domínio já é aceito) |
+
+5. **Mounts:** adicione um **Volume** com Mount Path `/data`. É onde fica o `rooms.db`.
+6. **Domains:** adicione o seu domínio (ou use o domínio automático do EasyPanel) com **porta 8787** e HTTPS
+   ligado. O WebSocket funciona pelo mesmo domínio, sem configuração extra.
+7. Clique em **Deploy**. Para conferir, abra `https://seu-dominio/api/health`, que deve responder `{"ok":true,...}`.
+
+**Atualizações:** cada push na `main` pode disparar o deploy, se o auto deploy estiver ligado no EasyPanel. Se não
+estiver, clique em **Deploy**. As salas em andamento continuam, porque são recarregadas do volume.
+
+## Outro host com Docker
+```bash
+docker build -t gathering-hall .
+```
 
 ```bash
-cp apps/web/.env.production.example apps/web/.env.production
+docker run -d --name gathering-hall -p 8787:8787 -v gathering-hall-data:/data --restart unless-stopped gathering-hall
 ```
 
-Edite `apps/web/.env.production` com o seu domínio (`https://` e `wss://`). Esse endereço também entra na
-Content-Security-Policy do app.
-
-```bash
-npm ci
-```
-
-```bash
-npm run build -w @gathering-hall/web
-```
-
-## 2. Configurar o domínio
-Em `deploy/Caddyfile`, troque `jogo.seudominio.com` pelo seu domínio.
-
-## 3. Subir na VPS
-Copie o repositório para a VPS (com `apps/web/dist` já gerado) e, na raiz:
-
-```bash
-PUBLIC_ORIGIN=https://jogo.seudominio.com docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-Confira:
-
-```bash
-curl https://jogo.seudominio.com/api/health
-```
-
-## Operação
-- **Logs:** `docker compose -f deploy/docker-compose.yml logs -f server`
-- **Atualizar:** `git pull`, refaça o build do app (passo 1) e rode o `up -d --build` de novo. As salas em andamento
-  continuam: elas são recarregadas do SQLite.
-- **Backup das salas:** o volume `rooms` contém `rooms.db`. Como as salas expiram em 24 h, o backup é opcional.
-- **Limites** (variáveis do serviço `server`):
-
-  | Variável | Padrão | Efeito |
-  |---|---|---|
-  | `ROOM_TTL_HOURS` | 24 | Horas de inatividade antes de a sala ser apagada |
-  | `MAX_ROOMS` | 500 | Número máximo de salas ao mesmo tempo |
-
-  Além disso, cada IP pode criar até 20 salas por hora e cada conexão pode mandar até 20 mensagens por segundo.
+Coloque um proxy com HTTPS na frente (Caddy, Traefik, Nginx) que repasse os headers `X-Forwarded-*`. O container
+já sobe com `TRUST_PROXY=1`. Se a porta 8787 ficar exposta direto, sem proxy, defina `TRUST_PROXY=0`.
 
 ## Segurança
-- **O servidor só aceita conexões da origem definida em `PUBLIC_ORIGIN`.** Outros sites não conseguem abrir
+- **O servidor só aceita a própria origem** (e as listadas em `ALLOWED_ORIGINS`). Outros sites não conseguem abrir
   WebSocket nem criar salas.
-- **Os tokens de lugar ficam só no navegador de cada jogador.** O servidor guarda apenas o hash (SHA-256).
-- **Não há contas nem dados pessoais:** só o apelido escolhido na sala.
-- **Mantenha a VPS atualizada** (`unattended-upgrades`) e o Docker em dia.
+- **Limites:** cada IP pode criar até 20 salas por hora, cada conexão pode mandar até 20 mensagens por segundo, e
+  mensagens e decks têm tamanho máximo.
+- **Tokens de lugar:** ficam só no navegador de cada jogador. O servidor guarda apenas o hash (SHA-256).
+- **Sem contas e sem dados pessoais:** só o apelido escolhido na sala.
+- **Headers:** HTTPS com HSTS atrás do proxy, `nosniff`, `X-Frame-Options: DENY`, CSP no app.
 
 ## Desenvolvimento local
 ```bash
@@ -78,4 +64,5 @@ npm run dev -w @gathering-hall/server
 npm run dev
 ```
 
-O servidor sobe em `http://localhost:8787` e aceita as origens `http://localhost:5180` e `http://localhost:5173`.
+O servidor sobe em `http://localhost:8787` e aceita o app de desenvolvimento (`http://localhost:5180` e
+`http://localhost:5173`), configurado em `apps/web/.env`.

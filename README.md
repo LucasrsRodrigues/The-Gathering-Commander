@@ -23,7 +23,8 @@ As regras de cada carta ainda são aplicadas pelos jogadores, como numa mesa fí
 ## Online
 Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do
 próprio dispositivo, sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
-ver. Para colocar na sua VPS, veja o [DEPLOY.md](DEPLOY.md).
+ver. Tudo sobe num único container (há um `Dockerfile` na raiz); o passo a passo para o EasyPanel está no
+[DEPLOY.md](DEPLOY.md).
 
 ## Rodar
 Requer Node 22+.
@@ -53,7 +54,6 @@ packages/formats  regras do formato, presets (regras da casa), validação de de
 packages/protocol mensagens do jogo online, com validação estrita
 apps/web          React + react-three-fiber (mesa 3D) + HUD em DOM
 apps/server       servidor online (Node + ws + SQLite), uma sala = um RoomCore puro
-deploy/           Dockerfile, Caddyfile e docker-compose para a VPS
 .specs/           requisitos, design e tarefas por épico
 spikes/           protótipos descartáveis (ex.: benchmark de renderização)
 ```

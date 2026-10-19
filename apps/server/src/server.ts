@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net'
 import { decodeClientMessage, MAX_MESSAGE_BYTES, ROOM_ID, serverError, type ServerMessage } from '@gathering-hall/protocol'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { TokenBucket, WindowLimiter } from './limits'
+import { securityHeaders, serveStatic } from './static'
 import { Room, type Outgoing, type RoomDeps } from './room/room'
 import type { RoomStore } from './store'
 
@@ -17,7 +18,8 @@ export interface ServerConfig {
   roomTtlMs: number
   maxRooms: number
   roomsPerIpPerHour: number
-  trustProxy: boolean // read the client IP from X-Forwarded-For (behind Caddy)
+  trustProxy: boolean // read the client IP / host / protocol from X-Forwarded-* (behind Caddy, Traefik…)
+  staticDir: string | null // built web app to serve from the same origin (single-container deploys)
 }
 
 export const DEFAULT_CONFIG: ServerConfig = {
@@ -27,6 +29,7 @@ export const DEFAULT_CONFIG: ServerConfig = {
   maxRooms: 500,
   roomsPerIpPerHour: 20,
   trustProxy: false,
+  staticDir: null,
 }
 
 const MESSAGES_PER_SECOND = 20
@@ -66,15 +69,27 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
     for (const { to, msg } of out) send(sockets.get(to), msg)
   }
 
-  const clientIp = (req: IncomingMessage) =>
-    (config.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',')[0]?.trim() : '') || req.socket.remoteAddress || '?'
+  const forwarded = (req: IncomingMessage, name: string) =>
+    config.trustProxy ? String(req.headers[name] ?? '').split(',')[0]?.trim() || undefined : undefined
+  const isHttps = (req: IncomingMessage) => forwarded(req, 'x-forwarded-proto') === 'https'
+  const clientIp = (req: IncomingMessage) => forwarded(req, 'x-forwarded-for') || req.socket.remoteAddress || '?'
 
-  const originAllowed = (origin: string | undefined) => !!origin && config.allowedOrigins.includes(origin)
+  // Listed origins, plus the server's own origin when it also serves the web app (same-origin deploy).
+  const originAllowed = (origin: string | undefined, req: IncomingMessage) => {
+    if (!origin) return false
+    if (config.allowedOrigins.includes(origin)) return true
+    if (!config.staticDir) return false
+    try {
+      return new URL(origin).host === (forwarded(req, 'x-forwarded-host') ?? req.headers.host)
+    } catch {
+      return false
+    }
+  }
 
   // ---- HTTP: create rooms, health ----
   const http = createHttpServer((req, res) => {
     const origin = req.headers.origin
-    if (originAllowed(origin)) {
+    if (originAllowed(origin, req)) {
       res.setHeader('Access-Control-Allow-Origin', origin!)
       res.setHeader('Vary', 'Origin')
     }
@@ -85,7 +100,7 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
     }
     if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size })
     if (req.method === 'POST' && req.url === '/api/rooms') {
-      if (!originAllowed(origin)) return json(res, 403, { error: 'origem não permitida' })
+      if (!originAllowed(origin, req)) return json(res, 403, { error: 'origem não permitida' })
       if (!creation.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas salas criadas; tente mais tarde.' })
       if (store.count() >= config.maxRooms) return json(res, 503, { error: 'O servidor está cheio; tente mais tarde.' })
       const id = randomBytes(16).toString('base64url')
@@ -94,6 +109,8 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
       store.save(room.snapshot())
       return json(res, 201, { room: id, token: hostToken })
     }
+    if (config.staticDir && !req.url?.startsWith('/api/') && serveStatic(config.staticDir, req, res, isHttps(req))) return
+    securityHeaders(res, isHttps(req))
     return json(res, 404, { error: 'não encontrado' })
   })
 
@@ -102,7 +119,7 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
   http.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://x')
     const roomId = url.searchParams.get('room') ?? ''
-    if (url.pathname !== '/ws' || !originAllowed(req.headers.origin) || !ROOM_ID.test(roomId)) {
+    if (url.pathname !== '/ws' || !originAllowed(req.headers.origin, req) || !ROOM_ID.test(roomId)) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
       return socket.destroy()
     }

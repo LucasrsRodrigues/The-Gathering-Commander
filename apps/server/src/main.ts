@@ -11,11 +11,12 @@ const config = {
   roomTtlMs: Number(env.ROOM_TTL_HOURS ?? 24) * 60 * 60 * 1000,
   maxRooms: Number(env.MAX_ROOMS ?? DEFAULT_CONFIG.maxRooms),
   trustProxy: env.TRUST_PROXY === '1',
+  staticDir: env.STATIC_DIR || null,
 }
 
 const store = new SqliteRoomStore(env.DB_PATH ?? './data/rooms.db')
 const server = await startServer(config, store)
-console.log(`The Gathering Hall server on :${server.port} (origens: ${config.allowedOrigins.join(', ')})`)
+console.log(`The Gathering Hall server on :${server.port} (origens: ${config.allowedOrigins.join(', ')}${config.staticDir ? ' + mesma origem' : ''})`)
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {

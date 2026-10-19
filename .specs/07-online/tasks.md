@@ -45,3 +45,11 @@ integração no runtime local. A partida de ponta a ponta é verificada com dois
   Docker, Caddy e o passo a passo estão em `deploy/` e `DEPLOY.md`.
 - **Limitação:** abas do mesmo navegador compartilham o token da sala. Para testar dois jogadores no mesmo
   computador, use dois navegadores, ou um deles em janela anônima.
+
+## Deploy (atualizado)
+- O deploy passou a ser pelo **EasyPanel**, num container único: o servidor também entrega o app na mesma origem
+  (`STATIC_DIR`), e o próprio domínio é aceito automaticamente pela checagem de origem. Caddy e docker-compose saíram;
+  o HTTPS fica com o proxy do EasyPanel.
+- Verificado localmente em modo de produção: app servido pelo servidor, sala criada e WebSocket conectado sob o CSP
+  `'self'`. A imagem Docker ainda não foi construída aqui (daemon parado), então o primeiro build acontece no
+  EasyPanel.
