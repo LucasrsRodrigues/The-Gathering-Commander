@@ -65,6 +65,13 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
         lines.push(e.winners.length ? `Fim de jogo! Vitória de ${e.winners.map(name).join(', ')}.` : 'Fim de jogo.')
         break
       case 'ruleBent': lines.push(`Regra contornada (aviso) por ${name(e.player)}: ${e.message}`); break
+      case 'exceptionRequested': lines.push(`${name(e.player)} pediu uma exceção às regras${e.reason ? `: “${e.reason}”` : ''}.`); break
+      case 'exceptionAnswered': lines.push(`${name(e.player)} ${e.approve ? 'aprovou' : 'recusou'} o pedido.`); break
+      case 'exceptionCancelled': lines.push(`${name(e.player)} desistiu do pedido de exceção.`); break
+      case 'exceptionFailed': lines.push(`O pedido de ${name(e.player)} foi aprovado, mas a ação já não vale: ${e.message}`); break
+      case 'judgeAction':
+        lines.push(`⚖ Ação de juiz: ${name(e.player)} fez uma jogada fora das regras${e.reason ? ` (“${e.reason}”)` : ''}${e.approvedBy.length ? `, aprovada por ${e.approvedBy.map(name).join(', ')}` : ''}.`)
+        break
       default: break
     }
   }

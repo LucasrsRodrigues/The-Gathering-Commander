@@ -1,6 +1,6 @@
 // Text alternatives for what the 3D table shows visually.
 
-import type { ObjectView, PlayerView } from '@gathering-hall/engine'
+import type { ActionIntent, CardRef, ObjectView, PlayerView } from '@gathering-hall/engine'
 import type { ViewableZone } from '../ui/stores'
 
 // Battlefield: what the seat controls, in play order. Player zones: top card first.
@@ -17,4 +17,20 @@ export function cardLabel(obj: ObjectView | undefined): string {
   if (obj.tapped) parts.push('virada')
   for (const [name, n] of Object.entries(obj.counters)) parts.push(`${n} marcador(es) ${name}`)
   return parts.join(', ')
+}
+
+const INTO_ZONE: Record<string, string> = {
+  hand: 'na mão', battlefield: 'no campo de batalha', graveyard: 'no cemitério', exile: 'no exílio',
+  library: 'no grimório', stack: 'na pilha', command: 'na zona de comando',
+}
+
+// What the action does, in words, for the dialog and the approval prompt.
+export function describeIntent(action: ActionIntent, card: CardRef | null | undefined): string {
+  const name = card?.name ?? 'uma carta'
+  switch (action.type) {
+    case 'playLand': return `jogar o terreno ${name}`
+    case 'castSpell': return `lançar ${name}${action.x !== undefined ? ` com X = ${action.x}` : ''}`
+    case 'moveObject': return `pôr ${name} ${INTO_ZONE[action.to] ?? 'em outra zona'}`
+    default: return 'fazer essa ação'
+  }
 }

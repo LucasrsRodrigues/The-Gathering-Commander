@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
+import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
 import { isInteractiveTarget } from '../hud/a11y'
 import { PlayerPanels, type Dispatch } from '../hud/PlayerPanels'
@@ -58,6 +59,7 @@ export function GameScreen({ session, onExit, onRematch }: {
   const connection = session.connection()
   const presence = session.presence()
   const away = presence ? view.seats.filter((id) => !presence.includes(id) && !view.players[id]?.lost) : []
+  const blocked = session.blocked()
 
   return (
     <div className="game">
@@ -89,6 +91,11 @@ export function GameScreen({ session, onExit, onRematch }: {
         <CardMenu view={view} dispatch={dispatch} />
         <ZoneViewer view={view} />
         <Toasts />
+        {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
+        {blocked && !curtain && (
+          <BlockedDialog blocked={blocked} view={view} online={connection !== 'local'} dispatch={dispatch}
+            onDismiss={() => session.dismissBlocked()} />
+        )}
         {view.status === 'ended' && (
           <div className="game-over" role="alert">
             <h2>{winners ? `Vitória de ${winners}!` : 'Fim de jogo'}</h2>

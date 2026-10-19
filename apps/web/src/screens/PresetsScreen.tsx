@@ -138,6 +138,24 @@ function PresetEditor({ preset, onClose, onSave }: { preset: Preset; onClose: ()
           </div>
         </fieldset>
         <fieldset className="span-2">
+          <legend>Regras de turno</legend>
+          <div className="form-grid">
+            <label className="field">Hora de jogar (terrenos e mágicas)
+              <select value={values.ruleset.timingRules} onChange={(e) => setRule({ timingRules: e.target.value as Enforcement })}>
+                {(Object.keys(LEVEL_LABELS) as Enforcement[]).map((l) => <option key={l} value={l}>{LEVEL_LABELS[l]}</option>)}
+              </select>
+            </label>
+            <label className="field">Terrenos por turno
+              <input type="number" min={1} max={5} value={values.ruleset.landsPerTurn}
+                onChange={(e) => setRule({ landsPerTurn: Math.max(1, Math.min(5, Math.round(Number(e.target.value)) || 1)) })} />
+            </label>
+            <p className="muted small span-2">
+              "Bloqueia" segue as regras oficiais e oferece "Fazer mesmo assim" para efeitos de cartas. "Só avisa" deixa e
+              registra no log. "Desligada" volta à mesa livre.
+            </p>
+          </div>
+        </fieldset>
+        <fieldset className="span-2">
           <legend>Construção de deck</legend>
           <div className="form-grid">
             <label className="field">Tamanho do deck

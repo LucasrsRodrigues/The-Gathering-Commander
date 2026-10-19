@@ -3,7 +3,7 @@ import type { PlayerId, PlayerView } from '@gathering-hall/engine'
 import { imagesFor } from '../catalog/catalog'
 import { menuStore, previewStore } from '../ui/stores'
 import { menuAnchor } from './a11y'
-import { playFromHand } from './actions'
+import { needsX, playFromHand } from './actions'
 import { cardLabel } from './labels'
 import type { Dispatch } from './PlayerPanels'
 
@@ -21,7 +21,13 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
       return
     }
     const obj = view.objects[id]
-    if (obj && view.status === 'playing') dispatch(playFromHand(obj))
+    if (!obj || view.status !== 'playing') return
+    if (needsX(obj)) {
+      const x = askX()
+      if (x !== null) dispatch({ type: 'castSpell', objectId: id, x })
+      return
+    }
+    dispatch(playFromHand(obj))
   }
 
   return (
@@ -90,4 +96,12 @@ export function HandArea({ view, viewer, dispatch }: { view: PlayerView; viewer:
       </div>
     </>
   )
+}
+
+// {X} spells: the value is chosen as the spell is cast (CR 601.2b).
+function askX(): number | null {
+  const raw = prompt('Valor de X (0 a 100):', '0')
+  if (raw === null) return null
+  const x = Number(raw)
+  return Number.isInteger(x) && x >= 0 && x <= 100 ? x : null
 }

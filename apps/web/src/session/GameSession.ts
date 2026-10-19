@@ -5,7 +5,7 @@ import {
   eventsFor, reduce, viewFor, type Action, type ActionIntent, type GameError, type GameState, type PlayerId, type PlayerView,
 } from '@gathering-hall/engine'
 import { describeEvents } from './describe'
-import type { ConnectionStatus, GameSessionPort, LogEntry } from './port'
+import type { BlockedAction, ConnectionStatus, GameSessionPort, LogEntry } from './port'
 
 export type { LogEntry } from './port'
 
@@ -20,6 +20,7 @@ export class GameSession implements GameSessionPort {
   private confirmed: PlayerId | null
   private version = 0
   private readonly listeners = new Set<() => void>()
+  private blockedAction: BlockedAction | null = null
   readonly hotseat: boolean
 
   constructor(initial: GameState) {
@@ -89,7 +90,13 @@ export class GameSession implements GameSessionPort {
   dispatch(action: ActionIntent & { player?: PlayerId }): GameError | null {
     const full = { ...action, player: action.player ?? this.seat() } as Action
     const result = reduce(this.state, full)
-    if (!result.ok) return result.error
+    if (!result.ok) {
+      if (result.error.code !== 'ruleBlocked') return result.error
+      // Shown as a dialog with "Fazer mesmo assim" instead of a toast.
+      this.blockedAction = { action, error: result.error }
+      this.changed()
+      return null
+    }
     this.history.push(this.state)
     if (this.history.length > MAX_HISTORY) this.history.shift()
     const viewer = this.seat()
@@ -98,6 +105,15 @@ export class GameSession implements GameSessionPort {
     this.appendLog(lines)
     this.changed()
     return null
+  }
+
+  blocked() {
+    return this.blockedAction
+  }
+
+  dismissBlocked() {
+    this.blockedAction = null
+    this.changed()
   }
 
   undo(): boolean {

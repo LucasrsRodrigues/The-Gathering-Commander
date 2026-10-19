@@ -6,7 +6,7 @@ import type { ActionIntent, DeckInput, PlayerId, PlayerView } from '@gathering-h
 import type { Preset } from '@gathering-hall/formats'
 import { PROTOCOL_VERSION, type ClientMessage, type ServerMessage } from '@gathering-hall/protocol'
 import { describeEvents } from '../session/describe'
-import type { ConnectionStatus, GameSessionPort, LogEntry } from '../session/port'
+import type { BlockedAction, ConnectionStatus, GameSessionPort, LogEntry } from '../session/port'
 
 export interface SocketLike {
   onopen: (() => void) | null
@@ -64,6 +64,8 @@ export class OnlineRoom implements GameSessionPort {
   private log: LogEntry[] = []
   private logId = 0
   private seq = 0
+  private readonly sent = new Map<number, ActionIntent>() // recent actions by seq, to offer exceptions when blocked
+  private blockedAction: BlockedAction | null = null
   private version = 0
   private attempts = 0
   private closed = false
@@ -125,7 +127,14 @@ export class OnlineRoom implements GameSessionPort {
   confirmSeat() {}
   dispatch(action: ActionIntent) {
     this.send({ v: 1, t: 'act', seq: ++this.seq, action })
+    this.sent.set(this.seq, action)
+    if (this.sent.size > 20) this.sent.delete(this.sent.keys().next().value!)
     return null
+  }
+  blocked() { return this.blockedAction }
+  dismissBlocked() {
+    this.blockedAction = null
+    this.update({})
   }
   canUndo() { return false }
   undo() { return false }
@@ -192,9 +201,14 @@ export class OnlineRoom implements GameSessionPort {
         this.onState(msg.view)
         return
       }
-      case 'rejected':
-        this.onError(msg.error.message)
+      case 'rejected': {
+        const action = this.sent.get(msg.seq)
+        if (msg.error.code === 'ruleBlocked' && action) {
+          this.blockedAction = { action, error: msg.error }
+          this.update({})
+        } else this.onError(msg.error.message)
         return
+      }
       case 'presence':
         this.connected = msg.connected
         this.update({})

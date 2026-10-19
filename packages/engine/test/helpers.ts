@@ -16,7 +16,8 @@ export function newGame(players = 4, opts: { seed?: number; ruleset?: Partial<Ru
   const config: GameConfig = {
     seed: opts.seed ?? 42,
     startingPlayer: 'p1',
-    ruleset: opts.ruleset,
+    // Most tests exercise the sandbox mechanics; turn-rule tests ask for their level explicitly.
+    ruleset: { timingRules: 'off', ...opts.ruleset },
     players: Array.from({ length: players }, (_, i) => ({ id: `p${i + 1}`, name: `Jogador ${i + 1}`, deck: deck(opts.deckSize) })),
   }
   return createGame(config)

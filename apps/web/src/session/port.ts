@@ -10,6 +10,12 @@ export interface LogEntry {
 
 export type ConnectionStatus = 'local' | 'connecting' | 'online' | 'offline'
 
+// An action a house rule blocked (épico 09): the table offers "Fazer mesmo assim" for it.
+export interface BlockedAction {
+  action: ActionIntent
+  error: GameError
+}
+
 export interface GameSessionPort {
   subscribe(listener: () => void): () => void
   getVersion(): number
@@ -22,6 +28,8 @@ export interface GameSessionPort {
   canUndo(): boolean
   undo(): boolean
   getLog(): LogEntry[]
+  blocked(): BlockedAction | null
+  dismissBlocked(): void
   connection(): ConnectionStatus
   presence(): PlayerId[] | null // connected players online; null when local
 }

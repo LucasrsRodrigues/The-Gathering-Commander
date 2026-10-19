@@ -15,11 +15,19 @@ export interface MenuGroup {
 const move = (objectId: string, to: ZoneKind, extra: { position?: 'top' | 'bottom'; faceDown?: boolean } = {}): Intent =>
   ({ type: 'moveObject', objectId, to, ...extra })
 
-// Lands go straight to the battlefield; everything else is cast onto the stack (CR 305.1, 601.2a).
-export function playFromHand(obj: ObjectView): Intent {
-  const isLand = /\bland\b/i.test(obj.card?.typeLine ?? '') && !/creature/i.test(obj.card?.typeLine ?? '')
-  return move(obj.id, isLand ? 'battlefield' : 'stack')
+export function isLandCard(obj: ObjectView): boolean {
+  if (obj.card?.rules) return obj.card.rules.types.includes('land')
+  const front = (obj.card?.typeLine ?? '').split('//')[0]!.split(/\s+[—-]\s+/)[0]!
+  return /\bland\b/i.test(front)
 }
+
+// Lands are played, everything else is cast (CR 305.1, 601.2): the engine checks when that is allowed.
+export function playFromHand(obj: ObjectView): Intent {
+  return isLandCard(obj) ? { type: 'playLand', objectId: obj.id } : { type: 'castSpell', objectId: obj.id }
+}
+
+// Spells with {X} in their cost ask for X first (see HandArea / CardMenu).
+export const needsX = (obj: ObjectView) => (obj.card?.rules?.cost?.x ?? 0) > 0
 
 function moveGroup(obj: ObjectView): MenuGroup {
   const items: MenuItem[] = []
@@ -58,15 +66,15 @@ export function menuFor(obj: ObjectView): MenuGroup[] {
     case 'hand':
       groups.push({
         items: [
-          { label: 'Jogar', action: playFromHand(obj) },
-          { label: 'Jogar virada para baixo', action: move(obj.id, 'battlefield', { faceDown: true }) },
+          { label: isLandCard(obj) ? 'Jogar terreno' : 'Lançar', action: playFromHand(obj) },
+          { label: 'Pôr no campo virada para baixo', action: move(obj.id, 'battlefield', { faceDown: true }) },
         ],
       })
       break
     case 'command':
       groups.push({
         items: [
-          { label: `Conjurar${obj.commanderTax ? ` (taxa +${obj.commanderTax})` : ''}`, action: move(obj.id, 'stack') },
+          { label: `Lançar${obj.commanderTax ? ` (taxa +${obj.commanderTax})` : ''}`, action: { type: 'castSpell', objectId: obj.id } },
           { label: 'Pôr no campo', action: move(obj.id, 'battlefield') },
         ],
       })

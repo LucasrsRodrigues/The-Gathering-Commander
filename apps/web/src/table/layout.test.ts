@@ -7,7 +7,7 @@ const land: CardRef = { name: 'Forest', typeLine: 'Basic Land — Forest' }
 
 function game(players: number): GameState {
   let s = createGame({
-    seed: 5, startingPlayer: 'p1',
+    seed: 5, startingPlayer: 'p1', ruleset: { timingRules: 'off' }, // the board is set up by hand
     players: Array.from({ length: players }, (_, i) => ({
       id: `p${i + 1}`, name: `J${i + 1}`,
       deck: { commanders: [{ name: 'Boss', typeLine: 'Legendary Creature' }], cards: [...Array(20).fill(bear), ...Array(20).fill(land)] },

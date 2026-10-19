@@ -50,3 +50,21 @@ describe('GameSession', () => {
     expect(s.view().viewer).toBe('p1')
   })
 })
+
+describe('GameSession and house rules (épico 09)', () => {
+  it('a blocked action becomes "Fazer mesmo assim", which a local game applies at once', () => {
+    const s = session(1)
+    s.dispatch({ type: 'keepHand' }) // turn 1, upkeep: no creatures yet
+    const card = s.getState().zones.p1!.hand[0]!
+    expect(s.dispatch({ type: 'castSpell', objectId: card })).toBeNull() // no toast: a dialog instead
+    const blocked = s.blocked()
+    expect(blocked?.action).toEqual({ type: 'castSpell', objectId: card })
+    expect(blocked?.error.findings?.[0]?.code).toBe('notMainPhase')
+
+    s.dismissBlocked()
+    expect(s.blocked()).toBeNull()
+    expect(s.dispatch({ type: 'requestException', action: { type: 'castSpell', objectId: card }, reason: 'Teste' })).toBeNull()
+    expect(s.getState().objects[card]!.zone).toBe('stack')
+    expect(s.getLog().map((l) => l.text).join(' ')).toContain('Ação de juiz')
+  })
+})

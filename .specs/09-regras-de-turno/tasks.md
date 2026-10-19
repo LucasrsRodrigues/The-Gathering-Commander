@@ -83,11 +83,19 @@ depois paradas.
       tentar jogá-la ("carta desconhecida");
     - quem pediu e sai da partida leva o pedido junto;
     - num jogo solo em modo de votação, não há quem aprove, e a ação é aplicada na hora.
-- [ ] **T9.7 — Mesa: jogar e lançar, toast de bloqueio, diálogo de exceção** · depende de T9.5, T9.6
+- [x] **T9.7 — Mesa: jogar e lançar, toast de bloqueio, diálogo de exceção** · depende de T9.5, T9.6
   - Verificação: partida local e online jogável só com o fluxo novo; leitor de tela anuncia o motivo do bloqueio.
 
 ## Onda 2 — Mana
-  - Ao terminar: mudar o padrão de `timingRules` para `block` em `COMMANDER_RULESET`.
+  - Ao terminar: mudar o padrão de `timingRules` para `block` em `COMMANDER_RULESET`. ✓
+  - Feito:
+    - a mão e os menus usam "Jogar terreno" e "Lançar", e o X é pedido ao lançar;
+    - um bloqueio abre um diálogo com o motivo e "Fazer mesmo assim…" (com motivo opcional), em vez de um toast;
+    - online, o pedido aparece para os outros com "Aprovar" e "Recusar", e quem pediu pode desistir;
+    - o editor de regras da casa ganhou "Hora de jogar" e "Terrenos por turno".
+  - Verificado no navegador (jogo local): feitiço na manutenção bloqueado, exceção aplicada e registrada no log,
+    segundo terreno bloqueado.
+  - Não verificado no navegador: a votação online com duas pessoas, coberta pelos testes do motor e do protocolo.
 
 - [ ] **T9.8 — Reserva, `activateMana`, `declareMana`, escolha de cor e esvaziar por etapa** _(req: 7–11)_ · depende de T9.5
   - Verificação:
