@@ -4,6 +4,7 @@
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
 import { isLand } from './cards'
+import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
 import { advanceStep, givePriority, passPriority } from './turn'
@@ -27,16 +28,25 @@ const ACTION_TYPES = new Set<Action['type']>([
   'keepHand', 'mulligan', 'bottomCards', 'passPriority', 'advanceStep', 'moveObject', 'draw', 'mill',
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
+  'requestException', 'answerException', 'cancelException',
 ])
 const MAX_X = 100
 
 export function reduce(state: GameState, action: Action): ReduceResult {
+  return run(state, action, false)
+}
+
+// `skipPolicies` is only for rule exceptions that were approved (exceptions.ts).
+function run(state: GameState, action: Action, skipPolicies: boolean): ReduceResult {
   try {
     // Actions may come from a UI, a bot or (later) the network: their shape is checked at runtime,
     // not just trusted from the TypeScript types.
     checkShape(action)
+    if (action.type === 'requestException') return requestException(state, action, run)
+    if (action.type === 'answerException') return answerException(state, action, run)
+    if (action.type === 'cancelException') return cancelException(state, action)
     const tx = new Tx(state)
-    apply(tx, action)
+    apply(tx, action, skipPolicies)
     checkStateBasedActions(tx)
     return { ok: true, state: tx.s, events: tx.events }
   } catch (err) {
@@ -45,7 +55,7 @@ export function reduce(state: GameState, action: Action): ReduceResult {
   }
 }
 
-function apply(tx: Tx, action: Action) {
+function apply(tx: Tx, action: Action, skipPolicies: boolean) {
   const s = tx.s
   const actor = action.player
   if (s.status === 'ended') fail('gameOver', 'A partida já terminou.')
@@ -54,9 +64,11 @@ function apply(tx: Tx, action: Action) {
   if (player.lost) fail('playerLost', 'Esse jogador já saiu da partida.')
 
   if (action.type === 'concede') {
+    if (pendingException(s)?.player === actor) s.pending = null // the request leaves with whoever asked
     eliminate(tx, actor, 'conceded')
     return
   }
+  if (pendingException(s)) fail('pendingException', 'Há um pedido de exceção esperando resposta.')
 
   if (s.status === 'mulligan') {
     if (!MULLIGAN_ACTIONS.has(action.type)) fail('wrongPhase', 'Termine os mulligans antes de jogar.')
@@ -70,7 +82,7 @@ function apply(tx: Tx, action: Action) {
   }
 
   // House-rule policies (épico 09): 'block' rejects the action, 'warn' lets it through and logs it.
-  const findings = checkPolicies(s, action)
+  const findings = skipPolicies ? [] : checkPolicies(s, action)
   const blocking = findings.filter((f) => levelOf(s.ruleset, f.area) === 'block')
   if (blocking.length) throw new RuleViolation('ruleBlocked', blocking.map((f) => f.message).join(' '), blocking)
 

@@ -225,6 +225,7 @@ export class Room {
   }
 
   private overLimit(game: GameState, intent: Extract<ClientMessage, { t: 'act' }>['action']): string | null {
+    if (intent.type === 'requestException') return this.overLimit(game, intent.action) // limits apply to what is asked
     if (intent.type === 'createToken' && Object.keys(game.objects).length >= LIMITS.objects) {
       return 'Limite de objetos na partida atingido.'
     }

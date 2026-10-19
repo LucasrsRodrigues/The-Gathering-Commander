@@ -97,7 +97,17 @@ export function actionIntent(v: unknown): ActionIntent {
   const type = a.type
   switch (type) {
     case 'keepHand': case 'mulligan': case 'passPriority': case 'advanceStep': case 'shuffleLibrary': case 'concede':
+    case 'cancelException':
       return { type }
+    case 'answerException':
+      return { type, approve: bool(a.approve, 'approve') }
+    case 'requestException': {
+      // One level only: the requested action is any ordinary action, never another exception message.
+      const inner = actionIntent(a.action)
+      if (inner.type === 'requestException' || inner.type === 'answerException' || inner.type === 'cancelException') bad('exceção dentro de exceção')
+      const reason = a.reason === undefined || a.reason === '' ? '' : text(a.reason, 'motivo', 200)
+      return { type, action: inner, reason }
+    }
     case 'bottomCards': {
       if (!Array.isArray(a.objectIds) || a.objectIds.length > 20) bad('objectIds inválido')
       return { type, objectIds: (a.objectIds as unknown[]).map((x) => id(x, 'objectId')) }

@@ -155,6 +155,19 @@ export interface StackItem {
 export type PendingDecision =
   | { kind: 'mulligan'; player: PlayerId }
   | { kind: 'bottomCards'; player: PlayerId; count: number }
+  | ExceptionRequest
+
+// "Fazer mesmo assim" (épico 09): an action a 'block' policy rejected, waiting for the other players' approval.
+// Public on purpose: approvers must see what they approve, so a card from hand is revealed with the request.
+export interface ExceptionRequest {
+  kind: 'exception'
+  player: PlayerId // who asked
+  action: Action
+  reason: string
+  card?: CardRef // the card the action plays, revealed to everyone
+  findings: RuleFinding[]
+  approvals: PlayerId[]
+}
 
 export type PriorityMode = 'relaxed' | 'strict'
 
@@ -266,6 +279,9 @@ export type Action =
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number }> // CR 601.2
+  | ActionOf<'requestException', { action: ActionIntent; reason: string }>
+  | ActionOf<'answerException', { approve: boolean }>
+  | ActionOf<'cancelException'>
 
 export type ActionType = Action['type']
 
@@ -301,6 +317,11 @@ export type GameEvent =
   | { type: 'playerLost'; player: PlayerId; reason: LossReason }
   | { type: 'gameEnded'; winners: PlayerId[] }
   | { type: 'ruleBent'; player: PlayerId; area: RuleArea; code: string; message: string } // allowed by a 'warn' level
+  | { type: 'exceptionRequested'; player: PlayerId; reason: string }
+  | { type: 'exceptionAnswered'; player: PlayerId; approve: boolean }
+  | { type: 'exceptionCancelled'; player: PlayerId }
+  | { type: 'exceptionFailed'; player: PlayerId; message: string } // approved, but the action no longer works
+  | { type: 'judgeAction'; player: PlayerId; actionType: ActionType; reason: string; approvedBy: PlayerId[] }
 
 // ---- Results ----------------------------------------------------------------
 
@@ -321,6 +342,8 @@ export type ErrorCode =
   | 'invalidSelection'
   | 'invalidAction'
   | 'ruleBlocked' // a house-rule area at 'block' rejected it; `findings` says why
+  | 'pendingException' // a rule exception is waiting for answers
+  | 'noException' // nothing to answer, or the action did not need an exception
 
 export interface GameError {
   code: ErrorCode

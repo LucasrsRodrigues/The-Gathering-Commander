@@ -132,7 +132,7 @@ PendingDecision |=
   | { kind: 'confirmDamage'; player: PlayerId; proposal: DamageProposal }
   | { kind: 'discard'; player: PlayerId; count: number }
   | { kind: 'chooseManaColor'; player: PlayerId; objectId: ObjectId; options: ManaColor[] }
-  | { kind: 'exception'; requester: PlayerId; action: Action; reason: string; approvals: PlayerId[] }
+  | { kind: 'exception'; player: PlayerId; action: Action; reason: string; card?: CardRef; findings: RuleFinding[]; approvals: PlayerId[] } // card = revelada
 ```
 - `RuleLevel` passa a existir no motor. `formats` reaproveita como `Enforcement` (mesmo literal).
 - `schemaVersion: 2`, com migração `migrateState(v1) → v2`:

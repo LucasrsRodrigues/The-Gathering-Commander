@@ -18,6 +18,9 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'act', seq: 7, action: { type: 'moveObject', objectId: 'o12', to: 'battlefield', faceDown: false } },
       { v: 1, t: 'act', seq: 8, action: { type: 'playLand', objectId: 'o3' } },
       { v: 1, t: 'act', seq: 9, action: { type: 'castSpell', objectId: 'o4', x: 3 } },
+      { v: 1, t: 'act', seq: 10, action: { type: 'requestException', action: { type: 'playLand', objectId: 'o5' }, reason: 'Exploration' } },
+      { v: 1, t: 'act', seq: 11, action: { type: 'answerException', approve: true } },
+      { v: 1, t: 'act', seq: 12, action: { type: 'cancelException' } },
     ]) {
       expect(decode(m), JSON.stringify(m)).toEqual({ ok: true, msg: m })
     }
@@ -46,6 +49,9 @@ describe('decodeClientMessage', () => {
     ['absurd preset', enc({ v: 1, t: 'configure', preset: { ...officialPreset(), ruleset: { startingLife: 1e9 } } })],
     ['too big', 'x'.repeat(MAX_MESSAGE_BYTES + 1)],
     ['absurd X', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', x: 101 } })],
+    ['nested exception', enc({ v: 1, t: 'act', seq: 1, action: { type: 'requestException', action: { type: 'requestException', action: { type: 'concede' }, reason: '' }, reason: '' } })],
+    ['huge reason', enc({ v: 1, t: 'act', seq: 1, action: { type: 'requestException', action: { type: 'concede' }, reason: 'x'.repeat(201) } })],
+    ['non-boolean answer', enc({ v: 1, t: 'act', seq: 1, action: { type: 'answerException', approve: 'sim' } })],
     ['negative X', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', x: -1 } })],
   ])('rejects %s', (_label, raw) => {
     expect(decodeClientMessage(raw).ok).toBe(false)

@@ -67,7 +67,9 @@ export class GameSession implements GameSessionPort {
     const s = this.state
     if (!this.hotseat) return s.seats[0]!
     if (s.status === 'ended') return this.confirmed ?? s.seats[0]!
-    return s.pending?.player ?? s.priority?.player ?? s.turn.active
+    // A rule-exception request waits for the other players, not for who asked (local games never wait).
+    const decider = s.pending && s.pending.kind !== 'exception' ? s.pending.player : undefined
+    return decider ?? s.priority?.player ?? s.turn.active
   }
 
   needsCurtain(): boolean {

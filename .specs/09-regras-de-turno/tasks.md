@@ -70,12 +70,19 @@ depois paradas.
     - as políticas de tempo devolvem um código por motivo (`notYourTurn`, `notMainPhase`, `stackNotEmpty`,
       `landLimit`, `noPriority`), que a UI pode usar;
     - pedir a carta da mão de outro jogador responde "carta desconhecida", sem revelar nada.
-- [ ] **T9.6 — Pedido de exceção** _(req: 33–36)_ · depende de T9.4
+- [x] **T9.6 — Pedido de exceção** _(req: 33–36)_ · depende de T9.4
   - Escopo: `requestException`, `answerException`, `cancelException`, os modos `auto`/`vote` e `judgeAction`.
   - Verificação:
     - online, com 3 jogadores: uma recusa cancela, todos aprovando aplica, quem pediu pode desistir;
     - local aprova sozinho;
     - uma ação inválida por outro motivo não vira exceção.
+  - Feito:
+    - o pedido **revela a carta** envolvida (como um "revelar"), porque os outros precisam ver o que aprovam; a UI
+      avisa antes de enviar;
+    - a ação é testada antes das regras, para que pedir sobre a carta oculta de outro jogador responda igual a
+      tentar jogá-la ("carta desconhecida");
+    - quem pediu e sai da partida leva o pedido junto;
+    - num jogo solo em modo de votação, não há quem aprove, e a ação é aplicada na hora.
 - [ ] **T9.7 — Mesa: jogar e lançar, toast de bloqueio, diálogo de exceção** · depende de T9.5, T9.6
   - Verificação: partida local e online jogável só com o fluxo novo; leitor de tela anuncia o motivo do bloqueio.
 
