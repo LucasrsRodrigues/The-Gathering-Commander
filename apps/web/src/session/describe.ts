@@ -64,6 +64,7 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
       case 'gameEnded':
         lines.push(e.winners.length ? `Fim de jogo! Vitória de ${e.winners.map(name).join(', ')}.` : 'Fim de jogo.')
         break
+      case 'ruleBent': lines.push(`Regra contornada (aviso) por ${name(e.player)}: ${e.message}`); break
       default: break
     }
   }

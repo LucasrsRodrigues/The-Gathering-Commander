@@ -3,6 +3,7 @@
 
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
+import { checkPolicies, levelOf } from './policies'
 import { checkStateBasedActions, eliminate } from './stateBased'
 import { advanceStep, givePriority, passPriority } from './turn'
 import { Tx } from './tx'
@@ -66,7 +67,13 @@ function apply(tx: Tx, action: Action) {
     fail('strictPriority', 'Você precisa ter prioridade para agir.')
   }
 
+  // House-rule policies (épico 09): 'block' rejects the action, 'warn' lets it through and logs it.
+  const findings = checkPolicies(s, action)
+  const blocking = findings.filter((f) => levelOf(s.ruleset, f.area) === 'block')
+  if (blocking.length) throw new RuleViolation('ruleBlocked', blocking.map((f) => f.message).join(' '), blocking)
+
   applyGameAction(tx, action)
+  for (const f of findings) tx.emit({ type: 'ruleBent', player: actor, area: f.area, code: f.code, message: f.message })
 
   if (!NO_PRIORITY_ACTIONS.has(action.type) && tx.s.status === 'playing' && !tx.s.players[actor]!.lost) {
     // CR 117.3c: after acting, the player receives priority again.

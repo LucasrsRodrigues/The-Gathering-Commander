@@ -159,6 +159,14 @@ export type PriorityMode = 'relaxed' | 'strict'
 
 // How strictly an area of the rules is enforced (épico 09): block, allow with a logged warning, or not checked.
 export type RuleLevel = 'block' | 'warn' | 'off'
+export type RuleArea = 'timing' | 'mana' | 'combat'
+
+// One rule an action breaks. Blocking findings reject the action; warnings let it through as `ruleBent`.
+export interface RuleFinding {
+  area: RuleArea
+  code: string // stable id, e.g. 'useCastOrPlay'
+  message: string // for the player, in Portuguese
+}
 
 export interface Ruleset {
   id: 'commander'
@@ -289,6 +297,7 @@ export type GameEvent =
   | { type: 'commanderMayReturn'; objectId: ObjectId; owner: PlayerId }
   | { type: 'playerLost'; player: PlayerId; reason: LossReason }
   | { type: 'gameEnded'; winners: PlayerId[] }
+  | { type: 'ruleBent'; player: PlayerId; area: RuleArea; code: string; message: string } // allowed by a 'warn' level
 
 // ---- Results ----------------------------------------------------------------
 
@@ -308,10 +317,12 @@ export type ErrorCode =
   | 'invalidAmount'
   | 'invalidSelection'
   | 'invalidAction'
+  | 'ruleBlocked' // a house-rule area at 'block' rejected it; `findings` says why
 
 export interface GameError {
   code: ErrorCode
   message: string
+  findings?: RuleFinding[] // only for 'ruleBlocked'
 }
 
 export type ReduceResult =

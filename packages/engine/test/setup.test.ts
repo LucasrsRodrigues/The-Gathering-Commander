@@ -89,7 +89,8 @@ describe('turn-rule state (épico 09)', () => {
     const s = newGame(2)
     expect(s.schemaVersion).toBe(2)
     expect(s.options).toEqual({ exceptionApproval: 'auto' })
-    expect(COMMANDER_RULESET).toMatchObject({ landsPerTurn: 1, timingRules: 'block', manaRules: 'block', combatRules: 'block' })
+    // Each area switches to 'block' when the UI of its wave ships (T9.7, T9.11, T9.16).
+    expect(COMMANDER_RULESET).toMatchObject({ landsPerTurn: 1, timingRules: 'off', manaRules: 'off', combatRules: 'off' })
     expect(s.players.p1).toMatchObject({ manaPool: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, landsPlayed: 0, stops: defaultStops(), passUntil: null })
     expect(Object.values(s.objects).every((o) => o.damage === 0 && o.ptMods.length === 0)).toBe(true)
   })

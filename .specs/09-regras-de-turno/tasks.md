@@ -50,9 +50,14 @@ depois paradas.
     - o cache local do app passou para `gh-catalog-v3`.
 
 ## Onda 1 — Tempo
-- [ ] **T9.4 — Políticas e `ruleBlocked` / `ruleBent`** _(req: 32, 33)_ · depende de T9.2
+- [x] **T9.4 — Políticas e `ruleBlocked` / `ruleBent`** _(req: 32, 33)_ · depende de T9.2
   - Escopo: `checkPolicies`, os três níveis por área e os eventos no log.
   - Verificação: a mesma ação em `block`, `warn` e `off` dá erro, aviso e silêncio.
+  - Feito:
+    - a regra do req. 5 (mão ou comando para o campo ou a pilha só por "Jogar"/"Lançar") já entrou aqui, como
+      primeira política;
+    - **o padrão das três áreas fica `off` por enquanto.** Cada área vira `block` na tarefa de UI da sua onda, para
+      cada deploy continuar jogável (sem os botões novos, a mesa não teria como lançar cartas).
 - [ ] **T9.5 — `playLand`, `castSpell` (sem custo ainda) e movimento manual restrito** _(req: 1–6)_ · depende de T9.4
   - Verificação:
     - feitiço na manutenção bloqueado;
@@ -70,6 +75,8 @@ depois paradas.
   - Verificação: partida local e online jogável só com o fluxo novo; leitor de tela anuncia o motivo do bloqueio.
 
 ## Onda 2 — Mana
+  - Ao terminar: mudar o padrão de `timingRules` para `block` em `COMMANDER_RULESET`.
+
 - [ ] **T9.8 — Reserva, `activateMana`, `declareMana`, escolha de cor e esvaziar por etapa** _(req: 7–11)_ · depende de T9.5
   - Verificação:
     - Command Tower usa a identidade do comandante;
@@ -93,6 +100,8 @@ depois paradas.
   - Verificação: lançar uma criatura de 4 com o pagamento automático é feito em 2 cliques.
 
 ## Onda 3 — Combate
+  - Ao terminar: mudar o padrão de `manaRules` para `block` em `COMMANDER_RULESET`.
+
 - [ ] **T9.12 — P/T atual, dano marcado, `adjustPT` e ações baseadas em estado** _(req: 22–24, 26)_ · depende de T9.2
   - Verificação:
     - contadores +1/+1 e −1/−1 se anulam;
@@ -121,6 +130,8 @@ depois paradas.
     manual de vida.
 
 ## Onda 4 — Paradas automáticas
+  - Ao terminar: mudar o padrão de `combatRules` para `block` em `COMMANDER_RULESET`.
+
 - [ ] **T9.17 — `shouldAutoPass`, `setStops`, `passUntil`** _(req: 28–31)_ · depende de T9.5
   - Verificação:
     - padrão estilo Arena;
