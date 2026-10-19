@@ -33,6 +33,7 @@ export const DEFAULT_CONFIG: ServerConfig = {
 }
 
 const MESSAGES_PER_SECOND = 20
+export const CONNECTION_LIMITS = { perIp: 30, total: 3_000 }
 const HEARTBEAT_MS = 30_000
 
 export const cryptoDeps: RoomDeps = {
@@ -50,6 +51,7 @@ export interface RunningServer {
 export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDeps = cryptoDeps): Promise<RunningServer> {
   const rooms = new Map<string, Room>()
   const sockets = new Map<string, WebSocket>() // connId → socket
+  const connectionsByIp = new Map<string, number>()
   const creation = new WindowLimiter(config.roomsPerIpPerHour, 60 * 60 * 1000)
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
@@ -123,7 +125,21 @@ export function startServer(config: ServerConfig, store: RoomStore, deps: RoomDe
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
       return socket.destroy()
     }
-    wss.handleUpgrade(req, socket, head, (ws) => onConnection(ws, roomId))
+    // Per-IP and global caps: the per-connection rate limit alone would allow thousands of sockets.
+    const ip = clientIp(req)
+    if (sockets.size >= CONNECTION_LIMITS.total || (connectionsByIp.get(ip) ?? 0) >= CONNECTION_LIMITS.perIp) {
+      socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n')
+      return socket.destroy()
+    }
+    connectionsByIp.set(ip, (connectionsByIp.get(ip) ?? 0) + 1)
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.once('close', () => {
+        const n = (connectionsByIp.get(ip) ?? 1) - 1
+        if (n > 0) connectionsByIp.set(ip, n)
+        else connectionsByIp.delete(ip)
+      })
+      onConnection(ws, roomId)
+    })
   })
 
   function onConnection(ws: WebSocket, roomId: string) {

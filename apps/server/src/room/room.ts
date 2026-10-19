@@ -54,6 +54,8 @@ interface Conn {
 }
 
 const MAX_MEMBERS = 24
+// Resource limits per game (T7.8): keep state and every broadcast bounded no matter what a client sends.
+export const LIMITS = { objects: 2_500, stack: 100, loggedActions: 20_000 }
 export const playerOf = (seat: number): PlayerId => `p${seat + 1}`
 
 export class Room {
@@ -126,6 +128,7 @@ export class Room {
     let issued: string | undefined
     let member = known
     if (!member && !spectator) {
+      if (this.s.members.length >= MAX_MEMBERS) this.pruneMembers()
       if (this.s.members.length >= MAX_MEMBERS) return [this.err(connId, 'roomFull', 'A sala está cheia.')]
       issued = this.deps.newToken()
       member = { tokenHash: this.deps.hash(issued), host: false, seat: null }
@@ -185,16 +188,35 @@ export class Room {
     if (this.s.status !== 'playing' || !game) return [this.err(connId, 'wrongPhase', 'Não há partida em andamento.')]
     const player = member.seat != null ? playerOf(member.seat) : null
     if (!player || !game.seats.includes(player)) return [this.err(connId, 'notSeated', 'Você está assistindo; sente num lugar na próxima partida.')]
+    const limit = this.overLimit(game, intent)
+    if (limit) return [{ to: connId, msg: { v: 1, t: 'rejected', seq, error: { code: 'invalidAmount', message: limit } } }]
     // The acting player always comes from the connection's seat, never from the client.
     const action = { ...intent, player } as Action
     const result = reduce(game, action)
     if (!result.ok) return [{ to: connId, msg: { v: 1, t: 'rejected', seq, error: result.error } }]
+    // Replays record up to LIMITS.loggedActions actions; past that the game goes on without a full log.
+    const actions = this.s.actions.length < LIMITS.loggedActions ? [...this.s.actions, action] : this.s.actions
     this.s = {
-      ...this.s, game: result.state, actions: [...this.s.actions, action], version: this.s.version + 1,
+      ...this.s, game: result.state, actions, version: this.s.version + 1,
       status: result.state.status === 'ended' ? 'ended' : 'playing',
     }
     const out = this.broadcast((id) => this.stateFor(id, result.events))
     return this.s.status === 'ended' ? [...out, ...this.broadcast(() => this.lobby())] : out
+  }
+
+  private overLimit(game: GameState, intent: Extract<ClientMessage, { t: 'act' }>['action']): string | null {
+    if (intent.type === 'createToken' && Object.keys(game.objects).length >= LIMITS.objects) {
+      return 'Limite de objetos na partida atingido.'
+    }
+    const toStack = intent.type === 'putAbilityOnStack' || (intent.type === 'moveObject' && intent.to === 'stack')
+    if (toStack && game.stack.length >= LIMITS.stack) return 'A pilha atingiu o limite de itens.'
+    return null
+  }
+
+  // Frees room for newcomers: forget members who are not seated, not the host and not connected.
+  private pruneMembers() {
+    const connected = new Set([...this.conns.values()].map((c) => c.member))
+    this.s = { ...this.s, members: this.s.members.filter((m) => m.host || m.seat !== null || connected.has(m.tokenHash)) }
   }
 
   // ---- messages -----------------------------------------------------------

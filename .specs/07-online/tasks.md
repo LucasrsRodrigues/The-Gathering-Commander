@@ -23,7 +23,7 @@
 - [ ] **T7.7 — Partida online de ponta a ponta + deploy** _(critérios globais)_ · depende de T7.6
   - Verificação: duas pessoas jogam até o fim; recarregar volta ao lugar; espectador sem mãos; o modo local
     funciona sem o servidor.
-- [ ] **T7.8 — Revisão de segurança** _(NFR)_ · depende de T7.7
+- [x] **T7.8 — Revisão de segurança** _(NFR)_ · depende de T7.7
   - Verificação: checklist secure-coding (rede, tokens, rate limit, CSP/CORS).
 
 ## Estratégia de testes
@@ -53,3 +53,30 @@ integração no runtime local. A partida de ponta a ponta é verificada com dois
 - Verificado localmente em modo de produção: app servido pelo servidor, sala criada e WebSocket conectado sob o CSP
   `'self'`. A imagem Docker ainda não foi construída aqui (daemon parado), então o primeiro build acontece no
   EasyPanel.
+
+## Revisão de segurança (T7.8, 2026-10-19)
+**Corrigido (com testes):**
+- **Sala travável:** quem tinha o link podia encher os 24 membros com `hello` sem token. Agora, ao lotar, os
+  membros não sentados, desconectados e que não são o anfitrião são removidos.
+- **Crescimento sem limite:** tokens limitados a 2.500 objetos por partida e a pilha a 100 itens. O log de replay
+  para em 20.000 ações (a partida continua).
+- **Conexões:** no máximo 30 conexões simultâneas por IP e 3.000 no total. Antes só havia rate limit por conexão.
+
+**Conferido e já ok:**
+- Mensagens validadas por allowlist (`protocol`), com ações do motor reconstruídas campo a campo.
+- O jogador da ação vem sempre do lugar da conexão.
+- Tokens de 128 bits, guardados só como hash.
+- Checagem de origem no HTTP e no upgrade do WebSocket; pedidos sem `Origin` são recusados.
+- `maxPayload` de 64 KB; rate limit de 20 mensagens por segundo; 20 salas por IP por hora; TTL de 24 h.
+- Nenhum vazamento de informação oculta (fitness function).
+- Arquivos estáticos protegidos contra path traversal.
+- Headers de segurança (HSTS atrás de HTTPS) e CSP no app.
+- Nomes sempre renderizados como texto pelo React.
+
+**Riscos aceitos e notas:**
+- O id da sala vai na query do WebSocket e pode aparecer nos logs do proxy. Quem lê esses logs pode entrar na sala
+  como espectador ou num lugar livre. Mitigação futura: mandar o id só na mensagem `hello`.
+- `TRUST_PROXY=1` confia em `X-Forwarded-*`. Se a porta 8787 ficar exposta sem proxy, defina `TRUST_PROXY=0`
+  (está no DEPLOY.md).
+- Sem contas, não há como banir uma pessoa específica. O anfitrião pode criar outra sala. Isso volta ao escopo
+  com o épico 08.

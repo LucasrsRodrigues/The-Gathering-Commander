@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import type { ServerMessage } from '@gathering-hall/protocol'
 import { afterEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
-import { DEFAULT_CONFIG, startServer, type RunningServer } from '../src/server'
+import { CONNECTION_LIMITS, DEFAULT_CONFIG, startServer, type RunningServer } from '../src/server'
 import { SqliteRoomStore } from '../src/store'
 import { deck } from './helpers'
 
@@ -123,5 +123,24 @@ describe('online server', () => {
     expect((await createRoom(base)).status).toBe(201)
     expect((await createRoom(base)).status).toBe(201)
     expect((await createRoom(base)).status).toBe(429)
+  })
+
+  it('caps concurrent connections per IP', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'gh-server-'))
+    cleanup.push(() => rmSync(dir, { recursive: true, force: true }))
+    const { base } = await boot(join(dir, 'rooms.db'))
+    const { room } = (await (await createRoom(base)).json()) as { room: string }
+    const before = CONNECTION_LIMITS.perIp
+    CONNECTION_LIMITS.perIp = 2
+    cleanup.push(() => { CONNECTION_LIMITS.perIp = before })
+    const a = client(base, room)
+    const b = client(base, room)
+    await Promise.all([a.open, b.open])
+    const c = client(base, room)
+    await expect(c.open).rejects.toThrow()
+    a.close()
+    await new Promise((r) => setTimeout(r, 100))
+    const d = client(base, room)
+    await d.open // a slot was freed when a socket closed
   })
 })
