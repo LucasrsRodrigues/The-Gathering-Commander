@@ -1,33 +1,74 @@
-# Requirements — 04 · Regras e formatos (esboço, fase 2)
-
-> Esboço. Na fase 1, o motor já aceita um `Ruleset` parametrizado com o padrão oficial de Commander.
+# Requirements — 04 · Regras e formatos (fase 2a)
 
 ## Objetivo
-Representar o formato Commander e as regras da casa como **dados versionados**. Os grupos podem criar, salvar e
-compartilhar presets, e as regras podem **restringir** jogadas e decks, não só avisar.
+Representar o formato Commander e as regras da casa como **dados**. Os grupos podem criar, salvar e compartilhar
+presets, e cada regra pode **bloquear**, **avisar** ou ficar **desligada**.
+
+## Contexto e suposições
+- O motor (épico 02) já recebe um `Ruleset` parametrizado. Este épico produz esse `Ruleset` e as regras de deck.
+- **Estado atual vindo do Scryfall:** banidas (`legalities.commander`) e Game Changers (`game_changer`) vêm dos
+  dados do Scryfall em tempo de execução. Assim não mantemos listas à mão para o presente.
+  *Suposição a confirmar na implementação: o campo `game_changer` continua disponível na API.*
+- **Histórico em arquivos de dados:** quando quisermos "banlist na data D", as mudanças ficam em arquivos datados
+  no repositório. São só listas de nomes e datas, que são fatos e não conteúdo da Wizards.
+- **Restrições "de jogada"** (por exemplo, "sem combos infinitos") dependem de o motor entender as cartas (fase 3).
+  Na fase 2a, as restrições valem para **decks** e para **parâmetros do motor** (vida, mulligan, prioridade estrita,
+  quem mexe em quê).
 
 ## Escopo
 - **Dentro:**
-  - Commander oficial como padrão;
-  - regras da casa: vida inicial, limites de dano e veneno, taxa, mulligan, mulligans grátis, tamanho de deck,
-    singleton, identidade de cor, partner, background e companion;
-  - banlist (oficial, nenhuma ou personalizada);
-  - Game Changers e brackets;
-  - presets nomeados;
-  - vigência por data.
-- **Fora (v1):** Brawl, Oathbreaker, Duel Commander e outras variantes. O modelo deve permitir adicioná-las depois.
+  - formato Commander oficial versionado;
+  - presets nomeados derivados dele;
+  - regras de deck: tamanho, singleton, identidade de cor, elegibilidade de comandante, partner e afins, banidas;
+  - parâmetros de partida: vida, limites, taxa, mulligan, prioridade, restrição de controlador;
+  - nível de aplicação por regra;
+  - bracket sugerido;
+  - exportar e importar presets como texto.
+- **Fora:** Brawl, Oathbreaker e outras variantes (o modelo deve permitir adicioná-las). Restrições sobre efeitos de
+  carta ficam para a fase 3.
 
-## Requisitos (rascunho EARS)
-1. O sistema DEVE usar o Commander oficial como padrão de toda partida nova.
-2. QUANDO um grupo salvar regras da casa, o sistema DEVE guardá-las como preset nomeado, derivado de uma versão do
-   formato oficial.
-3. SE uma regra estiver marcada como restritiva, ENTÃO o sistema DEVE impedir a ação ou o deck que a viola,
-   mostrando qual regra foi violada.
-4. O sistema DEVE guardar banlist e Game Changers com data de vigência, permitindo jogar "com a banlist de D".
-5. O sistema DEVE calcular o bracket sugerido de um deck a partir das listas de dados (Game Changers, combos,
-   destruição em massa de terrenos, turnos extras).
+## User stories
+- *Como grupo*, quero salvar "Regras de sexta" (30 de vida, Sol Ring banido) e escolhê-lo ao montar a mesa.
+- *Como jogador*, quero saber por que meu deck não é válido, regra por regra, e em quais cartas.
+- *Como grupo que joga por bracket*, quero ver o bracket sugerido de cada deck antes de começar.
 
-## Notas de design
-- Ideia do Forge: formatos e listas em arquivos de dados datados. Melhoria: tipados e com vigência também
-  para Commander (o Forge não arquiva banlists de Commander).
-- O XMage usa banlist hardcoded em Java, o que evitamos.
+## Requisitos funcionais (EARS)
+1. O sistema DEVE oferecer o preset "Commander oficial" como padrão de toda partida e de todo deck novo.
+   _(aceite: um deck sem preset é validado pelo oficial)_
+2. QUANDO o usuário criar um preset, o sistema DEVE derivá-lo de uma versão do formato oficial e guardar só o que
+   difere (overrides). _(aceite: um preset que muda só a vida guarda só a vida)_
+3. Cada regra de deck DEVE ter um nível: `block`, `warn` ou `off`. _(aceite: as três situações testadas para cada regra)_
+4. QUANDO um deck for validado, o sistema DEVE devolver cada violação com regra, nível, mensagem em português e
+   cartas envolvidas.
+5. O sistema DEVE validar:
+   - tamanho (100 com comandante(s));
+   - singleton, exceto básicos e cartas cujo texto Oracle permite várias cópias;
+   - elegibilidade do comandante (lendária criatura ou texto "can be your commander");
+   - pareamentos (Partner, Partner with, Friends forever, Choose a Background, Doctor's companion);
+   - identidade de cor;
+   - banidas (oficial, nenhuma ou lista personalizada);
+   - "banida como comandante".
+   _(aceite: um teste por regra, com cartas reais simuladas)_
+6. O sistema NÃO DEVE decidir nada por nome de carta no código. Exceções de singleton, elegibilidade e pareamento
+   vêm do texto Oracle e dos campos do catálogo. _(aceite: fitness function igual à do motor)_
+7. SE alguma violação tiver nível `block`, ENTÃO o sistema DEVE impedir que o deck entre numa partida com aquele
+   preset. Avisos (`warn`) aparecem, mas não impedem.
+8. O sistema DEVE calcular o bracket sugerido (1 a 5) a partir de Game Changers, destruição em massa de terrenos,
+   turnos extras em cadeia e combos de duas cartas, mostrando os motivos.
+   _(aceite: deck sem Game Changers ≤ bracket 2; com 4 ou mais → bracket 4)_
+   *Suposição: as definições oficiais de bracket são conferidas na implementação. Combos de duas cartas ficam
+   para depois, porque precisam de uma fonte de dados, como a API do Commander Spellbook.*
+9. QUANDO o usuário exportar um preset, o sistema DEVE gerar um texto (JSON compacto) para colar no chat do grupo.
+   QUANDO importar, DEVE validar o texto como input não confiável.
+10. O sistema DEVE guardar presets localmente, sem conta.
+
+## Requisitos não-funcionais
+- **Pureza:** a validação e o cálculo de bracket ficam num pacote puro (`packages/formats`), sem UI nem rede.
+  Recebem os dados das cartas prontos.
+- **Segurança:** presets importados passam por validação de schema (tipos, tamanhos, limites numéricos). Valores
+  absurdos, como 1.000.000 de vida, são recusados.
+- **Desempenho:** validar um deck de 100 cartas leva menos de 5 ms.
+
+## Critérios de aceite globais
+- [ ] Um preset criado, exportado, importado em outro navegador e usado numa partida.
+- [ ] Um deck com Sol Ring banido por regra da casa é bloqueado nesse preset e aceito no oficial.

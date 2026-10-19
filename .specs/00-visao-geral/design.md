@@ -109,13 +109,15 @@ Nos identificadores de código, usamos **inglês**, igual às Comprehensive Rule
 5. **Serializabilidade:** `JSON.parse(JSON.stringify(state))` é igual a `state` para todo estado gerado nos testes.
 
 ## Roadmap por fases
-| Fase | Entrega | Épicos |
-|---|---|---|
-| **1 — Mesa sandbox** | Goldfish e hot-seat de 4 lugares, regras assistidas (vida, dano de comandante, turnos, prioridade, pilha manual) | 02, 03, um 01 mínimo |
-| 2 — Decks e regras | Importar e validar decks, presets e regras da casa com restrição, catálogo versionado | 01, 04, 05 |
-| 3 — Automação | Schema de cartas, mecânicas, cobertura crescente, regras aplicadas pelo motor | 02 (cartas) |
-| 4 — Bots | Bot heurístico → simulação → político | 06 |
-| 5 — Online | Servidor autoritativo e salas | servidor |
+| Fase | Entrega | Épicos | Estado |
+|---|---|---|---|
+| **1 — Mesa sandbox** | Goldfish e hot-seat de 4 lugares, regras assistidas | 02, 03 | ✅ feito |
+| **2a — Decks e regras** | Editor e biblioteca de decks, validação por preset, regras da casa que restringem, bracket | 04, 05 | próxima |
+| **2b — Online + catálogo** | Salas por link, servidor autoritativo, catálogo versionado (errata e banlist por data) | 07, 01 | depois |
+| 3 — Automação | Schema de cartas, mecânicas, cobertura crescente | 02 (cartas) | |
+| 4 — Bots | Bot heurístico → simulação → político | 06 | |
+
+07 e 01 foram agrupados porque os dois precisam de backend. A infraestrutura (salas e banco) é montada uma vez só.
 
 ## Riscos e mitigações
 - **Escopo infinito (regras de Magic)** → fallback manual por carta e automação incremental, priorizando as cartas
