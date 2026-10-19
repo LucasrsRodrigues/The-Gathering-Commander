@@ -8,6 +8,9 @@ import { CARD_FORMAT } from './catalog/normalize'
 import { CatalogStore } from './catalog/store'
 import { openDatabase, type Db } from './db'
 import { DEFAULT_CONFIG, startServer, type ServerCatalog } from './server'
+import { AccountStore } from './auth/accounts'
+import { providersFromEnv } from './auth/providers'
+import { AuthService } from './auth/routes'
 import { importLegacyRooms } from './legacy'
 import { DbRoomStore } from './store'
 
@@ -61,7 +64,18 @@ if (catalogOn) {
   catalog = { store: catalogStore, cache: new CatalogCache(catalogStore) }
   await catalog.cache.refreshCount()
 }
-const server = await startServer(config, store, undefined, catalog)
+// Optional accounts (épico 08): on when at least one provider has its keys, plus PUBLIC_URL and SESSION_SECRET.
+const providers = providersFromEnv(env)
+let auth: AuthService | null = null
+if (providers.length) {
+  if (!env.PUBLIC_URL || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
+    console.warn('contas: desligadas (defina PUBLIC_URL e SESSION_SECRET com 32+ caracteres para ligar o login).')
+  } else {
+    auth = new AuthService(new AccountStore(db), { publicUrl: env.PUBLIC_URL, appUrl: env.APP_URL, sessionSecret: env.SESSION_SECRET, providers })
+    console.log(`contas: login com ${providers.map((p) => p.id).join(' e ')}`)
+  }
+}
+const server = await startServer(config, store, undefined, catalog, auth)
 console.log(`The Gathering Hall server on :${server.port} (${db.kind}; origens: ${config.allowedOrigins.join(', ')}${config.staticDir ? ' + mesma origem' : ''})`)
 
 // Catalog: import Scryfall's bulk on start if the last import is old, then check every 6 hours

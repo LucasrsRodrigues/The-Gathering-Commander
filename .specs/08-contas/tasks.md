@@ -59,7 +59,7 @@ chaves de login configuradas.
   - Verificado: o servidor real sobe no PGlite, copia as salas antigas e responde no `/api/health`.
 
 ## Onda 1 — Conta
-- [ ] **T8.4 — OAuth (Discord e Google) com PKCE, sessão por cookie** _(req: 5–8)_ · depende de T8.1
+- [x] **T8.4 — OAuth (Discord e Google) com PKCE, sessão por cookie** _(req: 5–8)_ · depende de T8.1
   - Verificação:
     - `state` errado é recusado;
     - o callback só redireciona para o próprio site;
@@ -68,6 +68,16 @@ chaves de login configuradas.
     - provedor sem chaves fica desligado;
     - ligar o segundo provedor na mesma conta funciona.
   - Testes: provedores falsos (servidor HTTP local fazendo o papel do Discord e do Google).
+  - Feito:
+    - migração `0002-accounts.sql` (`app_user`, `identity`, `session`);
+    - `AccountStore`, provedores com PKCE S256, cookie de estado assinado (HMAC, 10 min) e cookie de sessão
+      (`HttpOnly`, `SameSite=Lax`, `Secure` com HTTPS, 30 dias renovados);
+    - rotas `/api/auth/providers`, `/start`, `/callback`, `/api/me` e `/api/auth/logout`;
+    - login ligado só com `PUBLIC_URL`, `SESSION_SECRET` e as chaves de pelo menos um provedor;
+    - `APP_URL` separado de `PUBLIC_URL` para o app de desenvolvimento em outra porta;
+    - avatar aceito só dos hosts do Discord e do Google, e nome de exibição limpo e limitado;
+    - uma identidade que já é de outra conta não é ligada (`conta-em-uso`), e nada é mesclado sem querer;
+    - testes rodam no PGlite e no Postgres real.
 - [ ] **T8.5 — Sair, excluir conta, exportar dados** _(req: 9, 10)_ · depende de T8.4
   - Verificação:
     - excluir apaga conta, sessões e nuvem e anonimiza o histórico;

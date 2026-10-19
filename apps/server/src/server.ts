@@ -18,6 +18,7 @@ import { makeRulesFiller } from './catalog/cardRules'
 import { makeDeckChecker } from './catalog/deckCheck'
 import type { CatalogCache } from './catalog/lookup'
 import { handleCatalog } from './catalog/routes'
+import type { AuthService } from './auth/routes'
 import type { CatalogStore } from './catalog/store'
 
 export interface ServerCatalog {
@@ -63,7 +64,9 @@ export interface RunningServer {
   close(): Promise<void>
 }
 
-export function startServer(config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null): Promise<RunningServer> {
+export function startServer(
+  config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null, auth: AuthService | null = null,
+): Promise<RunningServer> {
   const deps: RoomDeps = catalog
     ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
     : baseDeps
@@ -72,6 +75,7 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
   const connectionsByIp = new Map<string, number>()
   const creation = new WindowLimiter(config.roomsPerIpPerHour, 60 * 60 * 1000)
   const catalogLimit = new WindowLimiter(config.catalogRequestsPerMinute, 60 * 1000)
+  const loginLimit = new WindowLimiter(20, 60 * 1000) // login attempts per IP per minute
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
 
@@ -139,6 +143,7 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
     const origin = req.headers.origin
     if (originAllowed(origin, req)) {
       res.setHeader('Access-Control-Allow-Origin', origin!)
+      res.setHeader('Access-Control-Allow-Credentials', 'true') // the session cookie, for the dev app on another port
       res.setHeader('Vary', 'Origin')
     }
     if (req.method === 'OPTIONS') {
@@ -148,6 +153,17 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
       return end(res, 204)
     }
     if (req.method === 'GET' && req.url === '/api/health') return json(res, 200, { ok: true, rooms: rooms.size, catalog: catalog?.cache.cardCount() ?? 0 })
+    if (req.url?.startsWith('/api/auth/') || req.url === '/api/me') {
+      if (!auth) {
+        if (req.url === '/api/auth/providers') return json(res, 200, { providers: [] })
+        return json(res, 404, { error: 'contas desligadas neste servidor' })
+      }
+      if (req.url.includes('/start') && !loginLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas tentativas de login; tente em instantes.' })
+      auth.handle(req, res, { sameOrigin: originAllowed(origin, req), json })
+        .then((handled) => handled || json(res, 404, { error: 'não encontrado' }))
+        .catch(() => json(res, 500, { error: 'erro no login' }))
+      return
+    }
     if (req.url?.startsWith('/api/catalog/')) {
       if (!catalogLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas consultas; tente em instantes.' })
       handleCatalog(catalog?.store ?? null, req, res, json).catch(() => json(res, 500, { error: 'erro no catálogo' }))
@@ -244,6 +260,7 @@ export function startServer(config: ServerConfig, store: RoomStore, baseDeps: Ro
     const now = deps.now()
     creation.sweep(now)
     catalogLimit.sweep(now)
+    loginLimit.sweep(now)
     for (const id of await store.expired(now - config.roomTtlMs)) {
       await enqueue(id, async () => {
         const live = rooms.get(id)

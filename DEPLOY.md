@@ -30,6 +30,10 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
    | `ROOM_TTL_HOURS` | `24` | Horas de inatividade até a sala ser apagada |
    | `MAX_ROOMS` | `500` | Número máximo de salas ao mesmo tempo |
    | `ALLOWED_ORIGINS` | (vazio) | Outras origens que podem usar o servidor (o próprio domínio já é aceito) |
+   | `PUBLIC_URL` | (vazio) | Endereço público do site (ex.: `https://seu-dominio`). Necessário para o login |
+   | `SESSION_SECRET` | (vazio) | Segredo de 32+ caracteres para assinar cookies do login (gere com `openssl rand -base64 48`) |
+   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | (vazio) | Liga "Entrar com Discord" (o passo a passo do app OAuth vem com a tela de conta) |
+   | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (vazio) | Liga "Entrar com Google" |
    | `CATALOG` | ligado com Postgres | `off` desliga o catálogo próprio (o app usa só o Scryfall); `on` força com PGlite (precisa de ~2 GB de memória) |
 
 5. **Mounts:** adicione um **Volume** com Mount Path `/data`. Com Postgres, ele guarda só os últimos 7 arquivos
