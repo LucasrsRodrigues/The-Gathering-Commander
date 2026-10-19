@@ -14,6 +14,12 @@ do mesmo navegador também dividem o lugar numa sala online.
 - **Histórico de partidas e replays** (o servidor já guarda estado inicial + ações).
 - **Importação por link** onde os termos permitirem (Archidekt). O Moxfield não tem API pública: continua por texto.
 
+## Decisões tomadas
+- **Sem login (2026-10-19):** joga tudo, como a Wizards exige, e continua salvando decks e regras da casa **no
+  próprio navegador**.
+- **Com login:** habilita o cadastro e a nuvem (decks e presets em qualquer aparelho, perfil, identidade nas salas,
+  histórico de partidas). Os dados locais sobem no primeiro login.
+
 ## Decisões em aberto
 1. **Provedor de login:** Discord, Google ou e-mail.
 2. **Importação por link:** entra nesta onda?
