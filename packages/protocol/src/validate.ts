@@ -2,7 +2,7 @@
 // only known keys survive, every field is type- and size-checked, and engine actions are rebuilt
 // field by field so nothing unexpected can end up in the game state broadcast to other players.
 
-import type { ActionIntent, CardRef, DeckInput, ZoneKind } from '@gathering-hall/engine'
+import { STEPS, type ActionIntent, type CardRef, type DeckInput, type ZoneKind } from '@gathering-hall/engine'
 import { decodePreset, MAX_PRESET_TEXT } from '@gathering-hall/formats'
 import { MAX_MESSAGE_BYTES, MAX_SEATS, type ClientMessage } from './messages'
 
@@ -120,6 +120,16 @@ export function actionIntent(v: unknown): ActionIntent {
       const reason = a.reason === undefined || a.reason === '' ? '' : text(a.reason, 'motivo', 200)
       return { type, action: inner, reason }
     }
+    case 'setStops': {
+      const st = obj(a.stops, 'paradas')
+      const steps = (v: unknown, what: string) => {
+        if (!Array.isArray(v) || v.length > STEPS.length) bad(`${what} inválido`)
+        return (v as unknown[]).map((x) => oneOf(x, what, STEPS))
+      }
+      return { type, stops: { own: steps(st.own, 'own'), others: steps(st.others, 'others'), passAfterOwnSpell: bool(st.passAfterOwnSpell, 'passAfterOwnSpell') } }
+    }
+    case 'passUntil':
+      return { type, until: a.until === null ? null : oneOf(a.until, 'until', ['endOfTurn', 'myTurn'] as const) }
     case 'discard': {
       if (!Array.isArray(a.objectIds) || a.objectIds.length > 100) bad('objectIds inválido')
       return { type, objectIds: (a.objectIds as unknown[]).map((x) => id(x, 'objectId')) }

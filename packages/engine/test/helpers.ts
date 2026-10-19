@@ -1,5 +1,5 @@
 import { expect } from 'vitest'
-import { createGame, reduce } from '../src'
+import { createGame, reduce, STEPS } from '../src'
 import type { Action, CardRef, GameConfig, GameEvent, GameState, Ruleset } from '../src'
 
 export const LAND: CardRef = { name: 'Test Land', typeLine: 'Basic Land — Forest' }
@@ -20,7 +20,14 @@ export function newGame(players = 4, opts: { seed?: number; ruleset?: Partial<Ru
     ruleset: { timingRules: 'off', manaRules: 'off', combatRules: 'off', ...opts.ruleset },
     players: Array.from({ length: players }, (_, i) => ({ id: `p${i + 1}`, name: `Jogador ${i + 1}`, deck: deck(opts.deckSize) })),
   }
-  return createGame(config)
+  return stopEverywhere(createGame(config))
+}
+
+// Most tests walk the turn step by step: players stop everywhere (no automatic passing) unless a test says otherwise.
+export function stopEverywhere(state: GameState): GameState {
+  const all = [...STEPS]
+  const players = Object.fromEntries(Object.entries(state.players).map(([id, p]) => [id, { ...p, stops: { own: all, others: all, passAfterOwnSpell: false } }]))
+  return { ...state, players }
 }
 
 export function act(state: GameState, action: Action): { state: GameState; events: GameEvent[] } {

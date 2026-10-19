@@ -3,6 +3,7 @@
 import type { Tx } from './tx'
 import { STEPS, type GameState, type PlayerId, type Step } from './types'
 import { onCombatStep } from './combat'
+import { clearPassUntil } from './stops'
 import { nextDamagePhase } from './damage'
 import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
@@ -32,6 +33,7 @@ export function beginTurn(tx: Tx, player: PlayerId, number: number) {
   const p = tx.player(player)
   p.landsPlayed = 0
   p.lastTurnStarted = number
+  clearPassUntil(tx, player)
   tx.emit({ type: 'turnStarted', player, turn: number })
   enterStep(tx, 'untap')
 }
@@ -136,10 +138,10 @@ export function resolveTop(tx: Tx) {
 }
 
 // CR 117.4: when all players pass in succession, resolve the top of the stack or end the step.
-export function passPriority(tx: Tx, player: PlayerId) {
+export function passPriority(tx: Tx, player: PlayerId, auto = false) {
   const priority = tx.s.priority!
   const passed = [...priority.passed, player]
-  tx.emit({ type: 'priorityPassed', player })
+  tx.emit(auto ? { type: 'priorityPassed', player, auto: true } : { type: 'priorityPassed', player })
   const remaining = playersInOrder(tx.s, tx.s.turn.active).filter((id) => !passed.includes(id))
   if (remaining.length === 0) {
     if (tx.s.stack.length) resolveTop(tx)

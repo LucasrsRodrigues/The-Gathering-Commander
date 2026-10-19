@@ -101,6 +101,11 @@ export function declareAttackers(tx: Tx, player: PlayerId, attacks: Attack[]) {
   }
   s.turn = { ...s.turn, combat: { ...(s.turn.combat ?? { blocks: [], damageOrder: {}, firstStrikeDealt: false, regularDealt: false }), attacks: attacks.map(({ attacker, target }) => ({ attacker, target })) } }
   tx.emit({ type: 'attackersDeclared', player, attacks: s.turn.combat!.attacks })
+  // Being attacked ends "pass until…" for the defenders (req. 31).
+  for (const a of attacks) {
+    const defender = defenderOf(s, a)
+    if (defender && s.players[defender]!.passUntil) tx.player(defender).passUntil = null
+  }
   if (!attacks.length) goToStep(tx, 'endCombat') // CR 508.8
   else givePriority(tx, player)
 }

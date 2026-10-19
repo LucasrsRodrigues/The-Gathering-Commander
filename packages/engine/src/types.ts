@@ -307,6 +307,8 @@ export type Action =
   | ActionOf<'declareBlockers', { blocks: Block[] }> // CR 509
   | ActionOf<'assignDamage', { assignments: DamageAssignment[] }> // CR 510.1: confirm (or adjust) the proposal
   | ActionOf<'discard', { objectIds: ObjectId[] }> // answers the cleanup discard
+  | ActionOf<'setStops', { stops: StopSettings }> // the player's own automatic-passing preferences
+  | ActionOf<'passUntil', { until: 'endOfTurn' | 'myTurn' | null }>
   | ActionOf<'requestException', { action: ActionIntent; reason: string }>
   | ActionOf<'answerException', { approve: boolean }>
   | ActionOf<'cancelException'>
@@ -333,7 +335,7 @@ export type GameEvent =
   | { type: 'cardsBottomed'; player: PlayerId; objectIds: ObjectId[] }
   | { type: 'turnStarted'; player: PlayerId; turn: number }
   | { type: 'stepChanged'; step: Step; turn: number }
-  | { type: 'priorityPassed'; player: PlayerId }
+  | { type: 'priorityPassed'; player: PlayerId; auto?: true } // auto: passed by the player's stop settings
   | { type: 'zoneChanged'; objectId: ObjectId; owner: PlayerId; from: ZoneKind | null; to: ZoneKind | null }
   | { type: 'cardsDrawn'; player: PlayerId; objectIds: ObjectId[] }
   | { type: 'libraryShuffled'; player: PlayerId }

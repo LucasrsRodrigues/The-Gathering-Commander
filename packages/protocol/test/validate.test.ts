@@ -28,6 +28,9 @@ describe('decodeClientMessage', () => {
       { v: 1, t: 'act', seq: 19, action: { type: 'declareBlockers', blocks: [{ blocker: 'o9', attacker: 'o4' }] } },
       { v: 1, t: 'act', seq: 20, action: { type: 'assignDamage', assignments: [{ source: 'o4', to: 'p2', amount: 3 }] } },
       { v: 1, t: 'act', seq: 21, action: { type: 'discard', objectIds: ['o3', 'o5'] } },
+      { v: 1, t: 'act', seq: 22, action: { type: 'setStops', stops: { own: ['main1', 'main2'], others: ['end'], passAfterOwnSpell: true } } },
+      { v: 1, t: 'act', seq: 23, action: { type: 'passUntil', until: 'myTurn' } },
+      { v: 1, t: 'act', seq: 24, action: { type: 'passUntil', until: null } },
       { v: 1, t: 'act', seq: 13, action: { type: 'activateMana', objectId: 'o6', abilityIndex: 1, color: 'G' } },
       { v: 1, t: 'act', seq: 14, action: { type: 'declareMana', objectId: 'o7', mana: { B: 2, C: 1 } } },
     ]) {
@@ -64,6 +67,7 @@ describe('decodeClientMessage', () => {
     ['huge payment', enc({ v: 1, t: 'act', seq: 1, action: { type: 'castSpell', objectId: 'o1', payWith: Array(61).fill({ objectId: 'o2', abilityIndex: 0 }) } })],
     ['attack without target', enc({ v: 1, t: 'act', seq: 1, action: { type: 'declareAttackers', attacks: [{ attacker: 'o1' }] } })],
     ['negative combat damage', enc({ v: 1, t: 'act', seq: 1, action: { type: 'assignDamage', assignments: [{ source: 'o1', to: 'p2', amount: -1 }] } })],
+    ['unknown stop step', enc({ v: 1, t: 'act', seq: 1, action: { type: 'setStops', stops: { own: ['lunch'], others: [], passAfterOwnSpell: true } } })],
     ['zero damage', enc({ v: 1, t: 'act', seq: 1, action: { type: 'dealDamage', objectId: 'o1', amount: 0 } })],
     ['absurd pump', enc({ v: 1, t: 'act', seq: 1, action: { type: 'adjustPT', objectId: 'o1', power: 1000, toughness: 0 } })],
     ['unknown mana color', enc({ v: 1, t: 'act', seq: 1, action: { type: 'activateMana', objectId: 'o1', abilityIndex: 0, color: 'P' } })],

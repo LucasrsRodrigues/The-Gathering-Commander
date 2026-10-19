@@ -214,12 +214,18 @@ depois paradas.
     exceção, painel de dano com prévia e vida caindo de 40 para 38.
   - Fica para depois: setas de ataque na mesa 3D.
 
-- [ ] **T9.17 — `shouldAutoPass`, `setStops`, `passUntil`** _(req: 28–31)_ · depende de T9.5
+- [x] **T9.17 — `shouldAutoPass`, `setStops`, `passUntil`** _(req: 28–31)_ · depende de T9.5
   - Verificação:
     - padrão estilo Arena;
     - `passUntil` cancela quando alguém lança ou ataca;
     - fitness "paradas não travam";
     - replay determinístico.
+  - Feito:
+    - a passagem automática roda no motor depois de cada ação (o mesmo no local e no online) e só com `timingRules`
+      diferente de `off`; o sandbox continua parando em toda etapa;
+    - o evento `priorityPassed` ganhou `auto: true` quando foi a parada que passou;
+    - "passar até…" termina quando outro jogador põe algo na pilha ou ataca, e no início do turno certo;
+    - um turno sem nada a fazer leva 2 cliques (fase principal 1 e fase principal 2).
 - [ ] **T9.18 — Mesa: grade de paradas nas opções e botões de passar** · depende de T9.17
   - Verificação: com as paradas padrão, um turno sem nada a fazer passa com no máximo 2 cliques.
 

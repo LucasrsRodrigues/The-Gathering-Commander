@@ -11,10 +11,11 @@ import { dealDamageTo } from './stats'
 import { addMana, MANA_TYPES, MAX_DECLARED_MANA, payGeneric, poolTotal, production } from './mana'
 import { answerException, cancelException, pendingException, requestException } from './exceptions'
 import { checkPolicies, levelOf } from './policies'
+import { autoPass } from './stops'
 import { checkStateBasedActions, eliminate } from './stateBased'
 import { advanceStep, finishCleanup, givePriority, passPriority } from './turn'
 import { Tx } from './tx'
-import type { Action, CardRef, GameObject, GameState, ManaActivation, PlayerId, ReduceResult, ZoneKind } from './types'
+import { STEPS, type Action, type CardRef, type GameObject, type GameState, type ManaActivation, type PlayerId, type ReduceResult, type Step, type ZoneKind } from './types'
 import { drawCards, moveObject, shuffleLibrary } from './zones'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
@@ -23,9 +24,12 @@ const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'botto
 // Mana abilities (CR 605.3a) are activated while paying costs, without holding priority.
 const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
   'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
+  'setStops', 'passUntil',
 ])
 // While combat waits for a declaration, only that (and leaving or making mana) can happen.
-const DURING_DECLARATION = new Set<Action['type']>(['declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'concede', 'activateMana', 'declareMana', 'setArrangement'])
+const DURING_DECLARATION = new Set<Action['type']>([
+  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'concede', 'activateMana', 'declareMana', 'setArrangement', 'setStops', 'passUntil',
+])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
 const MAX_COUNTER_NAME = 40
@@ -39,7 +43,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
-  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard',
+  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil',
 ])
 const MAX_PT_DELTA = 100
 const WAITING: Record<string, string> = {
@@ -66,6 +70,8 @@ function run(state: GameState, action: Action, skipPolicies: boolean): ReduceRes
     if (action.type === 'cancelException') return cancelException(state, action)
     const tx = new Tx(state)
     apply(tx, action, skipPolicies)
+    checkStateBasedActions(tx)
+    autoPass(tx) // épico 09: stops (resolving on the way can need state-based actions again)
     checkStateBasedActions(tx)
     return { ok: true, state: tx.s, events: tx.events }
   } catch (err) {
@@ -305,6 +311,22 @@ function applyGameAction(tx: Tx, action: Action) {
     case 'declareBlockers':
       declareBlockers(tx, actor, action.blocks)
       return
+
+    // Épico 09: the player's own stop preferences; automatic passing runs after every action.
+    case 'setStops': {
+      const st = action.stops
+      const steps = (v: unknown) => Array.isArray(v) && v.length <= STEPS.length && v.every((x) => STEPS.includes(x)) ? [...new Set(v as Step[])] : fail('invalidAction', 'Paradas inválidas.')
+      if (!st || typeof st !== 'object') fail('invalidAction', 'Paradas inválidas.')
+      optionalBoolean(st.passAfterOwnSpell)
+      tx.player(actor).stops = { own: steps(st.own), others: steps(st.others), passAfterOwnSpell: !!st.passAfterOwnSpell }
+      return
+    }
+
+    case 'passUntil': {
+      if (action.until !== null && action.until !== 'endOfTurn' && action.until !== 'myTurn') fail('invalidAction', 'Opção inválida.')
+      tx.player(actor).passUntil = action.until
+      return
+    }
 
     // CR 514.1: discard down to the maximum hand size, then cleanup goes on.
     case 'discard': {
