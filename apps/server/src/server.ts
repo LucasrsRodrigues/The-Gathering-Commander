@@ -22,6 +22,8 @@ import type { AuthService } from './auth/routes'
 import { handleCloud } from './cloud/routes'
 import type { CloudStore } from './cloud/store'
 import type { CatalogStore } from './catalog/store'
+import { handleGames } from './games/routes'
+import type { GameStore } from './games/store'
 
 export interface ServerCatalog {
   store: CatalogStore
@@ -68,7 +70,7 @@ export interface RunningServer {
 
 export function startServer(
   config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null, auth: AuthService | null = null,
-  cloud: CloudStore | null = null,
+  cloud: CloudStore | null = null, games: GameStore | null = null,
 ): Promise<RunningServer> {
   const deps: RoomDeps = catalog
     ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
@@ -175,6 +177,12 @@ export function startServer(
         .catch(() => json(res, 500, { error: 'erro na nuvem' }))
       return
     }
+    if (req.url === '/api/games' || req.url?.startsWith('/api/games?')) {
+      if (!auth || !games) return json(res, 404, { error: 'contas desligadas neste servidor' })
+      handleGames(auth, games, req, res, { allow: (id) => cloudLimit.allow(id, deps.now()), json })
+        .catch(() => json(res, 500, { error: 'erro no histórico' }))
+      return
+    }
     if (req.url?.startsWith('/api/catalog/')) {
       if (!catalogLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas consultas; tente em instantes.' })
       handleCatalog(catalog?.store ?? null, req, res, json).catch(() => json(res, 500, { error: 'erro no catálogo' }))
@@ -257,7 +265,14 @@ export function startServer(
       void enqueue(roomId, async () => {
         if (!room || closing) return
         await prepare(room, msg)
-        await deliver(room, room.receive(connId, msg, userId))
+        const wasPlaying = room.snapshot().status === 'playing'
+        const out = room.receive(connId, msg, userId)
+        await deliver(room, out)
+        // A game just ended: record it in the history. The replies already went out; staying in the room queue means
+        // a shutdown waits for the record, and a failure only costs the history entry.
+        if (games && wasPlaying && room.snapshot().status === 'ended') {
+          await games.record(room.snapshot(), deps.now()).catch((err) => console.error(`histórico, sala ${roomId}:`, err))
+        }
       })
     })
     ws.on('close', () => {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { WebSocket } from 'ws'
 import { AccountStore } from '../src/auth/accounts'
 import { AuthService } from '../src/auth/routes'
+import { GameStore } from '../src/games/store'
 import { DEFAULT_CONFIG, startServer } from '../src/server'
 import { DbRoomStore } from '../src/store'
 import { testDb } from './db.helpers'
@@ -21,7 +22,7 @@ async function setup() {
     publicUrl: ORIGIN, sessionSecret: 'x'.repeat(32),
     providers: [{ id: 'discord', clientId: 'c', clientSecret: 's', authorizeUrl: 'http://p/a', tokenUrl: 'http://p/t', profileUrl: 'http://p/m', scope: 'identify' }],
   })
-  const server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [ORIGIN] }, new DbRoomStore(db), undefined, null, auth)
+  const server = await startServer({ ...DEFAULT_CONFIG, port: 0, allowedOrigins: [ORIGIN] }, new DbRoomStore(db), undefined, null, auth, null, new GameStore(db))
   cleanup.push(() => server.close()) // the database is closed by testDb
   const signIn = async (who: string) => {
     const r = await accounts.signIn({ provider: 'discord', providerUserId: who, name: who, avatarUrl: null }, null)
@@ -89,5 +90,38 @@ describe('rooms with accounts', () => {
     await anon.open
     anon.send({ t: 'hello', room })
     expect(await anon.next('welcome')).toMatchObject({ seat: null, host: false })
+  })
+
+  it('a finished online game shows up in "Minhas partidas" for both accounts', async () => {
+    const { base, signIn } = await setup()
+    const anaCookie = await signIn('ana')
+    const biaCookie = await signIn('bia')
+    const { room } = (await (await fetch(`http://${base}/api/rooms`, { method: 'POST', headers: { Origin: ORIGIN, Cookie: anaCookie } })).json()) as { room: string }
+    const ana = client(base, room, anaCookie)
+    const bia = client(base, room, biaCookie)
+    await Promise.all([ana.open, bia.open])
+    for (const [c, seat, name] of [[ana, 0, 'Ana'], [bia, 1, 'Bia']] as const) {
+      c.send({ t: 'hello', room })
+      await c.next('welcome')
+      c.send({ t: 'sit', seat, name, deck })
+      await c.next('welcome')
+    }
+    ana.send({ t: 'start' })
+    await bia.next('state')
+    bia.send({ t: 'act', seq: 1, action: { type: 'concede' } })
+    for (;;) if ((await ana.next('lobby')).status === 'ended') break
+
+    const list = async (cookie?: string) => fetch(`http://${base}/api/games`, { headers: cookie ? { Cookie: cookie } : {} })
+    expect((await list()).status).toBe(401)
+    let mine = (await (await list(anaCookie)).json()) as { games: { players: { name: string; won: boolean; you: boolean }[] }[] }
+    for (let i = 0; i < 20 && mine.games.length === 0; i++) {
+      await new Promise((r) => setTimeout(r, 50)) // the record is written right after the replies
+      mine = (await (await list(anaCookie)).json()) as typeof mine
+    }
+    expect(mine.games[0]!.players).toEqual([
+      expect.objectContaining({ name: 'Ana', won: true, you: true }), expect.objectContaining({ name: 'Bia', won: false, you: false }),
+    ])
+    const theirs = (await (await list(biaCookie)).json()) as typeof mine
+    expect(theirs.games[0]!.players.find((p) => p.you)).toMatchObject({ name: 'Bia', won: false })
   })
 })

@@ -20,7 +20,7 @@ export const ZONE_LABELS: Record<ZoneKind, string> = {
   exile: 'exílio', stack: 'pilha', command: 'zona de comando',
 }
 
-const LOSS_LABELS = {
+export const LOSS_LABELS = {
   life: 'ficou sem vida', poison: 'foi envenenado', commanderDamage: 'sofreu 21 de dano de comandante',
   emptyLibrary: 'comprou de um grimório vazio', conceded: 'concedeu',
 } as const

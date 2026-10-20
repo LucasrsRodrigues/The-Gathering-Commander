@@ -52,6 +52,7 @@ export interface RoomSnapshot {
   seats: (SeatState | null)[]
   status: RoomStatus
   initial: GameState | null // for replay
+  startedAt?: number // when the current game started (match history)
   game: GameState | null
   actions: Action[]
   version: number
@@ -216,7 +217,7 @@ export class Room {
     } catch {
       return [this.err(connId, 'badMessage', 'Não foi possível criar a partida com esses decks.')]
     }
-    this.s = { ...this.s, status: 'playing', initial: game, game, actions: [], version: this.s.version + 1 }
+    this.s = { ...this.s, status: 'playing', initial: game, game, actions: [], startedAt: this.deps.now(), version: this.s.version + 1 }
     return [...this.broadcast(() => this.lobby()), ...this.broadcast((id) => this.stateFor(id, []))]
   }
 

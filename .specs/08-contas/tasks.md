@@ -157,11 +157,27 @@ chaves de login configuradas.
     - o app manda o cookie ao criar a sala; o WebSocket já manda sozinho.
   - Decisão: o servidor guarda só o hash do token, então não dá para "devolver o mesmo token". A conta passa a ser
     a credencial da sala para aquele lugar, sem emitir um token novo.
-- [ ] **T8.10 — Histórico de partidas e "Minhas partidas"** _(req: 18, 19)_ · depende de T8.2, T8.9
+- [x] **T8.10 — Histórico de partidas e "Minhas partidas"** _(req: 18, 19)_ · depende de T8.2, T8.9
   - Verificação:
     - uma partida online entre duas contas aparece para as duas, com o resultado certo;
     - partidas sem conta também são gravadas (sem vínculo);
     - a listagem é paginada.
+  - Feito:
+    - migração `0004-games.sql` (`game` e `game_player`); comandantes e vencedores vão em `jsonb`;
+    - `GameStore.record` monta a partida a partir do snapshot da sala (preset, estado inicial, ações, jogadores,
+      comandantes, vencedores e motivo de cada derrota);
+    - a sala ganhou `startedAt`;
+    - o servidor grava quando a sala passa de `playing` para `ended`, na fila da sala e depois das respostas, então
+      um desligamento espera a gravação; uma falha só perde a entrada do histórico;
+    - `GET /api/games?cursor=` lista as partidas da conta, as mais novas primeiro, 20 por página, com cursor por
+      `(ended_at, id)`; nunca mostra o id da conta dos outros jogadores;
+    - o histórico entra na exportação, e a exclusão da conta o anonimiza (sem vínculo, nome "Jogador N"), para os
+      outros jogadores continuarem com a partida;
+    - tela "Minhas partidas" em `#/partidas`, aberta pelo menu da conta, com resultado, data, duração, regras e
+      comandantes, e um botão "Mostrar mais".
+  - Verificado:
+    - testes no PGlite e num Postgres 16 real;
+    - no navegador, com o login falso e partidas de exemplo, no computador e na largura de celular.
 
 ## Fechamento
 - [ ] **T8.11 — Revisão de segurança e privacidade**

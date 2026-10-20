@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { FanContentNotice } from '../legal/FanContentNotice'
 
-export type NavTarget = 'setup' | 'online' | 'decks' | 'presets' | 'about' | 'account'
+export type NavTarget = 'setup' | 'online' | 'decks' | 'presets' | 'about' | 'account' | 'games'
 
 const ITEMS: { target: NavTarget; label: string }[] = [
   { target: 'setup', label: 'Jogar' },

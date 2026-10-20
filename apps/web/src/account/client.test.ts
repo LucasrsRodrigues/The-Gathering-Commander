@@ -57,3 +57,34 @@ describe('account client', () => {
     expect(JSON.parse(String(call[1]!.body))).toEqual({ confirm: 'sim' })
   })
 })
+
+describe('match history client', () => {
+  it('asks for a page with the cursor and keeps only well-formed fields', async () => {
+    const fetchFn = server({
+      'GET /api/games': () => json(200, {
+        next: 'c2',
+        games: [
+          { id: 'g1', startedAt: 1, endedAt: 600_001, preset: 'Oficial', players: [
+            { seat: 0, name: 'Ana', commanders: ['Krenko'], won: true, lossReason: null, you: true, userId: 'leak' },
+            { seat: 1, name: 42, commanders: 'x', won: 'yes', you: false },
+          ] },
+          { id: 7, players: [] },
+        ],
+      }),
+    })
+    const client = new AccountClient('http://srv', fetchFn)
+    const page = await client.games('c1')
+    expect(fetchFn.mock.calls[0]![0]).toBe('http://srv/api/games?cursor=c1')
+    expect(page!.next).toBe('c2')
+    expect(page!.games).toHaveLength(1)
+    expect(page!.games[0]!.players).toEqual([
+      { seat: 0, name: 'Ana', commanders: ['Krenko'], won: true, lossReason: null, you: true },
+      { seat: 1, name: 'Jogador', commanders: [], won: false, lossReason: null, you: false },
+    ])
+  })
+
+  it('a failed request is null, so the screen can offer to try again', async () => {
+    const client = new AccountClient('http://srv', server({ 'GET /api/games': () => json(401, {}) }))
+    expect(await client.games(null)).toBeNull()
+  })
+})

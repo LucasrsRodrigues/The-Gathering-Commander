@@ -415,3 +415,13 @@ button.deck-open:hover { background: var(--surface-hi); }
 .net-status.online { color: var(--ok); }
 .net-status.offline, .net-status.connecting { color: var(--danger); }
 .away-notice { color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+.match-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 760px; }
+.match-list .match { gap: 12px; padding: 16px 20px; }
+.match-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.match-result { font-weight: 600; font-size: 18px; }
+.match-result.win { color: var(--gold); }
+.match-result.loss { color: var(--muted); }
+.match-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.match-players li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 12px; align-items: baseline; }
+.match-players li.you b { color: var(--gold); }
+@media (max-width: 560px) { .match-players li { grid-template-columns: 1fr auto; } .match-players li > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; } }

@@ -13,6 +13,7 @@ import { CardPreview, Toasts } from '../hud/Overlays'
 import { LocalPresetRepository } from '../presets/repository'
 import { AboutScreen } from '../screens/AboutScreen'
 import { AccountScreen } from '../screens/AccountScreen'
+import { MatchHistoryScreen } from '../screens/MatchHistoryScreen'
 import { DeckEditorScreen } from '../screens/DeckEditorScreen'
 import { DeckLibraryScreen } from '../screens/DeckLibraryScreen'
 import { OnlineScreen } from '../screens/OnlineScreen'
@@ -38,6 +39,7 @@ type Screen =
   | { kind: 'online' }
   | { kind: 'room'; roomId: string }
   | { kind: 'account'; error: string | null }
+  | { kind: 'games' }
   | { kind: 'game'; session: GameSession; back: NavTarget }
 
 // An invite link (#/sala/<id>) opens the room directly.
@@ -47,6 +49,7 @@ function screenFromHash(): Screen | null {
   if (match) return { kind: 'room', roomId: match[1]! }
   const account = /^#\/conta(?:\?erro=([a-z-]{1,40}))?$/.exec(location.hash)
   if (account) return { kind: 'account', error: account[1] ?? null }
+  if (location.hash === '#/partidas') return { kind: 'games' }
   return null
 }
 
@@ -112,7 +115,7 @@ export default function App() {
     if (location.hash) history.replaceState(null, '', location.pathname + location.search)
     setScreen(target === 'account' ? { kind: 'account', error: null } : { kind: target })
   }
-  const accountNav = <AccountNav client={account} onOpenAccount={() => go('account')} onSignOut={() => setSigningOut(true)} />
+  const accountNav = <AccountNav client={account} onOpenAccount={() => go('account')} onOpenGames={() => go('games')} onSignOut={() => setSigningOut(true)} />
   const signOutDialog = signingOut && <SignOutDialog onClose={() => setSigningOut(false)} onSignOut={signOut} />
 
   // Goldfish straight from the editor or library: one seat, never blocked by the deck's rules.
@@ -154,6 +157,7 @@ export default function App() {
       <AppNav current={screen.kind === 'editor' ? 'decks' : screen.kind} onNavigate={go}
         end={accountNav} />
       {screen.kind === 'account' && <AccountScreen client={account} error={screen.error} onSignOut={() => setSigningOut(true)} />}
+      {screen.kind === 'games' && <MatchHistoryScreen client={account} />}
       {signOutDialog}
       {screen.kind === 'about' && <AboutScreen />}
       {screen.kind === 'decks' && (

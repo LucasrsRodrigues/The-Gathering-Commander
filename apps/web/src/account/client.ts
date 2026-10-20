@@ -83,6 +83,16 @@ export class AccountClient {
     return next
   }
 
+  // One page of "Minhas partidas"; null when the server could not answer.
+  async games(cursor: string | null): Promise<GamesPage | null> {
+    try {
+      const res = await this.request(`/api/games${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`)
+      return res.ok ? toGamesPage(await res.json()) : null
+    } catch {
+      return null
+    }
+  }
+
   async logout(): Promise<void> {
     await this.request('/api/auth/logout', { method: 'POST' }).catch(() => undefined)
     await this.refresh()
@@ -102,6 +112,48 @@ export class AccountClient {
     } catch {
       return { ok: false, error: 'Sem conexão com o servidor.' }
     }
+  }
+}
+
+export interface GamePlayer {
+  seat: number
+  name: string
+  commanders: string[]
+  won: boolean
+  lossReason: string | null
+  you: boolean
+}
+
+export interface GameSummary {
+  id: string
+  startedAt: number
+  endedAt: number
+  preset: string
+  players: GamePlayer[]
+}
+
+export interface GamesPage {
+  games: GameSummary[]
+  next: string | null
+}
+
+const str = (v: unknown, max = 64) => (typeof v === 'string' ? v.slice(0, max) : '')
+
+// Untrusted input, like the account: keep the fields the screen shows, with their types.
+export function toGamesPage(raw: unknown): GamesPage {
+  const body = raw as { games?: unknown; next?: unknown } | null
+  const games = Array.isArray(body?.games) ? body.games : []
+  return {
+    next: typeof body?.next === 'string' ? body.next.slice(0, 80) : null,
+    games: games.flatMap((g: Record<string, unknown>) => {
+      if (!g || typeof g.id !== 'string' || !Array.isArray(g.players)) return []
+      const players = g.players.slice(0, 4).map((p: Record<string, unknown>) => ({
+        seat: Number(p?.seat) || 0, name: str(p?.name) || 'Jogador', won: p?.won === true, you: p?.you === true,
+        commanders: Array.isArray(p?.commanders) ? p.commanders.slice(0, 2).map((c) => str(c, 160)).filter(Boolean) : [],
+        lossReason: typeof p?.lossReason === 'string' ? p.lossReason : null,
+      }))
+      return [{ id: g.id.slice(0, 64), startedAt: Number(g.startedAt) || 0, endedAt: Number(g.endedAt) || 0, preset: str(g.preset, 80), players }]
+    }),
   }
 }
 
