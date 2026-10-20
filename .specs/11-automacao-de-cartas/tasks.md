@@ -109,7 +109,7 @@ Quatro ondas e um fechamento:
       vidência).
 
 ## Onda 1 — Mana variável, mágicas e "entra no campo"
-- [ ] **T11.4 — Mana variável** _(req: 11)_ · depende de T11.1
+- [x] **T11.4 — Mana variável** _(req: 11)_ · depende de T11.1
   - Escopo:
     - padrões "Add an amount of {G} equal to ~'s power", "Add {G} for each Elf you control" e parecidos;
     - `plan.ts` calcula o valor na hora.
@@ -117,6 +117,25 @@ Quatro ondas e um fechamento:
     - Marwyn, Priest of Titania, Elvish Archdruid e Gaea's Cradle com o Oracle real;
     - o pagamento automático usa a quantidade certa;
     - a Marwyn com mais marcadores gera mais.
+  - Feito:
+    - o leitor de mana do épico 09 entende:
+      - "Add an amount of {G} equal to ~'s power.";
+      - "Add {G} for each <tipo ou subtipo> on the battlefield / you control.", com qualquer cor e qualquer custo
+        que esse leitor já aceitava. A Cabal Coffers, com {2}, {T}, também entra;
+    - o nome curto das lendárias ("Marwyn" em "Marwyn, the Nurturer") passou a ser tratado como o próprio nome, como
+      o Oracle escreve;
+    - o pagamento automático calcula a quantidade na hora, tanto pelo estado completo (`evalValue`) quanto pela
+      visão do jogador na mesa online (`evalValueInView`);
+    - `matchesFilter` aceita o objeto completo ou o que o jogador vê dele.
+  - **Mudança no design:** essas frases ficaram no leitor de mana, e não na lista de padrões. Como já são
+    habilidades de mana, o custo ({T}, {2}) já vem entendido, e a cobertura conta a linha sem duplicar código.
+  - Verificado com o Oracle real:
+    - Priest of Titania e Gaea's Cradle saem automáticas;
+    - Marwyn sai parcial (o gatilho de +1/+1 é da onda 3);
+    - Elvish Archdruid sai parcial (o anthem é da onda 3);
+    - no jogo, a Marwyn com +2 gera {G}{G}{G}, e com força 0 não gera nada;
+    - a Priest conta os Elfos dos dois lados, a Archdruid só os seus;
+    - o pagamento de {G}{G}{G}{G} usa só a Marwyn de força 4.
 - [ ] **T11.5 — Alvos: decisão `chooseTargets`, `legalTargets` e anulação** _(req: 7, 8)_ · depende de T11.1
   - Verificação:
     - alvos antes de pagar;

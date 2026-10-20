@@ -6,7 +6,7 @@
 
 import { PATTERNS, recognize, type LinePattern } from './oracle/patterns'
 import {
-  KEYWORDS, type CardRules, type CardType, type Keyword, type ManaAbility, type ManaAmount, type ManaColor,
+  KEYWORDS, type CardRules, type CardType, type Filter, type Keyword, type ManaAbility, type ManaAmount, type ManaColor,
   type ManaCost, type ManaProduction, type ManaType, type Supertype,
 } from './types'
 
@@ -154,7 +154,10 @@ function parsePT(v: string | undefined): { value: number | null; variable: boole
 
 // One entry per ability line, with reminder text removed and the card's own name replaced by a marker.
 function oracleLines(facts: OracleFacts): string[] {
-  const names = [...new Set([facts.name, facts.name.split(' // ')[0]!])].sort((a, b) => b.length - a.length)
+  // Legendary cards are named by their short name in their own text ("Marwyn" for "Marwyn, the Nurturer").
+  const front = facts.name.split(' // ')[0]!
+  const short = front.includes(',') ? front.split(',')[0]!.trim() : ''
+  const names = [...new Set([facts.name, front, ...(short.length > 2 ? [short] : [])])].sort((a, b) => b.length - a.length)
   return facts.oracleText
     .replace(/[’]/g, "'")
     .split('\n')
@@ -251,7 +254,26 @@ function parseProduction(sentence: string): ManaProduction | null {
   if (/^Add one mana of any color in your commander's color identity\.$/i.test(sentence)) return { kind: 'commanderIdentity' }
   if (/^Add one mana of any color\.$/i.test(sentence)) return { kind: 'anyColor', amount: 1 }
   if ((m = /^Add (one|two|three|four|five) mana of any one color\.$/i.exec(sentence))) return { kind: 'anyColor', amount: NUMBERS[m[1]!.toLowerCase()]! }
+  // Épico 11: amounts that depend on the table.
+  if ((m = new RegExp(`^Add an amount of \\{([WUBRGC])\\} equal to ${OBJECT}'s power\\.$`, 'i').exec(sentence))) {
+    return { kind: 'dynamic', color: m[1] as ManaType, amount: { kind: 'power', of: 'self' } }
+  }
+  if ((m = /^Add \{([WUBRGC])\} for each (\w+) (on the battlefield|you control)\.$/.exec(sentence))) {
+    const what = nounFilter(m[2]!)
+    if (!what) return null
+    return {
+      kind: 'dynamic', color: m[1] as ManaType,
+      amount: { kind: 'count', what: m[3] === 'you control' ? { ...what, controller: 'you' } : what, zone: 'battlefield' },
+    }
+  }
   return null
+}
+
+// "creature", "artifact", "land" → a card type; a capitalized word ("Elf", "Swamp") → a subtype. Anything else: null.
+function nounFilter(word: string): Filter | null {
+  const type = CARD_TYPES.find((t) => t === word.toLowerCase())
+  if (type) return { types: [type] }
+  return /^[A-Z][a-z]+$/.test(word) ? { subtypes: [word] } : null
 }
 
 function fixedAdd(sentence: string): ManaAmount | null {

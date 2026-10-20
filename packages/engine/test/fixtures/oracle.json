@@ -1290,5 +1290,73 @@
   "oracleText": "This artifact enters tapped.\nAs this artifact enters, choose a color.\n{T}: Add one mana of the chosen color.",
   "keywords": [],
   "colorIdentity": []
+ },
+ {
+  "name": "Marwyn, the Nurturer",
+  "typeLine": "Legendary Creature — Elf Druid",
+  "manaCost": "{2}{G}",
+  "oracleText": "Whenever another Elf you control enters, put a +1/+1 counter on Marwyn.\n{T}: Add an amount of {G} equal to Marwyn's power.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Priest of Titania",
+  "typeLine": "Creature — Elf Druid",
+  "manaCost": "{1}{G}",
+  "oracleText": "{T}: Add {G} for each Elf on the battlefield.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Elvish Archdruid",
+  "typeLine": "Creature — Elf Druid",
+  "manaCost": "{1}{G}{G}",
+  "oracleText": "Other Elf creatures you control get +1/+1.\n{T}: Add {G} for each Elf you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Gaea's Cradle",
+  "typeLine": "Legendary Land",
+  "manaCost": "",
+  "oracleText": "{T}: Add {G} for each creature you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Circle of Dreams Druid",
+  "typeLine": "Creature — Elf Druid",
+  "manaCost": "{G}{G}{G}",
+  "oracleText": "{T}: Add {G} for each creature you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Cabal Coffers",
+  "typeLine": "Land",
+  "manaCost": "",
+  "oracleText": "{2}, {T}: Add {B} for each Swamp you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
  }
 ]

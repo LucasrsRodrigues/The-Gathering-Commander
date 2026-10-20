@@ -10,7 +10,8 @@
 import { commanderTax } from './commander'
 import { findPayment, MAX_FLEXIBLE } from './cost'
 import { choicesFor, commanderIdentity, isSummoningSick, MANA_TYPES, payGeneric, poolTotal, productionFor } from './mana'
-import type { CardRef, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaCost, ManaPool, ManaType, ObjectId, PlayerId } from './types'
+import { evalValue, evalValueInView } from './effects/value'
+import type { CardRef, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaCost, ManaPool, ManaType, ObjectId, PlayerId, Value } from './types'
 import type { PlayerView } from './view'
 
 interface Option {
@@ -31,7 +32,7 @@ interface PlanInput {
   cost: ManaCost
   tax: number
   x: number
-  sources: { id: ObjectId; abilities: ManaAbility[] }[] // untapped, controlled, not summoning sick
+  sources: { id: ObjectId; abilities: ManaAbility[]; dynamic: number[] }[] // untapped, controlled, not summoning sick; dynamic: per ability (épico 11)
   identity: ManaColor[]
 }
 
@@ -42,7 +43,7 @@ export function planPayment(state: GameState, player: PlayerId, objectId: Object
   const sources = state.battlefield.flatMap((id) => {
     const o = state.objects[id]!
     return o.controller === player && !o.tapped && o.card.rules?.manaAbilities.length && !isSummoningSick(state, o)
-      ? [{ id, abilities: o.card.rules.manaAbilities }] : []
+      ? [{ id, abilities: o.card.rules.manaAbilities, dynamic: dynamicAmounts(o.card.rules.manaAbilities, (v) => evalValue(state, { controller: player, sourceId: id }, v)) }] : []
   })
   const tax = obj.zone === 'command' ? commanderTax(obj, state.ruleset) : 0
   return planFor(obj.card, tax, x, state.players[player]!.manaPool, sources, commanderIdentity(state, player))
@@ -56,12 +57,17 @@ export function planPaymentFromView(view: PlayerView, player: PlayerId, objectId
   const sources = view.battlefield.flatMap((id) => {
     const o = view.objects[id]
     return o && o.controller === player && !o.tapped && !o.summoningSick && o.card?.rules?.manaAbilities.length
-      ? [{ id, abilities: o.card.rules.manaAbilities }] : []
+      ? [{ id, abilities: o.card.rules.manaAbilities, dynamic: dynamicAmounts(o.card.rules.manaAbilities, (v) => evalValueInView(view, { controller: player, sourceId: id }, v)) }] : []
   })
   const identity = new Set<ManaColor>()
   for (const o of Object.values(view.objects)) if (o.isCommander && o.owner === player) o.card?.rules?.colorIdentity.forEach((c) => identity.add(c))
   const tax = obj.zone === 'command' ? obj.commanderTax : 0
   return planFor(obj.card, tax, x, pool, sources, (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => identity.has(c)))
+}
+
+// How much each 'dynamic' ability adds right now ("equal to ~'s power", "for each Elf"); 0 for the others.
+function dynamicAmounts(abilities: ManaAbility[], value: (v: Value) => number): number[] {
+  return abilities.map((a) => (a.produces.kind === 'dynamic' ? value(a.produces.amount) : 0))
 }
 
 function planFor(card: CardRef, tax: number, x: number, pool: ManaPool, sources: PlanInput['sources'], identity: ManaColor[]) {
@@ -128,7 +134,7 @@ function toSource(source: PlanInput['sources'][number], identity: ManaColor[]): 
     const extra = ability.extraCost?.generic ?? 0
     const colors: (ManaType | undefined)[] = choicesFor(ability, identity) ?? [undefined]
     return colors.flatMap((color) => {
-      const mana = productionFor(ability, color, identity)
+      const mana = productionFor(ability, color, identity, source.dynamic[abilityIndex] ?? 0)
       return poolTotal(mana) ? [{ activation: { objectId: source.id, abilityIndex, ...(color ? { color } : {}) }, mana, pain, extra }] : []
     })
   })

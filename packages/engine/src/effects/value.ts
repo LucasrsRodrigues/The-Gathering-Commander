@@ -3,7 +3,8 @@
 
 import { typesOf } from '../cards'
 import { powerOf, toughnessOf } from '../stats'
-import type { Filter, GameObject, GameState, ObjectId, PlayerId, Target, Value } from '../types'
+import type { CardRef, Filter, GameObject, GameState, ObjectId, PlayerId, Target, Value } from '../types'
+import type { PlayerView } from '../view'
 
 export interface ValueContext {
   controller: PlayerId
@@ -14,7 +15,17 @@ export interface ValueContext {
 
 const lower = (list: readonly string[]) => list.map((s) => s.toLowerCase())
 
-export function matchesFilter(_state: GameState, obj: GameObject, filter: Filter, ctx: Pick<ValueContext, 'controller' | 'sourceId'>): boolean {
+// What a filter looks at: the full object (engine) or what a player sees of it (view, online table).
+export interface FilterSubject {
+  id: ObjectId
+  card: CardRef | null // null: face down or hidden, never matches
+  controller: PlayerId
+  tapped: boolean
+  isToken: boolean
+}
+
+export function matchesFilter(_state: GameState | null, obj: FilterSubject, filter: Filter, ctx: Pick<ValueContext, 'controller' | 'sourceId'>): boolean {
+  if (!obj.card) return false
   const rules = obj.card.rules
   const types = typesOf(obj.card)
   if (filter.types?.length && !filter.types.some((t) => types.includes(t))) return false
@@ -36,6 +47,29 @@ export function matchesFilter(_state: GameState, obj: GameObject, filter: Filter
 function firstObjectTarget(state: GameState, targets: readonly Target[] | undefined): GameObject | undefined {
   for (const t of targets ?? []) if ('object' in t && state.objects[t.object]) return state.objects[t.object]
   return undefined
+}
+
+// The same values from a player's view (the payment plan on the online table). Counts only see visible objects,
+// which is all a battlefield count needs.
+export function evalValueInView(view: PlayerView, ctx: ValueContext, value: Value): number {
+  const self = ctx.sourceId ? view.objects[ctx.sourceId] : undefined
+  switch (value.kind) {
+    case 'fixed': return value.n
+    case 'x': return ctx.x ?? 0
+    case 'power': return Math.max(0, value.of === 'self' ? (self?.power ?? 0) : 0)
+    case 'toughness': return Math.max(0, value.of === 'self' ? (self?.toughness ?? 0) : 0)
+    case 'counters': {
+      const key = self && Object.keys(self.counters).find((k) => k.toLowerCase() === value.counter.toLowerCase())
+      return key ? Math.max(0, self.counters[key] ?? 0) : 0
+    }
+    case 'count': {
+      if (value.zone !== 'battlefield') return 0
+      return view.battlefield.filter((id) => {
+        const o = view.objects[id]
+        return !!o && matchesFilter(null, o, value.what, ctx)
+      }).length
+    }
+  }
 }
 
 export function evalValue(state: GameState, ctx: ValueContext, value: Value): number {
