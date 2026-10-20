@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../ui/store'
 import { PROVIDER_LABELS, type AccountClient } from './client'
 
-export function AccountNav({ client, onOpenAccount }: { client: AccountClient; onOpenAccount: () => void }) {
+export function AccountNav({ client, onOpenAccount, onSignOut }: { client: AccountClient; onOpenAccount: () => void; onSignOut: () => void }) {
   const state = useStore(client.state)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -46,7 +46,7 @@ export function AccountNav({ client, onOpenAccount }: { client: AccountClient; o
           ) : (
             <>
               <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); onOpenAccount() }}>Minha conta</button>
-              <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); void client.logout() }}>Sair</button>
+              <button role="menuitem" className="menu-item" onClick={() => { setOpen(false); onSignOut() }}>Sair</button>
             </>
           )}
         </div>

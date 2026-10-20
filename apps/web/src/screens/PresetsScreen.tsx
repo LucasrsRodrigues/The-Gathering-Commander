@@ -32,8 +32,14 @@ const LEVEL_LABELS: Record<Enforcement, string> = { block: 'Bloqueia', warn: 'SÃ
 
 const lines = (text: string) => text.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 200).map((l) => l.slice(0, 200))
 
-export function PresetsScreen({ presets }: { presets: PresetRepository }) {
+export function PresetsScreen({ presets, cloudVersion = 0 }: { presets: PresetRepository; cloudVersion?: number }) {
   const [list, setList] = useState(() => presets.list())
+  // Presets that arrived from another device (cloud sync) show up without reopening the screen.
+  const [seen, setSeen] = useState(cloudVersion)
+  if (seen !== cloudVersion) {
+    setSeen(cloudVersion)
+    setList(presets.list())
+  }
   const [editing, setEditing] = useState<Preset | null>(null)
   const [sharing, setSharing] = useState<Preset | null>(null)
   const [importing, setImporting] = useState(false)

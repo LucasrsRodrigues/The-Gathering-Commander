@@ -1,3 +1,4 @@
+import { useCloudVersion } from '../account/useCloudVersion'
 import { useEffect, useState } from 'react'
 import type { Services } from '../app/services'
 import { AppFooter } from '../app/AppNav'
@@ -15,10 +16,11 @@ export function DeckLibraryScreen({ services, onOpen, onTest }: {
   const [importing, setImporting] = useState(false)
   const reload = () => services.decks.list().then(setDecks)
 
+  const cloudVersion = useCloudVersion(services)
   useEffect(() => {
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [cloudVersion])
 
   async function create() {
     const deck = newDeck(crypto.randomUUID(), 'Deck novo', Date.now())

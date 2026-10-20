@@ -121,13 +121,25 @@ chaves de login configuradas.
     - a escrita é numa transação com `FOR UPDATE`, então dois aparelhos não ganham ao mesmo tempo;
     - o tipo `Deck` e o `sanitizeDeck` foram para o `formats`, e o servidor valida decks e presets como o app;
     - a nuvem entra na exportação e na exclusão da conta pelas "partes da conta".
-- [ ] **T8.8 — Repositórios de nuvem no app, primeiro login e sair** _(req: 11–13, 16)_ · depende de T8.7
+- [x] **T8.8 — Repositórios de nuvem no app, primeiro login e sair** _(req: 11–13, 16)_ · depende de T8.7
   - Verificação:
     - o app abre e edita sem rede (cache local) e sincroniza quando a rede volta;
     - o primeiro login sobe os decks locais;
     - o aviso de versão descartada aparece;
     - sair pergunta se mantém a cópia local.
   - Critério de aceite: o deck criado no computador aparece no tablet e volta editado.
+  - Feito:
+    - `CloudSync`: o navegador continua sendo o cache (IndexedDB e localStorage); a nuvem é sincronizada por cima,
+      sem travar nada quando a rede cai;
+    - cada sincronização baixa o que mudou desde a última (`since`) e depois sobe as edições pendentes; um `409`
+      adota a versão do servidor, e uma edição local mais antiga descartada mostra um aviso;
+    - `CloudDeckRepository` e `CloudPresetRepository` envolvem os repositórios locais e avisam a sincronização a cada
+      salvar ou excluir (com espera curta para juntar edições seguidas); presets ganham a hora da edição;
+    - sincroniza ao entrar, a cada 2 minutos e quando a janela volta ao foco; as listas abertas recarregam quando
+      chega algo novo;
+    - "Sair" pergunta se mantém uma cópia neste navegador ou apaga daqui (a nuvem fica intacta).
+  - Testes: uma nuvem falsa com a mesma regra do servidor e dois aparelhos simulados (primeiro login, outro
+    aparelho, edição offline que perde e que ganha, exclusão, sair mantendo ou limpando).
 
 ## Onda 3 — Salas e histórico
 - [ ] **T8.9 — Conta ligada ao lugar nas salas** _(req: 17)_ · depende de T8.4

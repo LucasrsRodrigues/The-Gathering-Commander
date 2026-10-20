@@ -8,7 +8,7 @@ import { toast } from '../ui/stores'
 
 const CONFIRM = 'excluir minha conta'
 
-export function AccountScreen({ client, error }: { client: AccountClient; error: string | null }) {
+export function AccountScreen({ client, error, onSignOut }: { client: AccountClient; error: string | null; onSignOut: () => void }) {
   const state = useStore(client.state)
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
@@ -67,7 +67,7 @@ export function AccountScreen({ client, error }: { client: AccountClient; error:
             <p className="muted small">Guardamos só o id da conta em cada provedor, o nome, a foto e as sessões abertas.</p>
             <div className="row">
               <a className="btn" href={client.exportUrl()} download>Baixar meus dados</a>
-              <button className="btn" onClick={() => void client.logout()}>Sair</button>
+              <button className="btn" onClick={onSignOut}>Sair</button>
             </div>
           </section>
           <section className="setup-card danger">

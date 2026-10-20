@@ -1,6 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { AccountNav } from '../account/AccountNav'
 import { AccountClient } from '../account/client'
+import { CloudDeckRepository, CloudPresetRepository, CloudSync, PresetTimes } from '../account/cloudSync'
+import { SignOutDialog } from '../account/SignOutDialog'
+import { createStore, useStore } from '../ui/store'
 import { GatheringHallCatalog } from '../catalog/gatheringHall'
 import { ScryfallCatalog } from '../catalog/scryfall'
 import { SERVER_HTTP } from '../net/config'
@@ -49,12 +52,16 @@ function screenFromHash(): Screen | null {
 
 export default function App() {
   const catalog = useMemo(() => new GatheringHallCatalog(SERVER_HTTP, new ScryfallCatalog()), [])
-  const presets = useMemo(() => new LocalPresetRepository(), [])
+  const localPresets = useMemo(() => new LocalPresetRepository(), [])
   const account = useMemo(() => new AccountClient(SERVER_HTTP), [])
   useEffect(() => {
     void account.refresh()
   }, [account])
   const [decks, setDecks] = useState<DeckRepository | null>(null)
+  const [cloud, setCloud] = useState<{ sync: CloudSync; presets: CloudPresetRepository } | null>(null)
+  const [signingOut, setSigningOut] = useState(false)
+  const accountState = useStore(account.state)
+  const cloudVersion = useStore(cloud?.sync.version ?? NO_CLOUD)
   const [screen, setScreen] = useState<Screen>(() => screenFromHash() ?? { kind: 'setup' })
 
   useEffect(() => {
@@ -68,17 +75,45 @@ export default function App() {
 
   useEffect(() => {
     openDeckRepository().then((repo) => {
-      setDecks(repo)
+      // Decks and presets stay in this browser; with an account the cloud sync keeps them in step (épico 08).
+      const storage = safeStorage()
+      const times = new PresetTimes(storage)
+      const sync = new CloudSync({ base: SERVER_HTTP, decks: repo, presets: localPresets, times, storage, notice: (m) => toast(m) })
+      setCloud({ sync, presets: new CloudPresetRepository(localPresets, sync, times) })
+      setDecks(new CloudDeckRepository(repo, sync))
       if (!repo.persistent) toast('Este navegador não deixou salvar dados: seus decks valem só até fechar a aba.')
     })
-  }, [])
+  }, [localPresets])
 
-  if (!decks) return <div className="loading">Carregando…</div>
-  const services: Services = { catalog, legality: catalog, decks, presets }
+  // Signed in → sync now, every 2 minutes and when the app gets focus back.
+  useEffect(() => {
+    if (!cloud) return
+    cloud.sync.setUser(accountState.status === 'signedIn' ? accountState.account.id : null)
+    if (accountState.status !== 'signedIn') return
+    const tick = () => void cloud.sync.sync()
+    const timer = setInterval(tick, 2 * 60 * 1000)
+    window.addEventListener('focus', tick)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', tick)
+    }
+  }, [cloud, accountState])
+
+  if (!decks || !cloud) return <div className="loading">Carregando…</div>
+  const presets = cloud.presets
+  const signOut = async (keepLocal: boolean) => {
+    await cloud.sync.sync() // send pending edits first
+    await cloud.sync.signOut(keepLocal)
+    await account.logout()
+    toast(keepLocal ? 'Você saiu. Uma cópia dos decks ficou neste navegador.' : 'Você saiu, e os decks da conta saíram deste navegador.')
+  }
+  const services: Services = { catalog, legality: catalog, decks, presets, cloud: cloud.sync }
   const go = (target: NavTarget) => {
     if (location.hash) history.replaceState(null, '', location.pathname + location.search)
     setScreen(target === 'account' ? { kind: 'account', error: null } : { kind: target })
   }
+  const accountNav = <AccountNav client={account} onOpenAccount={() => go('account')} onSignOut={() => setSigningOut(true)} />
+  const signOutDialog = signingOut && <SignOutDialog onClose={() => setSigningOut(false)} onSignOut={signOut} />
 
   // Goldfish straight from the editor or library: one seat, never blocked by the deck's rules.
   async function testDeck(deck: Deck) {
@@ -105,7 +140,8 @@ export default function App() {
   if (screen.kind === 'room') {
     return (
       <div className="shell">
-        <AppNav current="online" onNavigate={go} end={<AccountNav client={account} onOpenAccount={() => go('account')} />} />
+        <AppNav current="online" onNavigate={go} end={accountNav} />
+        {signOutDialog}
         <RoomScreen key={screen.roomId} services={services} roomId={screen.roomId} onLeave={() => go('online')} />
         <CardPreview />
         <Toasts />
@@ -116,8 +152,9 @@ export default function App() {
   return (
     <div className="shell">
       <AppNav current={screen.kind === 'editor' ? 'decks' : screen.kind} onNavigate={go}
-        end={<AccountNav client={account} onOpenAccount={() => go('account')} />} />
-      {screen.kind === 'account' && <AccountScreen client={account} error={screen.error} />}
+        end={accountNav} />
+      {screen.kind === 'account' && <AccountScreen client={account} error={screen.error} onSignOut={() => setSigningOut(true)} />}
+      {signOutDialog}
       {screen.kind === 'about' && <AboutScreen />}
       {screen.kind === 'decks' && (
         <DeckLibraryScreen services={services} onOpen={(deckId) => setScreen({ kind: 'editor', deckId })} onTest={testDeck} />
@@ -125,7 +162,7 @@ export default function App() {
       {screen.kind === 'editor' && (
         <DeckEditorScreen services={services} deckId={screen.deckId} onBack={() => go('decks')} onTest={testDeck} />
       )}
-      {screen.kind === 'presets' && <PresetsScreen presets={presets} />}
+      {screen.kind === 'presets' && <PresetsScreen presets={presets} cloudVersion={cloudVersion} />}
       {screen.kind === 'online' && <OnlineScreen onEnter={(roomId) => { location.hash = `#/sala/${roomId}` }} />}
       {screen.kind === 'setup' && (
         <SetupScreen services={services} onManagePresets={() => go('presets')}
@@ -138,4 +175,14 @@ export default function App() {
       <Toasts />
     </div>
   )
+}
+
+const NO_CLOUD = createStore(0)
+
+function safeStorage(): Storage | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage
+  } catch {
+    return null
+  }
 }
