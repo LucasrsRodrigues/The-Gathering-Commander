@@ -442,6 +442,8 @@ export type GameEvent =
   | { type: 'stackItemAdded'; item: StackItem }
   | { type: 'stackItemResolved'; item: StackItem }
   | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
+  | { type: 'abilityResolving'; item: StackItem; text: string } // épico 11: an automated ability applies its effects
+  | { type: 'manualStep'; text: string; objectId?: ObjectId } // épico 11: a part the players do by hand
   | { type: 'commanderMayReturn'; objectId: ObjectId; owner: PlayerId }
   | { type: 'playerLost'; player: PlayerId; reason: LossReason }
   | { type: 'gameEnded'; winners: PlayerId[] }

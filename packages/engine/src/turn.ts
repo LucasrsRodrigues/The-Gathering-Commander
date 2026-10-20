@@ -1,7 +1,8 @@
 // Turn structure (CR 500), priority (CR 117) and stack resolution (CR 608).
 
 import type { Tx } from './tx'
-import { STEPS, type GameState, type PlayerId, type StackItem, type Step, type TargetSpec } from './types'
+import { STEPS, type Ability, type GameState, type PlayerId, type StackItem, type Step, type TargetSpec } from './types'
+import { applyAbility } from './effects/apply'
 import { stillLegal } from './effects/targets'
 import { onCombatStep } from './combat'
 import { clearPassUntil } from './stops'
@@ -133,6 +134,14 @@ export function resolveTop(tx: Tx) {
       tx.stack()[tx.s.stack.length - 1] = item
     }
   }
+  // Épico 11: the automated part of the item happens first; the card then goes where it goes, as before.
+  if (item.ability && !item.manual) {
+    const ability = abilityOf(tx, item)
+    if (ability) applyAbility(tx, item, ability)
+    const source = item.objectId ?? item.sourceId
+    const manual = source ? tx.s.objects[source]?.card.rules?.manualText : undefined
+    if (manual?.length && item.ability.from === 'spell') tx.emit({ type: 'manualStep', text: manual.join(' '), ...(source ? { objectId: source } : {}) })
+  }
   if (item.kind === 'card' && item.objectId) {
     const obj = tx.s.objects[item.objectId]!
     if (isPermanentCard(obj)) moveObject(tx, obj.id, 'battlefield', { controller: item.controller })
@@ -146,6 +155,15 @@ export function resolveTop(tx: Tx) {
   }
   tx.emit({ type: 'stackItemResolved', item })
   givePriority(tx, tx.s.turn.active)
+}
+
+function abilityOf(tx: Tx, item: StackItem): Ability | undefined {
+  const source = item.objectId ?? item.sourceId
+  const rules = source ? tx.s.objects[source]?.card.rules : undefined
+  if (!item.ability || !rules) return undefined
+  if (item.ability.from === 'spell') return rules.spell
+  if (item.ability.from === 'etb') return rules.etb?.[item.ability.index]
+  return rules.activated?.[item.ability.index]
 }
 
 function targetSpecsOf(tx: Tx, item: StackItem): TargetSpec[] {

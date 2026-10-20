@@ -477,6 +477,7 @@ function activateManaAbility(tx: Tx, actor: PlayerId, a: ManaActivation) {
   if (ability.lifeCost) loseLife(tx, actor, ability.lifeCost)
   if (ability.selfDamage) loseLife(tx, actor, ability.selfDamage)
   addMana(tx, actor, mana, obj.id)
+  if (ability.sacrificeSelf) moveObject(tx, obj.id, 'graveyard') // Treasure: "{T}, Sacrifice this token: …"
 }
 
 // Takes the cost from the pool (and life for Phyrexian mana). Under 'warn' a cost the pool cannot cover is only

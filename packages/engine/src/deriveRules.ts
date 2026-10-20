@@ -76,8 +76,17 @@ export function deriveCardRulesWith(facts: OracleFacts, patterns: readonly LineP
   let understood = 0
   lines.forEach((line, i) => {
     const hit = spellMana ? null : recognize(line, { types }, patterns)
+    // Two lines of the same spell join into one ability; two that both ask for targets stay manual (wave 1).
+    if (hit?.spell && rules.spell?.targets?.length && hit.spell.targets?.length) {
+      manual.push(shown[i] ?? line)
+      return
+    }
     if (hit) {
-      if (hit.spell) rules.spell = hit.spell
+      if (hit.spell) {
+        rules.spell = rules.spell
+          ? { text: `${rules.spell.text} ${hit.spell.text}`, effects: [...rules.spell.effects, ...hit.spell.effects], ...((rules.spell.targets ?? hit.spell.targets) ? { targets: rules.spell.targets ?? hit.spell.targets! } : {}) }
+          : hit.spell
+      }
       if (hit.etb) rules.etb = [...(rules.etb ?? []), hit.etb]
       if (hit.activated) rules.activated = [...(rules.activated ?? []), hit.activated]
       if (hit.mana) rules.manaAbilities = dedupe([...rules.manaAbilities, hit.mana])
@@ -85,10 +94,23 @@ export function deriveCardRulesWith(facts: OracleFacts, patterns: readonly LineP
     } else if (spellMana || knownLine(line)) understood++
     else manual.push(shown[i] ?? line)
   })
+  // Order matters in a spell: a manual line before an automated one ("Look at the top three cards…" then "Draw a
+  // card.") would happen after it. Unless that line is about casting (costs), the whole spell stays manual.
+  if (rules.spell && manual.length) {
+    const firstAuto = lines.findIndex((l) => rules.spell!.text.includes(l))
+    const before = shown.slice(0, Math.max(0, firstAuto)).filter((l) => manual.includes(l) && !CAST_TIME.test(l))
+    if (before.length) {
+      delete rules.spell
+      return { ...rules, coverage: 'manual', manualText: shown }
+    }
+  }
   rules.coverage = manual.length === 0 ? 'automated' : understood === 0 ? 'manual' : 'partial'
   if (manual.length) rules.manualText = manual
   return rules
 }
+
+// Lines about casting the spell (costs, rules for the cast), not about what it does on resolution.
+const CAST_TIME = /^(As an additional cost to cast this spell|This spell costs|This spell can't be countered|Kicker|Flashback|Buyback|Convoke|Delve|Affinity for)/i
 
 // Lines the engine already handled before épico 11: its own keywords, recognized mana abilities, "enters tapped",
 // pain lands' "deals 1 damage to you".

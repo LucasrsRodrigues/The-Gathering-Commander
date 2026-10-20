@@ -31,13 +31,13 @@ describe('coverage measurement (épico 11, T11.3)', () => {
       const r = normalizeCard(c)!
       return r.edhrecRank ? [{ rank: r.edhrecRank, card: r.card }] : []
     }), [3, 6])
-    // Sol Ring and Llanowar Elves are automated; Bolt and Shock wait for wave 1; the fixture text "Text." is manual.
+    // Sol Ring, Llanowar Elves, Lightning Bolt and Shock are automated; the fixture text "Text." is manual.
     expect(report.rows).toEqual([
-      { top: 3, cards: 3, automated: 1, partial: 0, manual: 2 },
-      { top: 6, cards: 6, automated: 2, partial: 0, manual: 4 },
+      { top: 3, cards: 3, automated: 2, partial: 0, manual: 1 },
+      { top: 6, cards: 6, automated: 4, partial: 0, manual: 2 },
     ])
-    expect(report.phrases[0]).toEqual({ phrase: '~ deals N damage to any target.', cards: 2, example: 'Lightning Bolt' })
-    expect(formatReport(report)).toMatch(/top 6 \(6 cartas\): automáticas 2 \(33\.3%\)/)
+    expect(report.phrases[0]).toEqual({ phrase: 'Text.', cards: 2, example: 'Rhystic Study' })
+    expect(formatReport(report)).toMatch(/top 6 \(6 cartas\): automáticas 4 \(66\.7%\)/)
   })
 
   it('normalizes phrases: name, numbers and generic mana', () => {

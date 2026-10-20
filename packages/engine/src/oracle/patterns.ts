@@ -5,6 +5,7 @@
 // (deriveRules.ts) uses this file: the rules core never sees Oracle text.
 
 import type { Ability, ActivatedAbility, CardType, ManaAbility } from '../types'
+import { parseSpellLine } from './sentences'
 
 export interface LineContext {
   types: CardType[] // of the card being read
@@ -23,7 +24,17 @@ export interface LinePattern {
   match(line: string, ctx: LineContext): Recognized | null
 }
 
-export const PATTERNS: LinePattern[] = []
+// Wave 1: whole lines of instants and sorceries made of known sentences (oracle/sentences.ts).
+const SPELL_LINE: LinePattern = {
+  id: 'spell-line',
+  match(line, ctx) {
+    if (!ctx.types.includes('instant') && !ctx.types.includes('sorcery')) return null
+    const spell = parseSpellLine(line)
+    return spell ? { spell } : null
+  },
+}
+
+export const PATTERNS: LinePattern[] = [SPELL_LINE]
 
 export function recognize(line: string, ctx: LineContext, patterns: readonly LinePattern[] = PATTERNS): Recognized | null {
   for (const p of patterns) {

@@ -169,7 +169,7 @@ Quatro ondas e um fechamento:
 
     Fica como suspeita de instabilidade do PGlite em paralelo sob carga. Se voltar a aparecer no CI, a saída é
     limitar os workers do vitest no servidor.
-- [ ] **T11.6 — Interpretador de efeitos e mágicas automáticas** _(req: 5, 10)_ · depende de T11.5
+- [x] **T11.6 — Interpretador de efeitos e mágicas automáticas** _(req: 5, 10)_ · depende de T11.5
   - Escopo:
     - `applyEffects` para comprar, dano, vida, destruir, exilar, devolver, marcadores, +X/+X, fichas, moer e
       descartar;
@@ -180,6 +180,41 @@ Quatro ondas e um fechamento:
     - cada padrão com o Oracle real de 2 cartas;
     - fitness de replay;
     - a parte entendida de uma carta parcial é aplicada, e a manual aparece no registro.
+  - Feito:
+    - `effects/apply.ts` aplica, em ordem, comprar, vida, dano, destruir, exilar, devolver, marcadores, +X/+X até o
+      fim do turno, fichas, moer e mana fixa, pelos mesmos auxiliares do jogo manual:
+      - o dano não causado em combate tira vida dos jogadores, marca dano nas criaturas e tira lealdade dos
+        planeswalkers, com vínculo com a vida e toque mortífero vindos da origem, e não conta como dano de
+        comandante;
+      - indestrutível não é destruído;
+      - fichas ficam limitadas a 50 por efeito;
+      - descartar, buscar e vidência viram uma nota "faça à mão" até a onda 2;
+    - eventos novos: `abilityResolving` (a frase que resolveu) e `manualStep` (a parte manual das parciais);
+    - fichas prontas: Treasure (a mana sacrifica a ficha; o pagamento automático nunca a gasta sozinho), Food e Clue
+      (com as habilidades manuais até a onda 2);
+    - `oracle/sentences.ts`: as frases da onda 1, tiradas do Oracle real:
+      - Draw N cards; You draw N and lose N life; Target player draws N (and loses N); Each player draws;
+      - ganhar e perder vida, moer;
+      - ~ deals N damage to any target / target creature / each creature / each opponent;
+      - Destroy/Exile target <X>; Destroy/Exile all <Xs>; Return target <X> to its owner's hand;
+      - Target creature gets ±N/±N until end of turn; Creatures you control get +N/+N;
+      - Put N +1/+1 counters; Create N N/N <cor> <tipo> tokens (with <palavra-chave>); Create N Treasure/Food/Clue;
+      - "can't be regenerated" (não existe regeneração neste motor);
+    - "<X>" aceita tipo, "não-tipo", "ou", virada e "you control" / "you don't control" / "an opponent controls";
+    - nesta onda vale um único conjunto de alvos por mágica; duas frases com alvo deixam a linha manual.
+  - **Regra nova de ordem:** se uma frase manual vem antes de uma automática numa mágica, a mágica inteira fica manual.
+    No Ponder, por exemplo, comprar antes de olhar o topo estaria errado. A exceção são as frases do momento de
+    conjurar (custo adicional, redução de custo).
+  - Verificado com o Oracle real de 40 mágicas comuns:
+    - 18 automáticas: Lightning Bolt, Shock, Murder, Wrath of God, Divination, Krenko's Command, Giant Growth,
+      Unsummon e outras;
+    - parciais coerentes: Thrill of Possibility, Blasphemous Act, Big Score, Tragic Slip;
+    - manuais por dúvida: Swords to Plowshares, Path to Exile, Beast Within, os modais, Ponder e Read the Bones;
+    - no motor: dano mata com as regras de combate ligadas e tira vida do jogador; Wrath poupa o indestrutível;
+      Goblins 1/1 vermelhos; Giant Growth até o fim do turno; Unsummon volta à mão do dono; Treasure; replay
+      determinístico.
+  - **Medição (catálogo de 2026-10-20):** no top 1.000, automáticas de 9,3% para 11,3%, e automáticas ou parciais de
+    37,1% para 41,3%. No top 5.000, automáticas de 3,6% para 4,8%.
 - [ ] **T11.7 — "Quando entra no campo"** _(req: 6)_ · depende de T11.6
   - Verificação:
     - o gatilho vai para a pilha ao entrar;

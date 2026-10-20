@@ -130,6 +130,7 @@ function bestOf(source: Source, wanted: Set<ManaType>): Option {
 
 function toSource(source: PlanInput['sources'][number], identity: ManaColor[]): Source {
   const options = source.abilities.flatMap((ability, abilityIndex): Option[] => {
+    if (ability.sacrificeSelf) return [] // a Treasure is spent only when the player chooses to (like Arena)
     const pain = (ability.lifeCost ?? 0) + (ability.selfDamage ?? 0)
     const extra = ability.extraCost?.generic ?? 0
     const colors: (ManaType | undefined)[] = choicesFor(ability, identity) ?? [undefined]

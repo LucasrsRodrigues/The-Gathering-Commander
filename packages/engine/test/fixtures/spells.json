@@ -1,0 +1,408 @@
+[
+ {
+  "name": "Lightning Bolt",
+  "typeLine": "Instant",
+  "manaCost": "{R}",
+  "oracleText": "Lightning Bolt deals 3 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Swords to Plowshares",
+  "typeLine": "Instant",
+  "manaCost": "{W}",
+  "oracleText": "Exile target creature. Its controller gains life equal to its power.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Wrath of God",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{W}{W}",
+  "oracleText": "Destroy all creatures. They can't be regenerated.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Divination",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{U}",
+  "oracleText": "Draw two cards.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Murder",
+  "typeLine": "Instant",
+  "manaCost": "{1}{B}{B}",
+  "oracleText": "Destroy target creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Beast Within",
+  "typeLine": "Instant",
+  "manaCost": "{2}{G}",
+  "oracleText": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Krenko's Command",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{R}",
+  "oracleText": "Create two 1/1 red Goblin creature tokens.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Raise the Alarm",
+  "typeLine": "Instant",
+  "manaCost": "{1}{W}",
+  "oracleText": "Create two 1/1 white Soldier creature tokens.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Giant Growth",
+  "typeLine": "Instant",
+  "manaCost": "{G}",
+  "oracleText": "Target creature gets +3/+3 until end of turn.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Shock",
+  "typeLine": "Instant",
+  "manaCost": "{R}",
+  "oracleText": "Shock deals 2 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Blasphemous Act",
+  "typeLine": "Sorcery",
+  "manaCost": "{8}{R}",
+  "oracleText": "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Night's Whisper",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{B}",
+  "oracleText": "You draw two cards and lose 2 life.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Harmonize",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{G}{G}",
+  "oracleText": "Draw three cards.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Unsummon",
+  "typeLine": "Instant",
+  "manaCost": "{U}",
+  "oracleText": "Return target creature to its owner's hand.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Disenchant",
+  "typeLine": "Instant",
+  "manaCost": "{1}{W}",
+  "oracleText": "Destroy target artifact or enchantment.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Path to Exile",
+  "typeLine": "Instant",
+  "manaCost": "{W}",
+  "oracleText": "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Damnation",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{B}{B}",
+  "oracleText": "Destroy all creatures. They can't be regenerated.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Lava Spike",
+  "typeLine": "Sorcery — Arcane",
+  "manaCost": "{R}",
+  "oracleText": "Lava Spike deals 3 damage to target player or planeswalker.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Pyroclasm",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{R}",
+  "oracleText": "Pyroclasm deals 2 damage to each creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Rush of Adrenaline",
+  "typeLine": "Instant",
+  "manaCost": "{R}",
+  "oracleText": "Target creature gets +2/+1 and gains trample until end of turn.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Overrun",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{G}{G}{G}",
+  "oracleText": "Creatures you control get +3/+3 and gain trample until end of turn. (Each of those creatures can deal excess combat damage to the player or planeswalker it's attacking.)",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Return to Nature",
+  "typeLine": "Instant",
+  "manaCost": "{1}{G}",
+  "oracleText": "Choose one —\n• Destroy target artifact.\n• Destroy target enchantment.\n• Exile target card from a graveyard.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Abrade",
+  "typeLine": "Instant",
+  "manaCost": "{1}{R}",
+  "oracleText": "Choose one —\n• Abrade deals 3 damage to target creature.\n• Destroy target artifact.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Brainstorm",
+  "typeLine": "Instant",
+  "manaCost": "{U}",
+  "oracleText": "Draw three cards, then put two cards from your hand on top of your library in any order.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Gitaxian Probe",
+  "typeLine": "Sorcery",
+  "manaCost": "{U/P}",
+  "oracleText": "({U/P} can be paid with either {U} or 2 life.)\nLook at target player's hand.\nDraw a card.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Thrill of Possibility",
+  "typeLine": "Instant",
+  "manaCost": "{1}{R}",
+  "oracleText": "As an additional cost to cast this spell, discard a card.\nDraw two cards.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Big Score",
+  "typeLine": "Instant",
+  "manaCost": "{3}{R}",
+  "oracleText": "As an additional cost to cast this spell, discard a card.\nDraw two cards and create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+  "keywords": [
+   "Treasure"
+  ],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Fell",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{B}",
+  "oracleText": "Destroy target creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Feed the Swarm",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{B}",
+  "oracleText": "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Infernal Grasp",
+  "typeLine": "Instant",
+  "manaCost": "{1}{B}",
+  "oracleText": "Destroy target creature. You lose 2 life.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Go for the Throat",
+  "typeLine": "Instant",
+  "manaCost": "{1}{B}",
+  "oracleText": "Destroy target nonartifact creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Chaos Warp",
+  "typeLine": "Instant",
+  "manaCost": "{2}{R}",
+  "oracleText": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Generous Gift",
+  "typeLine": "Instant",
+  "manaCost": "{2}{W}",
+  "oracleText": "Destroy target permanent. Its controller creates a 3/3 green Elephant creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "W"
+  ]
+ },
+ {
+  "name": "Rapid Hybridization",
+  "typeLine": "Instant",
+  "manaCost": "{U}",
+  "oracleText": "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Heroic Intervention",
+  "typeLine": "Instant",
+  "manaCost": "{1}{G}",
+  "oracleText": "Permanents you control gain hexproof and indestructible until end of turn.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Tragic Slip",
+  "typeLine": "Instant",
+  "manaCost": "{B}",
+  "oracleText": "Target creature gets -1/-1 until end of turn.\nMorbid — That creature gets -13/-13 until end of turn instead if a creature died this turn.",
+  "keywords": [
+   "Morbid"
+  ],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Ponder",
+  "typeLine": "Sorcery",
+  "manaCost": "{U}",
+  "oracleText": "Look at the top three cards of your library, then put them back in any order. You may shuffle.\nDraw a card.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Sign in Blood",
+  "typeLine": "Sorcery",
+  "manaCost": "{B}{B}",
+  "oracleText": "Target player draws two cards and loses 2 life.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Read the Bones",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{B}",
+  "oracleText": "Scry 2, then draw two cards. You lose 2 life. (To scry 2, look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)",
+  "keywords": [
+   "Scry"
+  ],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Village Rites",
+  "typeLine": "Instant",
+  "manaCost": "{B}",
+  "oracleText": "As an additional cost to cast this spell, sacrifice a creature.\nDraw two cards.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ }
+]
