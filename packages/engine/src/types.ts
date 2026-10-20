@@ -121,7 +121,7 @@ export interface Filter {
 }
 
 export type TargetSpec =
-  | { kind: 'object'; filter: Filter; count: number; upTo?: boolean }
+  | { kind: 'object'; filter: Filter; count: number; upTo?: boolean; zone?: 'battlefield' | 'stack' | 'graveyard' } // default: battlefield
   | { kind: 'player'; who: 'any' | 'opponent' }
   | { kind: 'any' } // "any target": creature, planeswalker or player (CR 115.4)
 
@@ -389,7 +389,7 @@ export type Action =
   | ActionOf<'putAbilityOnStack', { description: string; sourceId?: ObjectId }>
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
-  | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[] }> // CR 601.2 (payWith: tap these first, atomically)
+  | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[]; targets?: Target[] }> // CR 601.2 (payWith: tap these first, atomically; targets: épico 11)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
   | ActionOf<'adjustPT', { objectId: ObjectId; power: number; toughness: number }> // until end of turn (unscripted pumps)
@@ -441,6 +441,7 @@ export type GameEvent =
   | { type: 'commanderDamageDealt'; player: PlayerId; commanderId: ObjectId; amount: number; total: number }
   | { type: 'stackItemAdded'; item: StackItem }
   | { type: 'stackItemResolved'; item: StackItem }
+  | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
   | { type: 'commanderMayReturn'; objectId: ObjectId; owner: PlayerId }
   | { type: 'playerLost'; player: PlayerId; reason: LossReason }
   | { type: 'gameEnded'; winners: PlayerId[] }
@@ -480,6 +481,7 @@ export type ErrorCode =
   | 'invalidAmount'
   | 'invalidSelection'
   | 'invalidAction'
+  | 'invalidTarget' // épico 11: a chosen target does not fit the spell or ability
   | 'ruleBlocked' // a house-rule area at 'block' rejected it; `findings` says why
   | 'pendingException' // a rule exception is waiting for answers
   | 'noException' // nothing to answer, or the action did not need an exception

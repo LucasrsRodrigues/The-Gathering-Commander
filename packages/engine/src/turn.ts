@@ -1,7 +1,8 @@
 // Turn structure (CR 500), priority (CR 117) and stack resolution (CR 608).
 
 import type { Tx } from './tx'
-import { STEPS, type GameState, type PlayerId, type Step } from './types'
+import { STEPS, type GameState, type PlayerId, type StackItem, type Step, type TargetSpec } from './types'
+import { stillLegal } from './effects/targets'
 import { onCombatStep } from './combat'
 import { clearPassUntil } from './stops'
 import { nextDamagePhase } from './damage'
@@ -120,8 +121,18 @@ export function advanceStep(tx: Tx) {
 // CR 608.2 / 608.3 (manual): permanents go to the battlefield, other cards to the owner's graveyard,
 // abilities simply leave the stack.
 export function resolveTop(tx: Tx) {
-  const item = tx.s.stack[tx.s.stack.length - 1]
+  let item = tx.s.stack[tx.s.stack.length - 1]
   if (!item) return
+  // Épico 11, CR 608.2b: targets are checked again. When every one became illegal, the spell does nothing.
+  if (item.targets?.length && !item.manual) {
+    const specs = targetSpecsOf(tx, item)
+    const legal = stillLegal(tx.s, specs, item.targets, { controller: item.controller, ...(item.objectId ? { sourceId: item.objectId } : {}) })
+    if (!legal.length) return fizzle(tx, item)
+    if (legal.length !== item.targets.length) {
+      item = { ...item, targets: legal }
+      tx.stack()[tx.s.stack.length - 1] = item
+    }
+  }
   if (item.kind === 'card' && item.objectId) {
     const obj = tx.s.objects[item.objectId]!
     if (isPermanentCard(obj)) moveObject(tx, obj.id, 'battlefield', { controller: item.controller })
@@ -134,6 +145,24 @@ export function resolveTop(tx: Tx) {
     tx.stack().pop()
   }
   tx.emit({ type: 'stackItemResolved', item })
+  givePriority(tx, tx.s.turn.active)
+}
+
+function targetSpecsOf(tx: Tx, item: StackItem): TargetSpec[] {
+  const source = item.objectId ?? item.sourceId
+  const rules = source ? tx.s.objects[source]?.card.rules : undefined
+  if (!item.ability || !rules) return []
+  if (item.ability.from === 'spell') return rules.spell?.targets ?? []
+  if (item.ability.from === 'etb') return rules.etb?.[item.ability.index]?.targets ?? []
+  return rules.activated?.[item.ability.index]?.targets ?? []
+}
+
+// CR 608.2b: a spell whose targets all became illegal is removed from the stack without effect; the card goes to its
+// owner's graveyard (an ability simply leaves).
+function fizzle(tx: Tx, item: StackItem) {
+  if (item.kind === 'card' && item.objectId) moveObject(tx, item.objectId, 'graveyard')
+  else tx.stack().pop()
+  tx.emit({ type: 'stackItemFizzled', item })
   givePriority(tx, tx.s.turn.active)
 }
 

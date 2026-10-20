@@ -94,6 +94,17 @@ export function deckInput(v: unknown): DeckInput {
 }
 
 // Rebuilds an engine action with exactly the fields that action type has.
+// Épico 11: chosen targets, each a player or an object (the engine checks legality).
+function targets(v: unknown) {
+  if (!Array.isArray(v) || v.length > 20) bad('targets inválido')
+  return (v as unknown[]).map((x) => {
+    const t = obj(x, 'alvo')
+    if (t.player !== undefined && t.object === undefined) return { player: id(t.player, 'player') }
+    if (t.object !== undefined && t.player === undefined) return { object: id(t.object, 'object') }
+    return bad('alvo precisa ser { player } ou { object }')
+  })
+}
+
 function manaActivations(v: unknown) {
   if (!Array.isArray(v) || v.length > 60) bad('payWith inválido')
   return (v as unknown[]).map((item) => {
@@ -189,6 +200,7 @@ export function actionIntent(v: unknown): ActionIntent {
       return {
         type, objectId: id(a.objectId, 'objectId'), ...(a.x !== undefined ? { x: int(a.x, 'x', 0, 100) } : {}),
         ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
+        ...(a.targets !== undefined ? { targets: targets(a.targets) } : {}),
       }
     case 'setFaceDown':
       return { type, objectId: id(a.objectId, 'objectId'), faceDown: bool(a.faceDown, 'faceDown') }

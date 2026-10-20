@@ -136,12 +136,39 @@ Quatro ondas e um fechamento:
     - no jogo, a Marwyn com +2 gera {G}{G}{G}, e com força 0 não gera nada;
     - a Priest conta os Elfos dos dois lados, a Archdruid só os seus;
     - o pagamento de {G}{G}{G}{G} usa só a Marwyn de força 4.
-- [ ] **T11.5 — Alvos: decisão `chooseTargets`, `legalTargets` e anulação** _(req: 7, 8)_ · depende de T11.1
+- [x] **T11.5 — Alvos: decisão `chooseTargets`, `legalTargets` e anulação** _(req: 7, 8)_ · depende de T11.1
   - Verificação:
     - alvos antes de pagar;
     - cancelar não gasta nada;
     - só alvos válidos são aceitos (filtro e controlador);
     - na resolução, alvo ilegal é ignorado e todos ilegais anulam (teste de propriedade).
+  - Feito:
+    - `effects/targets.ts`:
+      - `legalTargets` e `legalTargetsInView` listam os alvos válidos, pelo estado e pela visão do jogador, para a
+        mesa destacar no online;
+      - `checkTargets` confere quantidade (com "até N"), alvos distintos e o filtro de cada spec;
+      - `stillLegal` refaz a checagem na resolução, com a mesma divisão por spec;
+      - "any target" aceita criatura, planeswalker ou jogador;
+      - o spec de objeto ganhou `zone` (campo, pilha ou cemitério), já pensando em "counter target spell";
+    - a ação `castSpell` aceita `targets`, checados antes de pagar. Como a ação é atômica, um alvo inválido não
+      gasta nada (erro `invalidTarget`);
+    - o item da pilha guarda `ability` e `targets`. Uma mágica com alvo conjurada sem alvos fica `manual` e resolve à
+      mão, como hoje, até a mesa pedir os alvos (T11.9);
+    - na resolução, os alvos ilegais saem do item. Se todos ficaram ilegais, a mágica vai para o cemitério sem
+      efeito, com o evento `stackItemFizzled`;
+    - o protocolo online valida `targets`: até 20, cada um `{ player }` ou `{ object }`.
+  - **Mudança no design:** para mágicas, os alvos vão dentro da própria ação `castSpell`, e não numa decisão
+    pendente. A mesa escolhe localmente com `legalTargets` e manda tudo junto, então cancelar é não mandar. A
+    decisão pendente `chooseTargets` fica para os gatilhos que o motor dispara sozinho (T11.7).
+  - **Observação (CI e máquina local):** duas rodadas completas dos testes do servidor travaram por cerca de 10
+    minutos, com a máquina sob carga alta (média 7 a 9). Os testes que travaram usam PGlite ou sockets, e alguns nem
+    passam pelo código da T11.5.
+    - Cada arquivo, rodado sozinho, passa em menos de 15 s.
+    - O commit anterior passou inteiro em 26 s.
+    - Depois, a mesma suíte com a T11.5 passou inteira em 32 s, e o `npm test` completo também passou.
+
+    Fica como suspeita de instabilidade do PGlite em paralelo sob carga. Se voltar a aparecer no CI, a saída é
+    limitar os workers do vitest no servidor.
 - [ ] **T11.6 — Interpretador de efeitos e mágicas automáticas** _(req: 5, 10)_ · depende de T11.5
   - Escopo:
     - `applyEffects` para comprar, dano, vida, destruir, exilar, devolver, marcadores, +X/+X, fichas, moer e

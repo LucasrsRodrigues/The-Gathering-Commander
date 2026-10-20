@@ -17,6 +17,7 @@ import { advanceStep, finishCleanup, givePriority, passPriority } from './turn'
 import { Tx } from './tx'
 import { STEPS, type Action, type CardRef, type GameObject, type GameState, type ManaActivation, type PlayerId, type ReduceResult, type Step, type ZoneKind } from './types'
 import { drawCards, moveObject, shuffleLibrary } from './zones'
+import { checkTargets } from './effects/targets'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
@@ -219,6 +220,14 @@ function applyGameAction(tx: Tx, action: Action) {
 
     case 'castSpell': {
       const obj = ownCard(tx, actor, action.objectId, ['hand', 'command'])
+      // Épico 11, CR 601.2c: targets are chosen before costs are paid. A spell with target specs cast without targets
+      // (a table that does not ask yet) resolves by hand, as before.
+      const specs = obj.card.rules?.spell?.targets ?? []
+      if (action.targets !== undefined) {
+        if (!specs.length) fail('invalidAction', 'Essa mágica não tem alvos.')
+        const problem = checkTargets(s, specs, action.targets, { controller: actor, sourceId: obj.id })
+        if (problem) fail('invalidTarget', problem)
+      }
       if (action.payWith !== undefined) {
         // CR 601.2g: mana abilities are activated while casting; all of it happens or none does.
         if (!Array.isArray(action.payWith) || action.payWith.length > MAX_PAY_WITH) fail('invalidAction', 'Pagamento malformado.')
@@ -230,9 +239,14 @@ function applyGameAction(tx: Tx, action: Action) {
       }
       if (levelOf(s.ruleset, 'mana') !== 'off') payForSpell(tx, actor, obj, action.x ?? 0) // before the move: tax counts casts
       moveObject(tx, obj.id, 'stack', { controller: actor })
-      if (action.x !== undefined) {
-        const stack = tx.stack()
-        stack[stack.length - 1] = { ...stack[stack.length - 1]!, x: action.x }
+      const stack = tx.stack()
+      const spell = obj.card.rules?.spell
+      stack[stack.length - 1] = {
+        ...stack[stack.length - 1]!,
+        ...(action.x !== undefined ? { x: action.x } : {}),
+        ...(spell ? { ability: { from: 'spell' as const, index: 0 } } : {}),
+        ...(action.targets?.length ? { targets: action.targets } : {}),
+        ...(spell && specs.length && !action.targets ? { manual: true } : {}),
       }
       return
     }
