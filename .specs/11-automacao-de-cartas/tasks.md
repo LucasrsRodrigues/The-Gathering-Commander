@@ -539,8 +539,43 @@ Quatro ondas e um fechamento:
   - **Medição (bulk de 2026-10-19), depois da correção das faces:**
     - top 1.000: automáticas 18,3% (eram 19,0%; 7 cartas de duas faces passaram a parciais);
     - top 5.000: automáticas 7,7%.
-- [ ] **T11.14 — README, roadmap e a linha de cobertura**
+- [x] **T11.14 — README, roadmap e a linha de cobertura**
   - Escopo: as frases mais comuns ainda manuais viram a lista da onda 3 (gatilhos de morrer e atacar, anthems…).
+  - Feito:
+    - README: "O que o jogo faz sozinho" ganhou os efeitos das cartas, os alvos na mesa, o selo e a linha de
+      cobertura (18,3% automáticas no top 1.000, com o comando para medir) e "Resolver à mão". "O que ainda é
+      manual" lista o que falta. A parte online inclui as respostas padrão novas.
+    - Roadmap (`00-visao-geral/design.md`): a fase 3c está feita, falta conferir no tablet real. A fase 3d (onda 3)
+      fica a especificar.
+
+## Onda 3 — a especificar (das frases manuais mais comuns no top 1.000, bulk de 2026-10-19)
+Em ordem de quantas cartas destravam. O número é de cartas do top 1.000 com a frase.
+1. **Equipar e Auras** ("Equip {N}" 24, "Enchant creature" 7): anexar a uma criatura, mais os efeitos contínuos do
+   que está anexado ("Equipped creature gets +N/+N").
+2. **Terrenos que entram virados conforme uma condição**:
+   - "unless you control N or more other lands" 10;
+   - "unless you have N or more opponents" 10;
+   - "unless you control N or more basic lands" 7;
+   - "you may pay 2 life. If you don't, it enters tapped" 10.
+
+   É barato: o motor já trata "entra virado".
+3. **Ciclagem** (17) e outras habilidades ativadas a partir da mão.
+4. **Modos** ("Choose one —" 10, com os modos lidos pelos padrões que já existem): o painel de escolha de modos
+   do design.
+5. **Contramágicas** ("Counter target spell" e variações, 6) e "This spell can't be countered" (9). Os alvos na
+   pilha já existem (`zone: 'stack'`).
+6. **Efeitos contínuos simples** ("Creatures you control have haste", "You have no maximum hand size", "You may play
+   an additional land on each of your turns"): a camada de efeitos que o épico deixou de fora.
+7. **Gatilhos além de "entra no campo"**: morrer ("When ~ dies"), atacar e manutenção, com a mesma fila de gatilhos
+   da T11.7.
+8. **"Você pode…"** nas habilidades de entrar no campo (Reclamation Sage, Solemn Simulacrum): uma confirmação antes
+   de aplicar.
+9. **Custos adicionais e alternativos** ("As an additional cost… sacrifice a creature", "If you control a commander,
+   you may cast this spell without paying its mana cost").
+10. **Escolhas ao entrar** ("As this enters, choose a creature type", 10): um seletor de tipo.
+
+Antes de especificar: medir de novo no catálogo do dia. Também falta conferir as ondas 1 e 2 no tablet real com o
+usuário.
 
 ## Estratégia de testes
 - Os padrões são testados frase a frase com o Oracle real. Os efeitos são testados no motor puro.

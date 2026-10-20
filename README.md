@@ -42,13 +42,39 @@ Fan game gratuito e open source de **Commander** (Magic: The Gathering) com uma 
   - derrota por vida, veneno, dano de comandante ou grimório vazio.
 - **Exceções:** quando uma carta muda as regras e ainda não tem automação, "Fazer mesmo assim" pede uma exceção.
   No jogo local ela vale na hora; online, os outros jogadores aprovam. Fica no log como ação de juiz.
+- **Efeitos das cartas** (lidos do texto Oracle, sem script por carta):
+  - mágicas: comprar, dano, vida, destruir, exilar, devolver, +X/+X, marcadores, fichas (Treasure, Food, Clue),
+    moer;
+  - "quando entra no campo", também de terrenos e fichas;
+  - habilidades ativadas pelo menu da carta, pagando {T}, mana, vida, sacrificar ou descartar;
+  - contagens ("para cada Elfo", "igual às cartas na sua mão") e mana variável (Marwyn, Priest of Titania);
+  - busca no grimório (Cultivate, fetch lands), vidência, vigiar e investigar, escolhidos num painel que só quem
+    busca vê.
+
+  Os alvos são escolhidos clicando na mesa, com os válidos em destaque, ou pela lista da faixa (teclado). Se o alvo
+  some antes de resolver, a mágica é anulada. O registro diz o que aconteceu ("Lightning Bolt causou 3 de dano a
+  Bia").
+- **Cobertura:** cada carta tem um selo "automática", "parcial" ou "manual" na prévia e no editor, e o editor
+  resume o deck ("96 de 100 automáticas"). Nas 1.000 cartas mais jogadas no Commander (EDHREC), **18,3% são
+  automáticas** e 47,3% são automáticas ou parciais (Scryfall de 2026-10-19). Para medir de novo:
+  `npm run coverage -w @gathering-hall/server`.
+- **"Resolver à mão":** qualquer item automático da pilha pode ser resolvido à mão, se o jogo ler algo errado. Online,
+  os outros aprovam, como nas exceções.
 
 ### O que ainda é manual
-- Os **efeitos** das cartas: o que um feitiço ou habilidade faz, gatilhos, fichas com regras (Treasure etc.),
-  custos alternativos e reduções de custo. Os jogadores aplicam com as ações da mesa (mover cartas, contadores, vida,
-  "+1/+1 até o fim do turno", "causar dano"), como numa mesa física.
+- Nas cartas parciais e manuais, a parte que o jogo não lê fica com os jogadores, como numa mesa física: mover
+  cartas, contadores, vida, "+1/+1 até o fim do turno", "causar dano". A prévia mostra "Manual:" com essas frases.
+- Ainda não automatizados:
+  - Equipar e Auras;
+  - efeitos contínuos ("criaturas que você controla têm…");
+  - gatilhos além de "entra no campo" (morrer, atacar, manutenção);
+  - modos ("Escolha um —");
+  - contramágicas;
+  - Ciclagem e Tripular;
+  - custos alternativos e reduções;
+  - terrenos que entram virados conforme uma condição;
+  - "você pode…".
 - Fontes de mana que o jogo não reconhece: a mana é declarada ao virar a carta e fica marcada no log.
-- A automação carta a carta é a próxima grande fase (veja `.specs/`).
 
 ### Conta opcional
 Para jogar, não precisa de conta. Quem entra com Discord ou Google tem:
@@ -66,8 +92,10 @@ mana" e "Combate" têm três níveis: bloqueia, só avisa ou desligada. Desligad
 Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do
 próprio dispositivo, com ou sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
 ver. Se a partida esperar a decisão de alguém que saiu da sala há mais de 30 segundos, quem criou a sala pode
-pular essa pessoa: o servidor responde com o padrão (manter a mão, não atacar nem bloquear, confirmar o dano
-proposto, descartar as últimas cartas da mão, recusar a exceção ou passar a prioridade), e o registro mostra isso.
+pular essa pessoa. O servidor responde com o padrão, e o registro mostra isso:
+- manter a mão, não atacar nem bloquear, confirmar o dano proposto;
+- descartar as últimas cartas da mão, recusar a exceção ou passar a prioridade;
+- não encontrar nada na busca, deixar as cartas da vidência no topo, deixar o gatilho para resolver à mão.
 Tudo sobe num único container (há um `Dockerfile` na raiz); o passo a passo para o EasyPanel está no
 [DEPLOY.md](DEPLOY.md).
 

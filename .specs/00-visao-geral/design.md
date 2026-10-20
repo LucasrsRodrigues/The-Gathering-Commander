@@ -117,7 +117,8 @@ Nos identificadores de código, usamos **inglês**, igual às Comprehensive Rule
 | 3a — Regras de turno e tempo | Velocidade de feitiço, terreno por turno, mana cobrada, combate com dano calculado, paradas automáticas | 09 | ✅ feito |
 | **3b+ — Editor de decks estilo Moxfield** | Visualizações (lista, pilhas, grade), categorias, "Talvez", estatísticas, modo texto, histórico, pastas, import por link (Archidekt e Moxfield) e link público | 10 | ✅ feito |
 | **3b — Contas opcionais** | Login opcional (Discord e Google), decks e presets na nuvem, lugar nas salas, histórico, banco em Postgres | 08 | ✅ feito |
-| 3c — Automação de cartas | Efeitos como dados, leitor do Oracle + exceções por carta, mana variável, mágicas e "entra no campo", habilidades ativadas, cobertura medida pelo EDHREC | 11 | specs escritas |
+| 3c — Automação de cartas | Efeitos como dados, leitor do Oracle + exceções por carta, mana variável, mágicas e "entra no campo", habilidades ativadas, contagens, busca e vidência, alvos na mesa, cobertura medida pelo EDHREC (18,3% automáticas no top 1.000) | 11 | ✅ feito (falta conferir no tablet real) |
+| 3d — Automação, onda 3 | Equipar e Auras, efeitos contínuos, gatilhos de morrer e atacar, modos, contramágicas, Ciclagem, terrenos com condição | — | a especificar |
 | 4 — Bots | Bot heurístico → simulação → político | 06 | |
 
 07 e 01 foram agrupados porque os dois precisam de backend. A infraestrutura (salas e banco) é montada uma vez só.
