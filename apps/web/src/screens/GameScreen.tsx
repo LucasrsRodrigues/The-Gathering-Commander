@@ -3,6 +3,7 @@ import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { CombatPanel } from '../hud/Combat'
 import { TargetBar } from '../hud/TargetBar'
+import { LibraryChoicePanel } from '../hud/LibraryChoice'
 import { CostChoiceDialog } from '../hud/CostChoice'
 import { costChoiceFor, type CostChoice } from '../hud/abilities'
 import { castTargeting, targetingStore, toggleTarget, triggerTargeting } from '../hud/targeting'
@@ -138,6 +139,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
         )}
         {costChoice && <CostChoiceDialog choice={costChoice} onClose={() => setCostChoice(null)} dispatch={send} />}
         {!curtain && view.status === 'playing' && <CombatPanel view={view} seat={seat} dispatch={dispatch} />}
+        {!curtain && view.status === 'playing' && <LibraryChoicePanel view={view} seat={seat} dispatch={send} />}
         {!curtain && view.status === 'playing' && <TargetBar view={view} seat={seat} dispatch={dispatch} send={send} />}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
         {blocked && !curtain && (

@@ -112,6 +112,9 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
         break
       }
       case 'triggerSkipped': lines.push(`${cardName(e.sourceId)}: sem alvo válido, a habilidade saiu sem efeito.`); break
+      case 'libraryArranged':
+        lines.push(`${name(e.player)} ${e.kind === 'scry' ? 'fez vidência' : 'vigiou'}: ${e.top} no topo, ${e.away} ${e.kind === 'scry' ? 'no fundo' : 'no cemitério'}.`)
+        break
       case 'resolvedManually': {
         const source = e.item.objectId ?? e.item.sourceId
         lines.push(`${name(e.player)} pediu para resolver ${source ? cardName(source) : 'o item do topo'} à mão: o efeito fica com os jogadores.`)

@@ -105,10 +105,16 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
   }
   state.battlefield.forEach(show)
   state.stack.forEach((item) => item.objectId && show(item.objectId))
+  // Épico 11: the cards of a search or scry are seen only by the player choosing; the others learn only how many.
+  let pending = state.pending
+  if (pending?.kind === 'searchLibrary' || pending?.kind === 'scry' || pending?.kind === 'surveil') {
+    if (pending.player === viewer) pending.cards.forEach(show)
+    else pending = { ...pending, cards: [] }
+  }
 
   return {
     viewer, status: state.status, ruleset: state.ruleset, seats: state.seats, turn: state.turn,
-    priority: state.priority, pending: state.pending, winners: state.winners,
+    priority: state.priority, pending, winners: state.winners,
     players, objects, battlefield: state.battlefield, stack: state.stack,
   }
 }

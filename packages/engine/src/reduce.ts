@@ -20,6 +20,7 @@ import { drawCards, moveObject, shuffleLibrary } from './zones'
 import { checkTargets } from './effects/targets'
 import { pushTrigger, stackTriggers } from './triggers'
 import { activateAbility } from './activate'
+import { answerArrange, answerSearch } from './libraryChoice'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
@@ -27,12 +28,12 @@ const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'botto
 // Mana abilities (CR 605.3a) are activated while paying costs, without holding priority.
 const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
   'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
-  'setStops', 'passUntil', 'chooseTargets',
+  'setStops', 'passUntil', 'chooseTargets', 'searchLibrary', 'arrangeTop',
 ])
 // While combat waits for a declaration, only that (and leaving or making mana) can happen.
 const DURING_DECLARATION = new Set<Action['type']>([
   'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'concede', 'activateMana', 'declareMana', 'setArrangement', 'setStops', 'passUntil',
-  'chooseTargets',
+  'chooseTargets', 'searchLibrary', 'arrangeTop',
 ])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
@@ -48,7 +49,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
   'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil', 'chooseTargets', 'resolveManually',
-  'activateAbility',
+  'activateAbility', 'searchLibrary', 'arrangeTop',
 ])
 const MAX_PT_DELTA = 100
 const WAITING: Record<string, string> = {
@@ -57,6 +58,9 @@ const WAITING: Record<string, string> = {
   confirmDamage: 'Confirme o dano de combate primeiro.',
   discard: 'Descarte até o tamanho máximo da mão primeiro.',
   chooseTargets: 'Esperando a escolha dos alvos de uma habilidade.',
+  searchLibrary: 'Esperando a busca no grimório.',
+  scry: 'Esperando a vidência.',
+  surveil: 'Esperando a escolha do vigiar.',
 }
 const MAX_X = 100
 const MAX_PAY_WITH = 60
@@ -449,6 +453,14 @@ function applyGameAction(tx: Tx, action: Action) {
 
     // Épico 11, req. 9: whoever has priority may ask that the top item resolve by hand (a safety valve against a
     // misread card). It changes the game's outcome, so it is a rule exception (policies.ts): approved online.
+    case 'searchLibrary':
+      answerSearch(tx, actor, action.objectIds)
+      return
+
+    case 'arrangeTop':
+      answerArrange(tx, actor, action.top, action.away)
+      return
+
     case 'activateAbility':
       activateAbility(tx, actor, action, activateManaAbility)
       return

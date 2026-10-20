@@ -30,8 +30,8 @@ describe('wave 1 spells: reading the real Oracle (épico 11, T11.6)', () => {
     expect(card('Ponder').rules!.spell).toBeUndefined()
   })
 
-  it('on doubt, manual: consequences, modes, granted keywords and scry stay with the players', () => {
-    for (const name of ['Swords to Plowshares', 'Beast Within', 'Path to Exile', 'Return to Nature', 'Rush of Adrenaline', 'Read the Bones', 'Chaos Warp']) {
+  it('on doubt, manual: consequences, modes and granted keywords stay with the players (scry is read since T11.12)', () => {
+    for (const name of ['Swords to Plowshares', 'Beast Within', 'Path to Exile', 'Return to Nature', 'Rush of Adrenaline', 'Chaos Warp']) {
       expect(coverage(name), name).toBe('manual')
     }
   })

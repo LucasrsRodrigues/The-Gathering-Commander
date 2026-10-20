@@ -137,13 +137,21 @@ export function resolveTop(tx: Tx) {
       tx.stack()[tx.s.stack.length - 1] = item
     }
   }
-  // Épico 11: the automated part of the item happens first; the card then goes where it goes, as before.
+  // Épico 11: the automated part of the item happens first; the card then goes where it goes, as before. A choice
+  // in the middle (a search) leaves the item on the stack until the player answers (finishResolution then).
   if (item.ability && !item.manual) {
     const ability = abilityOf(tx, item)
-    if (ability) applyAbility(tx, item, ability)
+    if (ability && applyAbility(tx, item, ability)) return
+  }
+  finishResolution(tx, item)
+}
+
+// The end of a resolution: the partial card's manual note, then the card to the battlefield or graveyard.
+export function finishResolution(tx: Tx, item: StackItem) {
+  if (item.ability && !item.manual && item.ability.from === 'spell') {
     const source = item.objectId ?? item.sourceId
     const manual = source ? tx.s.objects[source]?.card.rules?.manualText : undefined
-    if (manual?.length && item.ability.from === 'spell') tx.emit({ type: 'manualStep', text: manual.join(' '), ...(source ? { objectId: source } : {}) })
+    if (manual?.length) tx.emit({ type: 'manualStep', text: manual.join(' '), ...(source ? { objectId: source } : {}) })
   }
   if (item.kind === 'card' && item.objectId) {
     const obj = tx.s.objects[item.objectId]!

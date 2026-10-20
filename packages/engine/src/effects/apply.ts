@@ -7,7 +7,7 @@ import { addMana } from '../mana'
 import { dealDamageTo, isCreature, isPlaneswalker, PLUS_ONE } from '../stats'
 import type { Tx } from '../tx'
 import type {
-  Ability, CardRef, CardRules, Effect, Filter, GameObject, ManaColor, ObjectId, PlayerId, StackItem, TokenDef, Who,
+  Ability, CardRef, CardRules, Effect, Filter, GameObject, LibraryChoice, ManaColor, ObjectId, PlayerId, StackItem, TokenDef, Who,
 } from '../types'
 import { queueEnterTriggers } from '../triggers'
 import { drawCards, moveObject } from '../zones'
@@ -17,15 +17,52 @@ const MAX_TOKENS = 50 // per effect: "create X tokens" with a huge X stays bound
 const MAX_COUNT = 100
 const CHOICES = { discard: 'Descartar', search: 'Buscar no grimório', scry: 'Vidência', surveil: 'Vigiar' } as const
 
-export function applyAbility(tx: Tx, item: StackItem, ability: Ability) {
+// Applies the ability's effects in order. True when it stopped at a choice (a LibraryChoice decision): the rest
+// runs when the player answers (continueEffects).
+export function applyAbility(tx: Tx, item: StackItem, ability: Ability): boolean {
   const ctx: ValueContext = {
     controller: item.controller,
     ...((item.sourceId ?? item.objectId) ? { sourceId: (item.sourceId ?? item.objectId)! } : {}),
-    ...(item.targets ? { targets: item.targets } : {}),
+    ...(item.targets ? { targets: [...item.targets] } : {}),
     ...(item.x !== undefined ? { x: item.x } : {}),
   }
   tx.emit({ type: 'abilityResolving', item, text: ability.text })
-  for (const effect of ability.effects) applyEffect(tx, effect, ctx)
+  return runEffects(tx, item.id, ability.effects, ctx, ability.text)
+}
+
+export function continueEffects(tx: Tx, choice: LibraryChoice): boolean {
+  const { itemId, effects, ctx } = choice.continueWith
+  return runEffects(tx, itemId, effects, ctx, choice.text)
+}
+
+function runEffects(tx: Tx, itemId: string, effects: readonly Effect[], ctx: ValueContext, text: string): boolean {
+  for (let i = 0; i < effects.length; i++) {
+    const effect = effects[i]!
+    if (effect.kind === 'search' || effect.kind === 'scry' || effect.kind === 'surveil') {
+      const choice = libraryChoice(tx, effect, ctx, text)
+      if (choice) {
+        tx.s.pending = { ...choice, continueWith: { itemId, effects: effects.slice(i + 1), ctx: { controller: ctx.controller, ...(ctx.sourceId ? { sourceId: ctx.sourceId } : {}), ...(ctx.targets ? { targets: [...ctx.targets] } : {}), ...(ctx.x !== undefined ? { x: ctx.x } : {}) } } }
+        return true
+      }
+      continue
+    }
+    applyEffect(tx, effect, ctx)
+  }
+  return false
+}
+
+// What the player chooses from: the cards that fit a search (the whole library is searched, CR 701.19a), or the top
+// N for scry and surveil. Null when there is nothing to choose (an empty library, "scry 0").
+function libraryChoice(tx: Tx, effect: Extract<Effect, { kind: 'search' | 'scry' | 'surveil' }>, ctx: ValueContext, text: string): Omit<LibraryChoice, 'continueWith'> | null {
+  const player = ctx.controller
+  const library = tx.s.zones[player]?.library ?? []
+  const amount = n(tx, ctx, effect.amount)
+  if (effect.kind === 'search') {
+    const cards = [...library].reverse().filter((id) => matchesFilter(tx.s, tx.s.objects[id]!, effect.filter, ctx))
+    return { kind: 'searchLibrary', player, cards, count: Math.max(1, amount), to: effect.to, ...(effect.tapped ? { tapped: true } : {}), text }
+  }
+  if (!amount || !library.length) return null
+  return { kind: effect.kind, player, cards: library.slice(-amount).reverse(), count: Math.min(amount, library.length), text }
 }
 
 const n = (tx: Tx, ctx: ValueContext, v: Parameters<typeof evalValue>[2], max = MAX_COUNT) => Math.min(max, Math.max(0, evalValue(tx.s, ctx, v)))
@@ -93,6 +130,7 @@ function tokenCard(def: TokenDef): CardRef {
     types: def.types, supertypes: [], subtypes: def.subtypes, cost: null, power: def.power, toughness: def.toughness, loyalty: null,
     keywords: def.keywords, manaAbilities: def.manaAbilities, colorIdentity: def.colors as ManaColor[], coverage: 'automated',
     ...(def.etb ? { etb: def.etb } : {}),
+    ...(def.activated ? { activated: def.activated } : {}),
   }
   return { name: def.name, typeLine, rules }
 }
@@ -182,7 +220,8 @@ export function applyEffect(tx: Tx, effect: Effect, ctx: ValueContext) {
     case 'search':
     case 'scry':
     case 'surveil':
-      // Choices the player makes (wave 2): the reader does not produce these yet; an exception that does leaves a note.
+      // Discarding by choice is not read yet (an exception that uses it leaves a note); the library choices are
+      // handled by runEffects before getting here.
       tx.emit({ type: 'manualStep', text: `${CHOICES[effect.kind]}: faça à mão.`, ...(ctx.sourceId ? { objectId: ctx.sourceId } : {}) })
       return
   }

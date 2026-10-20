@@ -433,7 +433,7 @@ Quatro ondas e um fechamento:
   - **Medição (bulk de 2026-10-19):**
     - top 1.000: automáticas de 12,8% para 12,9%;
     - top 5.000: automáticas de 6,0% para 6,3%.
-- [ ] **T11.12 — Busca no grimório, vidência e investigar** _(req: 14)_ · depende de T11.10
+- [x] **T11.12 — Busca no grimório, vidência e investigar** _(req: 14)_ · depende de T11.10
   - Escopo: decisões `searchLibrary` e `scry`/`surveil`, os seletores na interface, embaralhar depois.
   - Verificação:
     - Cultivate e Rampant Growth automáticos;
@@ -442,6 +442,72 @@ Quatro ondas e um fechamento:
     - o oponente não vê o grimório (visão filtrada).
   - Critério de aceite da onda: o deck de exemplo de Elfos joga sem ações manuais nas cartas cobertas (Marwyn,
     Priest of Titania, Wellwisher, Cultivate, Llanowar Elves), e a medição das top 1.000 sobe de novo.
+  - Feito:
+    - **Motor: a resolução pode parar no meio.**
+      - `applyAbility` aplica os efeitos em ordem. Numa busca, vidência ou vigiar, cria a decisão `LibraryChoice`
+        (`searchLibrary`, `scry` ou `surveil`) com as cartas, guarda os efeitos que faltam e deixa o item na
+        pilha.
+      - A resposta (`searchLibrary { objectIds }` ou `arrangeTop { top, away }`) aplica a escolha e continua a
+        resolução.
+      - Só depois a carta vai para onde vai (`finishResolution`, separado do `resolveTop`).
+    - **Busca (CR 701.19):**
+      - só as cartas que servem ao filtro são oferecidas;
+      - "nenhuma" sempre vale;
+      - a carta vai para a mão, para o campo (virada se o texto disser) ou, no Cultivate, uma para o campo virada
+        e a outra para a mão;
+      - o grimório é embaralhado em seguida.
+    - **Vidência e vigiar (CR 701.18, 701.25):** cada carta olhada volta ao topo (na ordem dada) ou vai para o fundo
+      ou para o cemitério. O evento `libraryArranged` diz só quantas.
+    - **Investigar:** cria uma Pista. Pista e Comida têm as habilidades ativadas de verdade ("{2}, Sacrifique:
+      compre um card"; "{2}, {T}, Sacrifique: ganhe 3 de vida").
+    - **Informação oculta:** na visão, as cartas da decisão aparecem só para quem escolhe. Para os outros, a
+      decisão vem sem os ids. Ao sair da partida, a escolha pendente some com o item.
+    - **Leitor:**
+      - "Search your library for a/up to N <tipo> card(s), [reveal…,] put it/them into your hand / onto the
+        battlefield [tapped], then shuffle.", com listas de subtipos ("Plains, Island, Swamp, or Mountain") e
+        "basic";
+      - a frase do Cultivate;
+      - "Scry N.", "Surveil N.", "Scry N, then draw a card." (Preordain) e "Investigate.".
+      - Ficam manuais: "put that card on top" (Worldly Tutor) e o Ponder.
+    - **Online:** o protocolo valida as duas respostas. Se o jogador sai, o host responde "não encontrar nada" e
+      "deixar tudo no topo".
+    - **Mesa:**
+      - painel de busca com as cartas que servem, agrupando cópias iguais ("Forest ×80"), as escolhidas com ✕ e
+        "Não encontrar nada";
+      - painel de vidência e vigiar: clicar manda para o fundo ou o cemitério, e ↑↓ ordenam o topo;
+      - os outros jogadores veem "Fulano está buscando no grimório…";
+      - registro: "fez vidência: 0 no topo, 1 no fundo".
+  - Verificado:
+    - Oracle real de 18 cartas. Automáticas: Cultivate, Kodama's Reach, Rampant Growth, Farseek, Nature's Lore,
+      Three Visits, Wood Elves, Sakura-Tribe Elder, Demonic Tutor, Temple of Epiphany, Undercity Sewers, Opt,
+      Preordain, Thraben Inspector, Evolving Wilds e Explosive Vegetation. Manuais: Worldly Tutor e Ponder.
+    - Motor:
+      - Rampant Growth só oferece terrenos básicos, recusa urso, duas cartas e o outro jogador;
+      - o oponente não vê as cartas (`viewFor`);
+      - o terreno entra virado, o grimório é embaralhado, e a mágica resolve depois;
+      - Cultivate divide entre o campo e a mão, e "nada" também resolve;
+      - Opt manda a carta para o fundo e compra a seguinte;
+      - Undercity Sewers vigia ao entrar;
+      - a Pista do Thraben Inspector compra;
+      - replay determinístico.
+    - Testes antigos atualizados: Read the Bones, Evolving Wilds, Wayfarer's Bauble e Viscera Seer agora são
+      automáticas.
+    - Navegador: Nature's Lore abriu a busca só com as Florestas, a Floresta foi para o campo e o grimório foi
+      embaralhado.
+  - **Critério da onda 2:**
+    - As cartas cobertas do deck de Elfos jogam sozinhas nos testes do motor:
+      - Marwyn e Priest of Titania (mana, T11.4);
+      - Wellwisher (T11.11);
+      - Cultivate (aqui);
+      - Llanowar Elves.
+
+      A partida inteira com o deck de exemplo, no navegador, ainda não foi jogada.
+    - **Medição (bulk de 2026-10-19):**
+      - top 1.000: automáticas de 12,9% para **19,0%**, e automáticas ou parciais 47,3%;
+      - top 5.000: automáticas de 6,3% para 8,1%.
+
+      Subiu de novo, mas ainda fica abaixo da meta de 20% da onda 1. As frases mais comuns que faltam: Equip,
+      Enchant, modais, Cycling, Crew e "This spell can't be countered.".
 
 ## Fechamento
 - [ ] **T11.13 — Revisão (correção, online, tablet)**

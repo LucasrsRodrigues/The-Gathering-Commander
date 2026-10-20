@@ -62,6 +62,9 @@ const SKIPPED: Record<SkipDecision, string> = {
   confirmDamage: 'confirmou o dano proposto',
   discard: 'descartou as últimas cartas da mão',
   chooseTargets: 'deixou a habilidade para resolver à mão',
+  searchLibrary: 'não encontrou nada na busca',
+  scry: 'deixou as cartas no topo',
+  surveil: 'deixou as cartas no topo',
   exception: 'recusou o pedido de exceção',
   priority: 'passou a prioridade',
 }

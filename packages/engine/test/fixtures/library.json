@@ -1,0 +1,198 @@
+[
+ {
+  "name": "Cultivate",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{G}",
+  "oracleText": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Kodama's Reach",
+  "typeLine": "Sorcery — Arcane",
+  "manaCost": "{2}{G}",
+  "oracleText": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Rampant Growth",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{G}",
+  "oracleText": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Farseek",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{G}",
+  "oracleText": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Nature's Lore",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{G}",
+  "oracleText": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Three Visits",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{G}",
+  "oracleText": "Search your library for a Forest card, put it onto the battlefield, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Wood Elves",
+  "typeLine": "Creature — Elf Scout",
+  "manaCost": "{2}{G}",
+  "oracleText": "When this creature enters, search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Sakura-Tribe Elder",
+  "typeLine": "Creature — Snake Shaman",
+  "manaCost": "{1}{G}",
+  "oracleText": "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Demonic Tutor",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{B}",
+  "oracleText": "Search your library for a card, put that card into your hand, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Temple of Epiphany",
+  "typeLine": "Land",
+  "manaCost": "",
+  "oracleText": "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {U} or {R}.",
+  "keywords": [
+   "Scry"
+  ],
+  "colorIdentity": [
+   "R",
+   "U"
+  ]
+ },
+ {
+  "name": "Undercity Sewers",
+  "typeLine": "Land — Island Swamp",
+  "manaCost": "",
+  "oracleText": "({T}: Add {U} or {B}.)\nThis land enters tapped.\nWhen this land enters, surveil 1. (Look at the top card of your library. You may put it into your graveyard.)",
+  "keywords": [
+   "Surveil"
+  ],
+  "colorIdentity": [
+   "B",
+   "U"
+  ]
+ },
+ {
+  "name": "Opt",
+  "typeLine": "Instant",
+  "manaCost": "{U}",
+  "oracleText": "Scry 1. (Look at the top card of your library. You may put that card on the bottom.)\nDraw a card.",
+  "keywords": [
+   "Scry"
+  ],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Preordain",
+  "typeLine": "Sorcery",
+  "manaCost": "{U}",
+  "oracleText": "Scry 2, then draw a card. (To scry 2, look at the top two cards of your library, then put any number of them on the bottom and the rest on top in any order.)",
+  "keywords": [
+   "Scry"
+  ],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Thraben Inspector",
+  "typeLine": "Creature — Human Soldier",
+  "manaCost": "{W}",
+  "oracleText": "When this creature enters, investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")",
+  "keywords": [
+   "Investigate"
+  ],
+  "colorIdentity": [
+   "W"
+  ],
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Evolving Wilds",
+  "typeLine": "Land",
+  "manaCost": "",
+  "oracleText": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": []
+ },
+ {
+  "name": "Explosive Vegetation",
+  "typeLine": "Sorcery",
+  "manaCost": "{3}{G}",
+  "oracleText": "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Worldly Tutor",
+  "typeLine": "Instant",
+  "manaCost": "{G}",
+  "oracleText": "Search your library for a creature card, reveal it, then shuffle and put the card on top.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Ponder",
+  "typeLine": "Sorcery",
+  "manaCost": "{U}",
+  "oracleText": "Look at the top three cards of your library, then put them back in any order. You may shuffle.\nDraw a card.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ }
+]

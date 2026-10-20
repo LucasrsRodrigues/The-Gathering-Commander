@@ -80,13 +80,46 @@ function tokenFromWords(pt: [string, string], colors: string, rest: string, keyw
   }
 }
 
-// Predefined tokens (CR 111.10). Food and Clue keep their sacrifice abilities manual until wave 2.
+// Predefined tokens (CR 111.10). Food and Clue have their sacrifice abilities since wave 2 (activated abilities).
 export const TREASURE: TokenDef = {
   name: 'Treasure', types: ['artifact'], subtypes: ['Treasure'], colors: [], power: null, toughness: null, keywords: [],
   manaAbilities: [{ produces: { kind: 'anyColor', amount: 1 }, sacrificeSelf: true }],
 }
-const FOOD: TokenDef = { name: 'Food', types: ['artifact'], subtypes: ['Food'], colors: [], power: null, toughness: null, keywords: [], manaAbilities: [] }
-const CLUE: TokenDef = { name: 'Clue', types: ['artifact'], subtypes: ['Clue'], colors: [], power: null, toughness: null, keywords: [], manaAbilities: [] }
+const TWO = { generic: 2, colored: {}, hybrid: [], twoBrid: [], phyrexian: [], x: 0 }
+const FOOD: TokenDef = {
+  name: 'Food', types: ['artifact'], subtypes: ['Food'], colors: [], power: null, toughness: null, keywords: [], manaAbilities: [],
+  activated: [{ text: '{2}, {T}, Sacrifice this artifact: You gain 3 life.', cost: { mana: TWO, tap: true, sacrifice: 'self' }, effects: [{ kind: 'gainLife', who: 'you', amount: { kind: 'fixed', n: 3 } }] }],
+}
+const CLUE: TokenDef = {
+  name: 'Clue', types: ['artifact'], subtypes: ['Clue'], colors: [], power: null, toughness: null, keywords: [], manaAbilities: [],
+  activated: [{ text: '{2}, Sacrifice this artifact: Draw a card.', cost: { mana: TWO, sacrifice: 'self' }, effects: [{ kind: 'draw', who: 'you', amount: { kind: 'fixed', n: 1 } }] }],
+}
+
+// What a search looks for: "basic land", "creature", "Forest", "Plains, Island, Swamp, or Mountain", "" (any card).
+function searchFilter(what: string): Filter | null {
+  if (!what) return {}
+  const basic = what.startsWith('basic ')
+  const rest = (basic ? what.slice(6) : what).replace(/, or /g, ' or ').replace(/, /g, ' or ')
+  const filter = nounFilter(rest)
+  if (!filter || filter.controller || filter.tapped !== undefined) return null
+  return basic ? { ...filter, supertypes: ['basic'] } : filter
+}
+
+// "Search your library for a basic land card, put it onto the battlefield tapped, then shuffle." and the hand
+// variants; "up to N"; Cultivate's "put one onto the battlefield tapped and the other into your hand".
+function searchSentence(s: string): Piece | null {
+  const m = /^Search your library for (a|an|up to (?:one|two|three|four|five)) (?:(.*?) )?cards?, (?:reveal (?:it|them|that card|those cards), )?put (.+), then shuffle\.$/.exec(s)
+  if (!m) return null
+  const filter = searchFilter(m[2] ?? '')
+  if (!filter) return null
+  const amount = value(m[1]!.startsWith('up to ') ? m[1]!.slice(6) : '1')
+  const put = m[3]!
+  if (/^(?:it|that card|them|those cards) into your hand$/.test(put)) return { effects: [{ kind: 'search', filter, to: 'hand', amount }] }
+  const field = /^(?:it|that card|them|those cards) onto the battlefield( tapped)?$/.exec(put)
+  if (field) return { effects: [{ kind: 'search', filter, to: 'battlefield', ...(field[1] ? { tapped: true } : {}), amount }] }
+  if (put === 'one onto the battlefield tapped and the other into your hand' && m[1] === 'up to two') return { effects: [{ kind: 'search', filter, to: 'split', tapped: true, amount }] }
+  return null
+}
 const PREDEFINED: Record<string, TokenDef> = { Treasure: TREASURE, Food: FOOD, Clue: CLUE }
 
 type Parser = (sentence: string) => Piece | null
@@ -179,6 +212,10 @@ const PARSERS: Parser[] = [
     const token = m && tokenFromWords([m[2]!, m[3]!], m[4]!, m[5]!, m[6])
     return m && token ? { effects: [{ kind: 'token', token, amount: value(m[1]!) }] } : null
   },
+  // Library choices (épico 11, onda 2): the player chooses on the table (LibraryChoice).
+  searchSentence,
+  (s) => { const m = re(`(Scry|Surveil) ${NUM}\\.`).exec(s); return m ? { effects: [{ kind: m[1] === 'Scry' ? 'scry' : 'surveil', amount: value(m[2]!) }] } : null },
+  (s) => (s === 'Investigate.' ? { effects: [{ kind: 'token', token: CLUE, amount: { kind: 'fixed', n: 1 } }] } : null),
   (s) => {
     const m = re(`Create ${NUM} (Treasure|Food|Clue) tokens?\\.`).exec(s)
     return m ? { effects: [{ kind: 'token', token: PREDEFINED[m[2]!]!, amount: value(m[1]!) }] } : null
@@ -190,7 +227,9 @@ function split(line: string): string[] {
   const out: string[] = []
   for (const part of line.split(/(?<=\.)\s+(?=[A-Z•])/)) {
     const and = /^Draw (\S+) cards? and create (.+)$/.exec(part)
+    const then = /^(Scry|Surveil) (\S+), then draw (a card|\S+ cards)\.$/.exec(part) // Preordain
     if (and) out.push(`Draw ${and[1]} card${and[1] === 'a' || and[1] === 'one' ? '' : 's'}.`, `Create ${and[2]}`)
+    else if (then) out.push(`${then[1]} ${then[2]}.`, `Draw ${then[3]}.`)
     else out.push(part)
   }
   return out

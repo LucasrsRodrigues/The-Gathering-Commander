@@ -17,6 +17,10 @@ export function defaultAnswer(game: GameState, player: PlayerId, decision: SkipD
       return pending?.kind === 'bottomCards' ? { type: 'bottomCards', player, objectIds: lastInHand(pending.count) } : null
     case 'discard':
       return pending?.kind === 'discard' ? { type: 'discard', player, objectIds: lastInHand(pending.count) } : null
+    // A player who left finds nothing and leaves the top as it was (the least a search or scry can do).
+    case 'searchLibrary': return { type: 'searchLibrary', player, objectIds: [] }
+    case 'scry': case 'surveil':
+      return pending?.kind === decision ? { type: 'arrangeTop', player, top: pending.cards, away: [] } : null
     case 'chooseTargets': return { type: 'chooseTargets', player, targets: [], manual: true } // no one chooses for them
     case 'confirmDamage':
       return pending?.kind === 'confirmDamage' ? { type: 'assignDamage', player, assignments: pending.proposal.assignments } : null

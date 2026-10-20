@@ -19,9 +19,11 @@ describe('coverage (épico 11, T11.2)', () => {
   })
 
   it('anything else stays manual, listed as the players read it', () => {
-    const wilds = deriveCardRules(facts('Evolving Wilds'))
+    // Evolving Wilds became automated with the searches (T11.12); "on top of your library" is still not read.
+    const odd = card({ name: 'Odd Wilds', typeLine: 'Land', oracleText: '{T}, Sacrifice Odd Wilds: Search your library for a basic land card, reveal it, then shuffle and put that card on top. (Reminder.)' })
+    const wilds = deriveCardRules(odd)
     expect(wilds.coverage).toBe('manual')
-    expect(wilds.manualText).toEqual([facts('Evolving Wilds').oracleText.replace(/\s*\([^)]*\)/g, '').trim()])
+    expect(wilds.manualText).toEqual([odd.oracleText.replace(/\s*\([^)]*\)/g, '').trim()])
     const ward = deriveCardRules(card({ typeLine: 'Creature — Elf', oracleText: 'Flying\nWard {2}', keywords: ['Flying', 'Ward'] }))
     expect(ward.coverage).toBe('partial') // Flying is ours; Ward is not automated yet
     expect(ward.manualText).toEqual(['Ward {2}'])

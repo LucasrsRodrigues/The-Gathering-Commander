@@ -202,6 +202,14 @@ export function actionIntent(v: unknown): ActionIntent {
         ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
         ...(a.targets !== undefined ? { targets: targets(a.targets) } : {}),
       }
+    case 'searchLibrary':
+    case 'arrangeTop': {
+      const list = (v: unknown, what: string) => {
+        if (!Array.isArray(v) || v.length > 100) bad(`${what} inválido`)
+        return (v as unknown[]).map((x) => id(x, what))
+      }
+      return type === 'searchLibrary' ? { type, objectIds: list(a.objectIds, 'objectIds') } : { type, top: list(a.top, 'top'), away: list(a.away, 'away') }
+    }
     case 'activateAbility': {
       const few = (v: unknown, what: string) => {
         if (!Array.isArray(v) || v.length > 5) bad(`${what} inválido`)

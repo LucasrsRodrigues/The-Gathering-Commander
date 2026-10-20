@@ -24,10 +24,10 @@ describe('activated abilities: reading the real Oracle (épico 11, T11.10)', () 
     expect(card('Shivan Dragon').rules!.activated![0]).toMatchObject({ effects: [{ kind: 'pump', what: 'self', power: { n: 1 }, toughness: { n: 0 } }] })
   })
 
-  it('other lines of the card stay manual (partial); searches and scry stay manual', () => {
+  it('other lines of the card stay manual (partial); a sacrifice for mana is a mana ability, read elsewhere', () => {
     expect(card('Carrion Feeder').rules).toMatchObject({ coverage: 'partial', activated: [{ effects: [{ kind: 'counters', what: 'self' }] }] })
     expect(card('Walking Ballista').rules).toMatchObject({ coverage: 'partial', activated: [{ cost: { mana: { generic: 4 } } }] })
-    for (const name of ["Wayfarer's Bauble", 'Viscera Seer', "Ashnod's Altar"]) expect(card(name).rules!.activated, name).toBeUndefined()
+    for (const name of ["Ashnod's Altar"]) expect(card(name).rules!.activated, name).toBeUndefined()
     expect(custom('Test Sage', 'Creature — Human', '{1}: Draw a card. Activate only as a sorcery.', ['1', '1']).rules!.activated![0]!.sorcerySpeed).toBe(true)
     expect(custom('Test Limit', 'Creature — Human', '{1}: Draw a card. Activate only once each turn.', ['1', '1']).rules!.activated).toBeUndefined()
   })

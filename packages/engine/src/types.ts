@@ -138,6 +138,7 @@ export interface TokenDef {
   keywords: Keyword[]
   manaAbilities: ManaAbility[]
   etb?: Ability[] // a token with its own "when this enters" (from a card exception)
+  activated?: ActivatedAbility[] // Clue, Food (épico 11, onda 2)
 }
 
 export type Effect =
@@ -149,7 +150,7 @@ export type Effect =
   | { kind: 'pump'; what: 'target' | 'self' | { each: Filter }; power: Value; toughness: Value } // until end of turn
   | { kind: 'token'; token: TokenDef; amount: Value; tapped?: boolean }
   | { kind: 'mill' | 'discard'; who: Who; amount: Value }
-  | { kind: 'search'; filter: Filter; to: 'hand' | 'battlefield'; tapped?: boolean; amount: Value }
+  | { kind: 'search'; filter: Filter; to: 'hand' | 'battlefield' | 'split'; tapped?: boolean; amount: Value } // split: Cultivate (one to the battlefield tapped, the rest to hand)
   | { kind: 'scry' | 'surveil'; amount: Value }
   | { kind: 'addMana'; produces: ManaProduction }
 
@@ -263,7 +264,22 @@ export type PendingDecision =
   | { kind: 'confirmDamage'; player: PlayerId; proposal: DamageProposal } // CR 510.1: the active player confirms or adjusts
   | { kind: 'discard'; player: PlayerId; count: number } // CR 514.1: discard down to the maximum hand size
   | ChooseTargets
+  | LibraryChoice
   | ExceptionRequest
+
+// Épico 11, onda 2: a resolving ability waits for its controller to choose cards from their library (CR 701.19
+// search, 701.18 scry, 701.25 surveil). `cards` are visible only to that player (view.ts); the rest of the ability
+// resumes afterwards.
+export interface LibraryChoice {
+  kind: 'searchLibrary' | 'scry' | 'surveil'
+  player: PlayerId
+  cards: ObjectId[] // search: the cards that fit; scry/surveil: the top cards, top first
+  count: number // search: at most this many
+  to?: 'hand' | 'battlefield' | 'split'
+  tapped?: boolean
+  text: string
+  continueWith: { itemId: string; effects: Effect[]; ctx: { controller: PlayerId; sourceId?: ObjectId; targets?: Target[]; x?: number } }
+}
 
 // Épico 11, CR 603.3: a "when this enters" ability waiting to go on the stack (index into the source's `etb`).
 export interface PendingTrigger {
@@ -424,6 +440,8 @@ export type Action =
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[]; targets?: Target[] }> // CR 601.2 (payWith: tap these first, atomically; targets: épico 11)
   | ActionOf<'activateAbility', ActivateAbility> // épico 11, CR 602: an automated activated ability
   | ActionOf<'resolveManually', { stackItemId: string }> // épico 11: the top item resolves without its automated effects
+  | ActionOf<'searchLibrary', { objectIds: ObjectId[] }> // answers a search: the cards found (none is fine)
+  | ActionOf<'arrangeTop', { top: ObjectId[]; away: ObjectId[] }> // answers scry (away = bottom) or surveil (away = graveyard); top first
   | ActionOf<'chooseTargets', { targets: Target[]; manual?: boolean }> // épico 11: answers ChooseTargets (manual: do it by hand)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
@@ -478,6 +496,7 @@ export type GameEvent =
   | { type: 'stackItemResolved'; item: StackItem }
   | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
   | { type: 'resolvedManually'; player: PlayerId; item: StackItem } // "Resolver à mão": the players apply it by hand
+  | { type: 'libraryArranged'; player: PlayerId; kind: 'scry' | 'surveil'; top: number; away: number } // how many, not which
   | { type: 'triggerSkipped'; sourceId: ObjectId; text: string } // CR 603.3d: no legal target, the trigger is removed
   | { type: 'effectDamage'; sourceId?: ObjectId; to: Target; amount: number } // épico 11: damage from a spell or ability
   | { type: 'abilityResolving'; item: StackItem; text: string } // épico 11: an automated ability applies its effects

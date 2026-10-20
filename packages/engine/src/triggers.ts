@@ -61,6 +61,8 @@ export function pushTrigger(tx: Tx, trigger: PendingTrigger, text: string, extra
 export function leaveTriggers(tx: Tx, player: PlayerId) {
   const s = tx.s
   if (s.triggers?.some((t) => t.controller === player)) s.triggers = s.triggers.filter((t) => t.controller !== player)
+  // A search or scry the leaving player owed: their item leaves the stack with them (eliminate), so nothing resumes.
+  if ((s.pending?.kind === 'searchLibrary' || s.pending?.kind === 'scry' || s.pending?.kind === 'surveil') && s.pending.player === player) s.pending = null
   if (s.pending?.kind === 'chooseTargets' && s.pending.player === player) {
     const { priorityTo, rest } = s.pending
     s.pending = null
