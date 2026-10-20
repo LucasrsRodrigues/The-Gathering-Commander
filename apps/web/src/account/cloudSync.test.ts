@@ -159,4 +159,16 @@ describe('cloud sync on the device', () => {
     expect(clear.presets.list().map((p) => p.id)).toEqual([officialPreset().id])
     expect(clear.sync.signedIn).toBe(false)
   })
+
+  it('a v1 deck in the cloud (from an old app) arrives already in the v2 format', async () => {
+    const cloud = fakeCloud()
+    cloud.docs.set('deck:old', { kind: 'deck', id: 'old', updatedAt: 10, changedAt: 1, data: {
+      schemaVersion: 1, id: 'old', name: 'Antigo', commanders: [], cards: [{ oracleId: 'o1', name: 'Sol Ring', count: 1 }], createdAt: 1, updatedAt: 10,
+    } })
+    const a = device(cloud)
+    a.sync.setUser('u1')
+    await a.sync.sync()
+    expect(await a.decks.get('old')).toMatchObject({ schemaVersion: 2, name: 'Antigo', maybe: [], history: [] })
+  })
 })
+

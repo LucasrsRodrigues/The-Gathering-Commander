@@ -1,5 +1,6 @@
 // Cloud documents (épico 08, req. 11–15): last write wins per document, deletions as tombstones, limits per account.
 
+import { MAX_DECK_DOC_BYTES } from '@gathering-hall/formats'
 import type { Db } from '../db'
 import type { AccountDataPart } from '../auth/accounts'
 
@@ -13,7 +14,7 @@ export interface CloudDoc {
 }
 
 export const LIMITS = { deck: 500, preset: 100 } as const
-export const MAX_DOC_BYTES = 64 * 1024
+export const MAX_DOC_BYTES = { deck: MAX_DECK_DOC_BYTES, preset: 64 * 1024 } as const
 export const FUTURE_SLACK_MS = 5 * 60 * 1000 // a device clock further ahead than this counts as "now"
 
 export type PutResult = { status: 'ok'; doc: CloudDoc } | { status: 'conflict'; doc: CloudDoc } | { status: 'limit' }
@@ -40,11 +41,16 @@ export class CloudStore {
 
   // Writes (or deletes, with data null) when the edit is newer than what the server has; otherwise answers with the
   // server's version (a conflict the device then adopts). One transaction, so two devices racing cannot both win.
-  async put(userId: string, kind: DocKind, id: string, data: unknown | null, updatedAt: number, now: number): Promise<PutResult> {
+  // keepOver: when it returns true for the stored data, the write loses even if newer (an old app over a richer deck).
+  async put(
+    userId: string, kind: DocKind, id: string, data: unknown | null, updatedAt: number, now: number, keepOver?: (stored: unknown) => boolean,
+  ): Promise<PutResult> {
     const clamped = updatedAt > now + FUTURE_SLACK_MS ? now : updatedAt
     return this.db.transaction(async (tx) => {
       const [current] = await tx.query<Row>('SELECT id, data, updated_at FROM cloud_doc WHERE user_id = $1 AND kind = $2 AND id = $3 FOR UPDATE', [userId, kind, id])
-      if (current && Number(current.updated_at) >= clamped) return { status: 'conflict' as const, doc: toDoc(current) }
+      if (current && (Number(current.updated_at) >= clamped || (current.data !== null && keepOver?.(current.data)))) {
+        return { status: 'conflict' as const, doc: toDoc(current) }
+      }
       if (data !== null && (!current || current.data === null)) {
         const [count] = await tx.query<{ n: string | number }>('SELECT count(*) AS n FROM cloud_doc WHERE user_id = $1 AND kind = $2 AND data IS NOT NULL', [userId, kind])
         if (Number(count?.n ?? 0) >= LIMITS[kind]) return { status: 'limit' as const }

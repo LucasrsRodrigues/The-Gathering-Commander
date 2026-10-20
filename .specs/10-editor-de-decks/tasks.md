@@ -26,11 +26,20 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - no app, `newDeck` grava v2, e o `moveCard` move entre quaisquer listas levando a arte e as categorias;
     - `deckSize`, estatísticas, validação e `toGameDeck` ignoram o Talvez (fitness).
   - Verificado no navegador: um deck v1 posto no IndexedDB abre no editor e é gravado de volta como v2, sem perda.
-- [ ] **T10.2 — Nuvem com v2: limite de 128 KB e recusa de regressão de versão** _(req: 3)_ · depende de T10.1
+- [x] **T10.2 — Nuvem com v2: limite de 128 KB e recusa de regressão de versão** _(req: 3)_ · depende de T10.1
   - Verificação:
     - um `PUT` v1 sobre um v2 recebe `409` com o v2;
     - um app antigo (simulado) não sobrescreve;
     - um deck v1 da nuvem chega ao app novo já convertido.
+  - Feito:
+    - o limite da nuvem passou a ser por tipo: 128 KB para decks e 64 KB para presets;
+    - um `PUT` v1 só é recusado (`409` com a versão do servidor) quando o deck guardado tem algo que o v1 não
+      consegue levar: categorias, Talvez, pasta, descrição, ordem de categorias ou histórico (`hasV2Content`);
+    - sobre um deck sem nada disso, a edição v1 entra e é guardada como v2, então o app antigo continua
+      sincronizando enquanto não houver perda;
+    - o `CloudStore.put` ganhou um `keepOver` opcional, decidido dentro da mesma transação.
+  - **Mudança no design:** recusar todo v1 sobre v2 travaria o app antigo para sempre, porque desde a T10.1 o
+    servidor já guarda tudo como v2. A recusa só quando haveria perda protege o mesmo e não trava ninguém.
 - [ ] **T10.3 — Histórico no modelo: diff, junção e volta** _(req: 16–18)_ · depende de T10.1
   - Escopo: `deckHistory` (`diff`, `record` com junção de 10 minutos, `replayBack`, restaurar); as operações do
     modelo registram as mudanças.

@@ -10,6 +10,6 @@ export { isBanned } from './rules/banned'
 export { normalizeName } from './text'
 export { factsAsOf, type LegalitySnapshot } from './asOf'
 export {
-  DECK_LIMITS, DECK_ZONES, isLegacyDeck, MAX_DECK_DOC_BYTES, MAX_DECK_ENTRIES, MAX_DECK_NAME, sanitizeDeck,
+  DECK_LIMITS, DECK_ZONES, hasV2Content, isLegacyDeck, MAX_DECK_DOC_BYTES, MAX_DECK_ENTRIES, MAX_DECK_NAME, sanitizeDeck,
   type ChangeLine, type Deck, type DeckCard, type DeckChange, type DeckZone,
 } from './deckDocument'

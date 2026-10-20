@@ -5,7 +5,7 @@
 //   (the same for /api/presets/:id)
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { decodePreset, sanitizeDeck } from '@gathering-hall/formats'
+import { decodePreset, hasV2Content, isLegacyDeck, sanitizeDeck } from '@gathering-hall/formats'
 import type { AuthService } from '../auth/routes'
 import { MAX_DOC_BYTES, type CloudStore, type DocKind } from './store'
 
@@ -61,7 +61,7 @@ export async function handleCloud(auth: AuthService, store: CloudStore, req: Inc
     ctx.json(res, 400, { error: 'id inválido' })
     return true
   }
-  const body = await readBody(req)
+  const body = await readBody(req, MAX_DOC_BYTES[kind])
   if (body === 'tooBig') {
     ctx.json(res, 413, { error: 'documento grande demais' })
     return true
@@ -79,18 +79,23 @@ export async function handleCloud(auth: AuthService, store: CloudStore, req: Inc
       return true
     }
   }
-  const result = await store.put(account.id, kind, id, data, updatedAt, ctx.now)
+  // A deck from an app older than épico 10 (v1) never replaces one with categories, Talvez, folder or history: the
+  // device gets the stored version back (409), as with a newer edit, and nothing is lost.
+  const keepOver = kind === 'deck' && req.method === 'PUT' && isLegacyDeck(body.data)
+    ? (stored: unknown) => { const deck = sanitizeDeck(stored); return !!deck && hasV2Content(deck) }
+    : undefined
+  const result = await store.put(account.id, kind, id, data, updatedAt, ctx.now, keepOver)
   if (result.status === 'limit') ctx.json(res, 409, { error: kind === 'deck' ? 'Limite de 500 decks na conta.' : 'Limite de 100 regras da casa na conta.', limit: true })
   else ctx.json(res, result.status === 'ok' ? 200 : 409, { doc: result.doc })
   return true
 }
 
-async function readBody(req: IncomingMessage): Promise<Record<string, unknown> | null | 'tooBig'> {
+async function readBody(req: IncomingMessage, maxBytes: number): Promise<Record<string, unknown> | null | 'tooBig'> {
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of req) {
     size += (chunk as Buffer).length
-    if (size > MAX_DOC_BYTES + 1024) return 'tooBig'
+    if (size > maxBytes + 1024) return 'tooBig'
     chunks.push(chunk as Buffer)
   }
   try {

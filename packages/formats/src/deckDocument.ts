@@ -189,6 +189,14 @@ function labels(v: unknown): string[] {
   return out
 }
 
+// True when the deck holds something a v1 document cannot carry: an old app writing over it would lose that, so the
+// cloud refuses such a write (épico 10, T10.2).
+export function hasV2Content(deck: Deck): boolean {
+  const tagged = (list: DeckCard[]) => list.some((c) => c.tags?.length)
+  return deck.maybe.length > 0 || deck.history.length > 0 || !!deck.folder || !!deck.description || !!deck.tagOrder?.length ||
+    tagged(deck.commanders) || tagged(deck.cards)
+}
+
 // True for a document written by an app from before épico 10 (the cloud refuses it over a v2, T10.2).
 export function isLegacyDeck(raw: unknown): boolean {
   return !!raw && typeof raw === 'object' && (raw as Record<string, unknown>).schemaVersion === 1

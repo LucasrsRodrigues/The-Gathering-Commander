@@ -115,7 +115,8 @@ describe('cloud API', () => {
     expect((await call('PUT', '/api/decks/d1', { data: { hack: true }, updatedAt: 1 })).status).toBe(422)
     expect((await call('PUT', '/api/presets/p1', { data: { ...officialPreset(), id: 'p1', name: 'x', ruleset: { startingLife: 1e9 } }, updatedAt: 1 })).status).toBe(422)
     expect((await call('PUT', '/api/decks/d1', { data: deck('d1', 'x', 1) })).status).toBe(400)
-    expect((await call('PUT', '/api/decks/d1', JSON.stringify({ data: deck('d1', 'x'.repeat(70_000), 1), updatedAt: 1 }))).status).toBe(413)
+    expect((await call('PUT', '/api/decks/d1', JSON.stringify({ data: deck('d1', 'x'.repeat(140_000), 1), updatedAt: 1 }))).status).toBe(413)
+    expect((await call('PUT', '/api/presets/p1', JSON.stringify({ data: { ...officialPreset(), id: 'p1', name: 'x'.repeat(70_000) }, updatedAt: 1 }))).status).toBe(413)
     expect((await call('PUT', '/api/decks/..%2Fevil', { data: deck('../evil', 'x', 1), updatedAt: 1 })).status).toBe(400)
   })
 
@@ -125,5 +126,43 @@ describe('cloud API', () => {
     expect(((await accounts.exportAccount(userId)).cloud as { decks: { name: string }[] }).decks[0]!.name).toBe('Krenko')
     await accounts.deleteAccount(userId)
     expect(await db.query('SELECT 1 FROM cloud_doc')).toEqual([])
+  })
+})
+
+describe('cloud with deck v2 (épico 10, T10.2)', () => {
+  const v2 = (id: string, updatedAt: number, extra: Record<string, unknown> = {}) => ({
+    ...deck(id, 'Krenko', updatedAt), schemaVersion: 2, maybe: [], history: [], ...extra,
+  })
+
+  it('an app from before épico 10 cannot overwrite categories, Talvez, folder or history', async () => {
+    const { call } = await api()
+    const rich = v2('d1', 10, { cards: [{ oracleId: 'o1', name: 'Sol Ring', count: 1, tags: ['Ramp'] }], maybe: [{ oracleId: 'm1', name: 'Rhystic Study', count: 1 }] })
+    expect((await call('PUT', '/api/decks/d1', { data: rich, updatedAt: 10 })).status).toBe(200)
+
+    // The old app edits later (newer clock) and sends v1: the server keeps the v2 and answers with it.
+    const old = await call('PUT', '/api/decks/d1', { data: deck('d1', 'edit antigo', 50), updatedAt: 50 })
+    expect(old.status).toBe(409)
+    const { doc } = (await old.json()) as { doc: { data: { schemaVersion: number; maybe: unknown[]; cards: { tags?: string[] }[] }; updatedAt: number } }
+    expect(doc).toMatchObject({ updatedAt: 10, data: { schemaVersion: 2, cards: [{ tags: ['Ramp'] }] } })
+    expect(doc.data.maybe).toHaveLength(1)
+
+    // The new app's newer edit still wins as usual.
+    expect((await call('PUT', '/api/decks/d1', { data: v2('d1', 60), updatedAt: 60 })).status).toBe(200)
+  })
+
+  it('a v1 edit over a deck with nothing v1 cannot carry is accepted, and stored as v2', async () => {
+    const { call } = await api()
+    await call('PUT', '/api/decks/d1', { data: v2('d1', 10), updatedAt: 10 })
+    expect((await call('PUT', '/api/decks/d1', { data: deck('d1', 'Renomeado', 20), updatedAt: 20 })).status).toBe(200)
+    const sync = (await (await call('GET', '/api/sync?since=0')).json()) as { decks: { data: { schemaVersion: number; name: string } }[] }
+    expect(sync.decks[0]!.data).toMatchObject({ schemaVersion: 2, name: 'Renomeado' })
+  })
+
+  it('accepts decks up to 128 KB', async () => {
+    const { call } = await api()
+    const cards = Array.from({ length: 300 }, (_, i) => ({ oracleId: `o${i}`, name: `${'N'.repeat(190)}${i}`, count: 1, tags: ['Ramp', 'Compra'] }))
+    const body = JSON.stringify({ data: v2('big', 5, { cards }), updatedAt: 5 })
+    expect(body.length).toBeGreaterThan(64 * 1024)
+    expect((await call('PUT', '/api/decks/big', body)).status).toBe(200)
   })
 })
