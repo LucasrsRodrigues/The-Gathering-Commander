@@ -1,0 +1,182 @@
+[
+ {
+  "name": "Wellwisher",
+  "typeLine": "Creature — Elf",
+  "manaCost": "{1}{G}",
+  "oracleText": "{T}: You gain 1 life for each Elf on the battlefield.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Krenko, Mob Boss",
+  "typeLine": "Legendary Creature — Goblin Warrior",
+  "manaCost": "{2}{R}{R}",
+  "oracleText": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Collective Unconscious",
+  "typeLine": "Sorcery",
+  "manaCost": "{4}{G}{G}",
+  "oracleText": "Draw a card for each creature you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Siege-Gang Commander",
+  "typeLine": "Creature — Goblin",
+  "manaCost": "{3}{R}{R}",
+  "oracleText": "When this creature enters, create three 1/1 red Goblin creature tokens.\n{1}{R}, Sacrifice a Goblin: This creature deals 2 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Elvish Promenade",
+  "typeLine": "Kindred Sorcery — Elf",
+  "manaCost": "{3}{G}",
+  "oracleText": "Create a 1/1 green Elf Warrior creature token for each Elf you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Goblin War Strike",
+  "typeLine": "Sorcery",
+  "manaCost": "{R}",
+  "oracleText": "Goblin War Strike deals damage to target player or planeswalker equal to the number of Goblins you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Shamanic Revelation",
+  "typeLine": "Sorcery",
+  "manaCost": "{3}{G}{G}",
+  "oracleText": "Draw a card for each creature you control.\nFerocious — You gain 4 life for each creature you control with power 4 or greater.",
+  "keywords": [
+   "Ferocious"
+  ],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Gray Merchant of Asphodel",
+  "typeLine": "Creature — Zombie",
+  "manaCost": "{3}{B}{B}",
+  "oracleText": "When this creature enters, each opponent loses X life, where X is your devotion to black. You gain life equal to the life lost this way. (Each {B} in the mana costs of permanents you control counts toward your devotion to black.)",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ],
+  "power": "2",
+  "toughness": "4"
+ },
+ {
+  "name": "Ezuri's Predation",
+  "typeLine": "Sorcery",
+  "manaCost": "{5}{G}{G}{G}",
+  "oracleText": "For each creature your opponents control, create a 4/4 green Phyrexian Beast creature token. Each of those tokens fights a different one of those creatures.",
+  "keywords": [
+   "Fight"
+  ],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Mind Spring",
+  "typeLine": "Sorcery",
+  "manaCost": "{X}{U}{U}",
+  "oracleText": "Draw X cards.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ]
+ },
+ {
+  "name": "Multani's Acolyte",
+  "typeLine": "Creature — Elf",
+  "manaCost": "{G}{G}",
+  "oracleText": "Echo {G}{G} (At the beginning of your upkeep, if this came under your control since the beginning of your last upkeep, sacrifice it unless you pay its echo cost.)\nWhen this creature enters, draw a card.",
+  "keywords": [
+   "Echo"
+  ],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Pulse of Murasa",
+  "typeLine": "Instant",
+  "manaCost": "{2}{G}",
+  "oracleText": "Return target creature or land card from a graveyard to its owner's hand. You gain 6 life.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Beast Within",
+  "typeLine": "Instant",
+  "manaCost": "{2}{G}",
+  "oracleText": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Brawn",
+  "typeLine": "Creature — Incarnation",
+  "manaCost": "{3}{G}",
+  "oracleText": "Trample\nAs long as this card is in your graveyard and you control a Forest, creatures you control have trample.",
+  "keywords": [
+   "Trample"
+  ],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Overrun",
+  "typeLine": "Sorcery",
+  "manaCost": "{2}{G}{G}{G}",
+  "oracleText": "Creatures you control get +3/+3 and gain trample until end of turn. (Each of those creatures can deal excess combat damage to the player or planeswalker it's attacking.)",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ },
+ {
+  "name": "Rampant Growth",
+  "typeLine": "Sorcery",
+  "manaCost": "{1}{G}",
+  "oracleText": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ]
+ }
+]

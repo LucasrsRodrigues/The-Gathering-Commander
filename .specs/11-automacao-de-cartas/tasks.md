@@ -403,11 +403,36 @@ Quatro ondas e um fechamento:
     - top 5.000: automáticas de 5,4% para 6,0%.
 
     As ativadas mais jogadas dependem de contagens (T11.11) e de buscas (T11.12).
-- [ ] **T11.11 — Contagens nos efeitos** _(req: 13)_ · depende de T11.10
+- [x] **T11.11 — Contagens nos efeitos** _(req: 13)_ · depende de T11.10
   - Verificação:
     - Wellwisher ganha 1 por Elfo, contando a própria;
     - "equal to the number of cards in your hand";
     - "for each creature you control".
+  - Feito (só no leitor; o motor já avaliava `count` desde a T11.1):
+    - `countValue` lê três formas:
+      - "<tipo ou subtipo> you control";
+      - "<…> on the battlefield";
+      - "cards in your hand" e "<tipo> cards in your graveyard", com "other".
+    - Três formas de frase com contagem. A frase é lida sem a contagem, e a contagem entra no lugar do "X" ou do
+      "a"/"1":
+      - "…, where X is the number of …" (Krenko);
+      - "… for each …" (Wellwisher, Collective Unconscious, Elvish Promenade);
+      - "life / cards / damage equal to the number of …".
+    - Os filtros aceitam subtipos ("Goblin", "Elf", "Elves" no plural), em alvos, custos e contagens. Por isso
+      "Sacrifice a Goblin" (Siege-Gang Commander) passou a ser lido.
+    - Ficam manuais: "with power 4 or greater", devoção, "For each … create … fights" e "target player or
+      planeswalker".
+  - Verificado:
+    - Oracle real: Wellwisher, Krenko, Collective Unconscious, Siege-Gang Commander e Elvish Promenade automáticas;
+      Shamanic Revelation parcial; Gray Merchant, Goblin War Strike e Ezuri's Predation manuais.
+    - Motor:
+      - Wellwisher com 3 Elfos (ela, um meu, um do oponente) ganha 3;
+      - Krenko faz 1 ficha, depois mais 2;
+      - Collective Unconscious compra 2 com 2 criaturas;
+      - o dano igual às cartas na mão sai certo.
+  - **Medição (bulk de 2026-10-19):**
+    - top 1.000: automáticas de 12,8% para 12,9%;
+    - top 5.000: automáticas de 6,0% para 6,3%.
 - [ ] **T11.12 — Busca no grimório, vidência e investigar** _(req: 14)_ · depende de T11.10
   - Escopo: decisões `searchLibrary` e `scry`/`surveil`, os seletores na interface, embaralhar depois.
   - Verificação:

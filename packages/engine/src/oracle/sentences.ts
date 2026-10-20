@@ -24,7 +24,8 @@ export function value(word: string): Value {
 
 const signed = (s: string): Value => (s.endsWith('X') ? { kind: 'x' } : { kind: 'fixed', n: Number(s) })
 const neg = (v: Value): Value => (v.kind === 'fixed' ? { kind: 'fixed', n: -v.n } : v)
-const singular = (w: string) => (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('s') ? w.slice(0, -1) : w)
+const IRREGULAR: Record<string, string> = { Elves: 'Elf', Dwarves: 'Dwarf', Wolves: 'Wolf', Werewolves: 'Werewolf', Faeries: 'Faerie', Zombies: 'Zombie' }
+const singular = (w: string) => IRREGULAR[w] ?? (w.endsWith('ies') ? `${w.slice(0, -3)}y` : w.endsWith('s') ? w.slice(0, -1) : w)
 
 // "creature", "nonland permanent", "artifact or enchantment", "creature you don't control", "tapped creature",
 // plural forms for "all" ("creatures your opponents control"). Null for anything else.
@@ -40,13 +41,17 @@ export function nounFilter(phrase: string, plural = false): Filter | null {
   }
   const words = m[3]!.split(' or ').map((w) => (plural ? singular(w) : w))
   const types: CardType[] = []
+  const subtypes: string[] = []
   for (const w of words) {
     if (w === 'permanent') continue
     const t = TYPES.find((x) => x === w)
-    if (!t) return null
-    types.push(t)
+    if (t) types.push(t)
+    else if (/^[A-Z][a-z]+$/.test(w)) subtypes.push(w) // "Goblin", "Elf": a creature or other subtype (épico 11, onda 2)
+    else return null
   }
+  if (types.length && subtypes.length) return null // "Elf or creature": no such template
   if (types.length) filter.types = types
+  if (subtypes.length) filter.subtypes = subtypes
   if (m[4] === " you don't control" || m[4] === ' an opponent controls' || m[4] === ' your opponents control') filter.controller = 'opponent'
   if (m[4] === ' you control') filter.controller = 'you'
   return filter
@@ -191,11 +196,71 @@ function split(line: string): string[] {
   return out
 }
 
+// Counts (épico 11, onda 2, T11.11): "for each Elf on the battlefield", "the number of cards in your hand",
+// "Goblins you control". The phrase after "for each" / "the number of". Null for anything else.
+export function countValue(phrase: string): Value | null {
+  let m: RegExpExecArray | null
+  if (phrase === 'card in your hand' || phrase === 'cards in your hand') return { kind: 'count', what: {}, zone: 'hand' }
+  if ((m = /^(?:(\w+) )?cards? in your graveyard$/.exec(phrase))) {
+    const what = m[1] ? nounFilter(m[1]) : {}
+    return what ? { kind: 'count', what, zone: 'graveyard' } : null
+  }
+  if ((m = /^(other )?(.+?) (you control|on the battlefield)$/.exec(phrase))) {
+    const what = nounFilter(m[2]!, true) ?? nounFilter(m[2]!)
+    if (!what || what.controller) return null
+    return { kind: 'count', what: { ...what, ...(m[3] === 'you control' ? { controller: 'you' } : {}), ...(m[1] ? { other: true } : {}) }, zone: 'battlefield' }
+  }
+  return null
+}
+
+// Every amount of the effects, rewritten (the count put where the sentence said "a", "1" or "X").
+function mapAmounts(effects: Effect[], f: (v: Value) => Value | null): Effect[] | null {
+  let ok = false
+  const swap = (v: Value) => {
+    const out = f(v)
+    if (out) ok = true
+    return out ?? v
+  }
+  const mapped = effects.map((e): Effect => {
+    if (e.kind === 'pump') return { ...e, power: swap(e.power), toughness: swap(e.toughness) }
+    if ('amount' in e) return { ...e, amount: swap(e.amount) } as Effect
+    return e
+  })
+  return ok ? mapped : null
+}
+
+const parseOne = (sentence: string): Piece | null => PARSERS.reduce<Piece | null>((hit, p) => hit ?? p(sentence), null)
+
+// A sentence with a count: "…, where X is the number of Ys", "… for each Y", "life/cards/damage equal to the
+// number of Ys". It is read without the count, then the count takes the place of X (or of the single "a"/"1").
+function countSentence(sentence: string): Piece | null {
+  let m: RegExpExecArray | null
+  if ((m = /^(.+), where X is the number of (.+)\.$/.exec(sentence))) {
+    const count = countValue(m[2]!)
+    const base = count && parseOne(`${m[1]}.`)
+    const effects = base && mapAmounts(base.effects, (v) => (v.kind === 'x' ? count : null))
+    return base && effects ? { ...base, effects } : null
+  }
+  if ((m = /^(.+) for each (.+)\.$/.exec(sentence))) {
+    const count = countValue(m[2]!)
+    const base = count && parseOne(`${m[1]}.`)
+    const effects = base && mapAmounts(base.effects, (v) => (v.kind === 'fixed' && v.n === 1 ? count : null))
+    return base && effects ? { ...base, effects } : null
+  }
+  if ((m = /^(.*?)\b(life|cards|damage) equal to the number of (.+?)( to .+)?\.$/.exec(sentence))) {
+    const count = countValue(m[3]!)
+    const base = count && parseOne(`${m[1]}X ${m[2]}${m[4] ?? ''}.`)
+    const effects = base && mapAmounts(base.effects, (v) => (v.kind === 'x' ? count : null))
+    return base && effects ? { ...base, effects } : null
+  }
+  return null
+}
+
 // A whole line of a spell: every sentence must parse, and at most one of them may ask for targets (wave 1).
 export function parseSpellLine(line: string): Ability | null {
   const pieces: Piece[] = []
   for (const sentence of split(line)) {
-    const piece = PARSERS.reduce<Piece | null>((hit, p) => hit ?? p(sentence), null)
+    const piece = parseOne(sentence) ?? countSentence(sentence)
     if (!piece) return null
     pieces.push(piece)
   }
