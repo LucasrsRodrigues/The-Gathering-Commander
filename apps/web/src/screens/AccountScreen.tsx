@@ -40,7 +40,7 @@ export function AccountScreen({ client, error, onSignOut }: { client: AccountCli
           <div className="row">
             {state.providers.map((p) => <a key={p} className="btn primary" href={client.startUrl(p)}>Entrar com {PROVIDER_LABELS[p]}</a>)}
           </div>
-          <p className="muted small">Guardamos só o id da conta no provedor, o nome e a foto. Nada de e-mail nem senha.</p>
+          <p className="muted small">Do provedor, guardamos só o id da conta, o nome e a foto. Nada de e-mail nem senha.</p>
         </section>
       )}
       {state.status === 'signedIn' && (
@@ -64,7 +64,8 @@ export function AccountScreen({ client, error, onSignOut }: { client: AccountCli
           )}
           <section className="setup-card">
             <h2>Seus dados</h2>
-            <p className="muted small">Guardamos só o id da conta em cada provedor, o nome, a foto e as sessões abertas.</p>
+            <p className="muted small">Guardamos o id da conta em cada provedor, o nome, a foto, as sessões abertas, os decks e
+              as regras da casa na nuvem e o histórico das partidas online. Nada de e-mail, senha ou token do provedor.</p>
             <div className="row">
               <a className="btn" href={client.exportUrl()} download>Baixar meus dados</a>
               <button className="btn" onClick={onSignOut}>Sair</button>
@@ -72,8 +73,8 @@ export function AccountScreen({ client, error, onSignOut }: { client: AccountCli
           </section>
           <section className="setup-card danger">
             <h2>Excluir conta</h2>
-            <p>Apaga a conta e tudo o que ela guarda no servidor, e sai de todos os aparelhos. Os decks salvos neste navegador
-              continuam aqui. Não dá para desfazer.</p>
+            <p>Apaga a conta, os decks e as regras da nuvem, e sai de todos os aparelhos. Nas partidas, seu nome vira
+              "Jogador N" para os outros jogadores. Os decks salvos neste navegador continuam aqui. Não dá para desfazer.</p>
             <label className="field">Para confirmar, digite <b>{CONFIRM}</b>
               <input value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
             </label>

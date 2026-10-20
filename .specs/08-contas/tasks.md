@@ -180,11 +180,35 @@ chaves de login configuradas.
     - no navegador, com o login falso e partidas de exemplo, no computador e na largura de celular.
 
 ## Fechamento
-- [ ] **T8.11 — Revisão de segurança e privacidade**
+- [x] **T8.11 — Revisão de segurança e privacidade**
   - Escopo:
     - OAuth, cookies, CSRF e rate limits;
     - fitness "nada de segredo no cliente";
     - texto de privacidade no Sobre e no LEGAL.md (o que é guardado, por quê, como apagar).
+  - Revisado e mantido:
+    - PKCE S256 e `state` num cookie assinado e ligado ao navegador, o que impede o login CSRF;
+    - redirecionamentos só para o `APP_URL`;
+    - sessão nova a cada login;
+    - cookies `HttpOnly`/`SameSite=Lax`/`Secure`;
+    - token do provedor descartado e sessão guardada só como hash;
+    - escritas exigem a mesma origem;
+    - CORS com credenciais só para as origens listadas;
+    - WebSocket com checagem de origem;
+    - avatar só dos hosts dos provedores.
+  - Corrigido:
+    - um cookie malformado de outro app no mesmo domínio derrubava o login (`decodeURIComponent` lançava): agora
+      ele é ignorado;
+    - rate limit também no callback do OAuth (junto com o início, 20 por minuto por IP) e em todas as rotas da conta
+      (`/api/me`, exportar, excluir; 120 por minuto por IP);
+    - sessões vencidas eram só ignoradas: agora a varredura periódica do servidor as apaga.
+  - Fitness: o código do app e dos pacotes que ele empacota, e o `dist` quando existe, não citam configuração do
+    servidor nem leem `process.env`; a única variável de build é `VITE_SERVER_URL`; o app nunca importa o servidor.
+  - Privacidade: seção no LEGAL.md (o que é guardado com e sem conta, cookies, o que não guardamos, como baixar e
+    apagar), resumo no Sobre e textos de "Minha conta" atualizados.
+  - Aceito, com registro:
+    - o id da conta fica no snapshot da sala até a sala expirar (24 h sem uso); depois de excluir a conta, ele não
+      aponta para nada;
+    - o histórico ainda não tem prazo para ser apagado.
 - [ ] **T8.12 — README, DEPLOY (criar os apps OAuth no Discord e no Google, passo a passo) e roadmap**
 
 ## Estratégia de testes

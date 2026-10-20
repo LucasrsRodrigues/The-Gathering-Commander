@@ -229,3 +229,30 @@ describe('deleting and exporting the account (req. 9, 10)', () => {
     expect(await db.query('SELECT 1 FROM t_note')).toEqual([])
   })
 })
+
+describe('security review (T8.11)', () => {
+  it('a malformed cookie from elsewhere on the domain does not break the login', async () => {
+    const env = await setup()
+    const { session } = await login(env, 'discord', { id: '42', username: 'ana' })
+    const res = await fetch(`${env.url}/api/me`, { headers: { Cookie: `other=%E0%A4%A; gh_session=${session}` } })
+    expect(res.status).toBe(200)
+  })
+
+  it('expired sessions are removed, not just ignored', async () => {
+    const env = await setup()
+    const accounts = new AccountStore(env.db)
+    const { session } = await login(env, 'discord', { id: '43', username: 'bia' })
+    await env.db.query(`UPDATE session SET expires_at = now() - interval '1 day'`)
+    expect((await me(env, session!)).status).toBe(401)
+    await accounts.deleteExpiredSessions()
+    expect(await env.db.query('SELECT 1 FROM session')).toEqual([])
+  })
+
+  it('account routes are rate limited per IP', async () => {
+    const env = await setup()
+    const codes: number[] = []
+    for (let i = 0; i < 125; i++) codes.push((await fetch(`${env.url}/api/me`)).status)
+    expect(codes.slice(0, 120).every((c) => c === 401)).toBe(true)
+    expect(codes.at(-1)).toBe(429)
+  })
+})

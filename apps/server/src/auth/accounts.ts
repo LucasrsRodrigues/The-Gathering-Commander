@@ -115,6 +115,11 @@ export class AccountStore {
     return { id: row.id, name: row.display_name, avatarUrl: row.avatar_url, providers: providers.map((p) => p.provider) }
   }
 
+  // Expired sessions are useless and still say when someone played: removed by the server's periodic sweep.
+  async deleteExpiredSessions(): Promise<void> {
+    await this.db.query('DELETE FROM session WHERE expires_at <= now()')
+  }
+
   async endSession(token: string) {
     await this.db.query('DELETE FROM session WHERE id_hash = $1', [hashToken(token)])
   }

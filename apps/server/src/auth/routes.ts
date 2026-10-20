@@ -46,6 +46,10 @@ export class AuthService {
     return this.config.providers.length > 0
   }
 
+  sweep(): Promise<void> {
+    return this.accounts.deleteExpiredSessions()
+  }
+
   async accountFor(req: IncomingMessage): Promise<Account | null> {
     const token = readCookies(req)[SESSION_COOKIE]
     return token ? this.accounts.accountForSession(token) : null

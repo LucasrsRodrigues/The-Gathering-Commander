@@ -80,7 +80,8 @@ export function startServer(
   const connectionsByIp = new Map<string, number>()
   const creation = new WindowLimiter(config.roomsPerIpPerHour, 60 * 60 * 1000)
   const catalogLimit = new WindowLimiter(config.catalogRequestsPerMinute, 60 * 1000)
-  const loginLimit = new WindowLimiter(20, 60 * 1000) // login attempts per IP per minute
+  const loginLimit = new WindowLimiter(20, 60 * 1000) // login starts and callbacks per IP per minute
+  const accountLimit = new WindowLimiter(120, 60 * 1000) // any account route per IP per minute (me, export, delete)
   const cloudLimit = new WindowLimiter(120, 60 * 1000) // cloud requests per account per minute
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
@@ -164,7 +165,9 @@ export function startServer(
         if (req.url === '/api/auth/providers') return json(res, 200, { providers: [] })
         return json(res, 404, { error: 'contas desligadas neste servidor' })
       }
-      if (req.url.includes('/start') && !loginLimit.allow(clientIp(req), deps.now())) return json(res, 429, { error: 'Muitas tentativas de login; tente em instantes.' })
+      const ip = clientIp(req)
+      if (/\/(start|callback)(\?|$)/.test(req.url) && !loginLimit.allow(ip, deps.now())) return json(res, 429, { error: 'Muitas tentativas de login; tente em instantes.' })
+      if (!accountLimit.allow(ip, deps.now())) return json(res, 429, { error: 'Muitas chamadas; tente em instantes.' })
       auth.handle(req, res, { sameOrigin: originAllowed(origin, req), json })
         .then((handled) => handled || json(res, 404, { error: 'não encontrado' }))
         .catch(() => json(res, 500, { error: 'erro no login' }))
@@ -290,6 +293,8 @@ export function startServer(
     creation.sweep(now)
     catalogLimit.sweep(now)
     loginLimit.sweep(now)
+    accountLimit.sweep(now)
+    await auth?.sweep().catch(() => {})
     cloudLimit.sweep(now)
     for (const id of await store.expired(now - config.roomTtlMs)) {
       await enqueue(id, async () => {
