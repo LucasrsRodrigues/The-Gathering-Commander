@@ -7,9 +7,19 @@ Fan game gratuito e open source de **Commander** (Magic: The Gathering) com uma 
 ## O que já dá para fazer
 - Partidas de 1 a 4 lugares no mesmo dispositivo: goldfish (sozinho) ou hot-seat, com cortina entre jogadores. Ou
   online, com salas por link (veja abaixo).
-- Decks salvos no navegador, com editor, validação por regras e sugestão de bracket. Também dá para usar decks de
-  exemplo ou colar uma lista (formato Moxfield, Archidekt ou texto simples). As cartas vêm do catálogo próprio,
-  atualizado todo dia a partir do Scryfall, e a banlist pode ser a de uma data.
+- Decks salvos no navegador, com validação por regras e sugestão de bracket. Também dá para usar decks de exemplo,
+  colar uma lista (Moxfield, Archidekt ou texto simples) ou colar o link de um deck do Archidekt. As cartas vêm do
+  catálogo próprio, atualizado todo dia a partir do Scryfall, e a banlist pode ser a de uma data.
+- Editor de decks no estilo do Moxfield:
+  - lista, pilhas ou grade, agrupadas por tipo, valor de mana, cor ou categoria;
+  - categorias próprias (Ramp, Remoção…), com sugestões lidas do texto Oracle;
+  - lista "Talvez", fora da validação e da partida;
+  - menu da carta, seleção múltipla e arrastar, também no tablet;
+  - estatísticas clicáveis (curva, símbolos e fontes por cor, tipos, categorias);
+  - o deck inteiro como texto (`1 Sol Ring (C21) 263 #Ramp`);
+  - histórico de mudanças, com volta a uma versão anterior.
+- Biblioteca com pastas, busca e cards com a arte do comandante. Com conta, cada deck pode ganhar um link público só
+  de leitura, que qualquer pessoa abre e copia.
 - Mesa 3D com câmera que foca no oponente. Para mexer nas cartas: arrastar, clicar para virar ou gerar mana, passar
   o mouse ou segurar para ampliar, botão direito ou toque longo para o menu.
 

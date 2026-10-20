@@ -115,7 +115,7 @@ Nos identificadores de código, usamos **inglês**, igual às Comprehensive Rule
 | **2a — Decks e regras** | Editor e biblioteca de decks, validação por preset, regras da casa que restringem, bracket | 04, 05 | ✅ feito |
 | **2b — Online + catálogo** | Salas por link, servidor autoritativo, catálogo versionado (errata e banlist por data) | 07, 01 | ✅ feito |
 | 3a — Regras de turno e tempo | Velocidade de feitiço, terreno por turno, mana cobrada, combate com dano calculado, paradas automáticas | 09 | ✅ feito |
-| 3b+ — Editor de decks estilo Moxfield | Visualizações (lista, pilhas, grade), categorias, "Talvez", estatísticas, modo texto, histórico, pastas, import por link (Archidekt e Moxfield) e link público | 10 | specs escritas |
+| **3b+ — Editor de decks estilo Moxfield** | Visualizações (lista, pilhas, grade), categorias, "Talvez", estatísticas, modo texto, histórico, pastas, import por link (Archidekt e Moxfield) e link público | 10 | ✅ feito |
 | **3b — Contas opcionais** | Login opcional (Discord e Google), decks e presets na nuvem, lugar nas salas, histórico, banco em Postgres | 08 | ✅ feito |
 | 3c — Automação de cartas | Schema de cartas, mecânicas, cobertura crescente | 02 (cartas) | |
 | 4 — Bots | Bot heurístico → simulação → político | 06 | |

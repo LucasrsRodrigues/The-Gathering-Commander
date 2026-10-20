@@ -28,6 +28,10 @@ export function AboutScreen() {
         Em "Minha conta", dá para baixar tudo em JSON ou excluir a conta. Excluir apaga a conta e a nuvem, e o
         histórico fica só para os outros jogadores, como "Jogador N". Os detalhes estão no LEGAL.md do repositório.
       </p>
+      <p>
+        Um deck só fica público se você ligar o link dele em "Compartilhar". A página do link mostra o deck e o seu nome de
+        exibição, nunca o id da conta, as pastas ou o histórico. Desligar o link tira a página do ar na hora.
+      </p>
       <h2>O que este projeto não faz</h2>
       <ul>
         <li>Não usa logos nem marcas da Wizards of the Coast.</li>

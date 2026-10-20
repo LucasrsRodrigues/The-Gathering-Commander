@@ -364,13 +364,40 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
       - desligar, depois do que a página diz "Deck não encontrado" e a API responde 404.
 
 ## Fechamento
-- [ ] **T10.14 — Revisão de tablet, acessibilidade e desempenho**
+- [x] **T10.14 — Revisão de tablet, acessibilidade e desempenho**
   - Escopo:
     - medir no tablet real (pilhas, arrastar, imagens);
     - teclado e leitor de tela na lista;
     - alvos de 44 px;
     - texto de privacidade do link público no LEGAL.md.
-- [ ] **T10.15 — README, roadmap e notas de migração**
+  - Feito:
+    - medidos no navegador, na largura de tablet (1024 px), os alvos de toque do editor:
+      - os botões tinham 39 px, os seletores 36 px e os nomes da lista 39 px;
+      - agora, abaixo de 1100 px ou com ponteiro de toque, botões, seletores, campos, abas, pastas, números das
+        estatísticas, nomes da lista e itens do histórico têm pelo menos 44 px;
+      - na lista, as colunas ficaram mais largas para os controles maiores caberem (uma coluna no tablet). Nada fica
+        cortado;
+      - a biblioteca no celular ficou sem nenhum alvo menor que 44 px e sem rolagem lateral;
+    - exceção registrada: nas pilhas, o alvo é a faixa do nome (tocar abre a arte, segurar abre o menu), e o "⋯"
+      pequeno fica só para o mouse. O caminho de 44 px é a lista;
+    - teclado:
+      - na lista, nomes, "⋯", +/−, "Talvez" e "Ao deck" são botões com rótulo;
+      - o menu da carta navega por setas, Home/End e Esc e devolve o foco (T10.5);
+      - o contorno de foco dos cards de imagem fica para dentro, para a carta seguinte da pilha não cobri-lo;
+    - privacidade: o LEGAL.md diz o que o link público mostra e o que não mostra, como desligar e o que o import por
+      link acessa, e o Sobre resume.
+  - Desempenho (já medido nas tarefas): trocar de visualização leva cerca de 20 ms com 57 entradas; as imagens são
+    `small` + lazy e os grupos usam `content-visibility`.
+  - **Pendente, a fazer com o usuário:** a medição num tablet real (rolagem das pilhas com 100 cartas, arrastar por
+    toque e o tempo de carregar as imagens). No navegador, o toque foi simulado com eventos de ponteiro reais.
+- [x] **T10.15 — README, roadmap e notas de migração**
+  - Feito:
+    - o README descreve o editor (visualizações, categorias, Talvez, estatísticas, texto, histórico), a biblioteca, o
+      import por link e o link público;
+    - o DEPLOY ganhou "Atualizando para o editor de decks": nenhuma variável nova, a migração 0005 automática, os
+      decks v1 convertidos na leitura, o cache de cartas refeito uma vez e os domínios que o import acessa. A seção
+      de segurança cita os limites novos;
+    - no roadmap, a fase 3b+ (épico 10) está marcada como feita.
 
 ## Estratégia de testes
 - O modelo (migração, histórico, agrupamento, sugestões, modo texto) é puro e testado no `formats` e na web, com

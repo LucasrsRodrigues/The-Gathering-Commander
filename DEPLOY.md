@@ -145,9 +145,25 @@ docker run -d --name gathering-hall -p 8787:8787 -v gathering-hall-data:/data --
 Coloque um proxy com HTTPS na frente (Caddy, Traefik, Nginx) que repasse os headers `X-Forwarded-*`. O container
 já sobe com `TRUST_PROXY=1`. Se a porta 8787 ficar exposta direto, sem proxy, defina `TRUST_PROXY=0`.
 
+## Atualizando para o editor de decks (épico 10)
+Não há variável nova:
+- a migração `0005-deck-share.sql` (links públicos) roda sozinha no start;
+- os decks antigos viram o formato v2 quando são lidos, no app e no servidor, sem perder nada;
+- o cache de cartas do navegador (`gh-catalog-v4`) é refeito uma vez, para guardar a edição e o número de cada
+  impressão;
+- o import por link faz o servidor acessar `archidekt.com` e `api2.moxfield.com` por HTTPS. Se o host bloquear
+  saída para a internet, libere esses dois domínios, ou o import por link fica indisponível (colar o texto continua
+  funcionando);
+- o Moxfield hoje recusa leitura por servidor (403): o app mostra isso e oferece colar o texto exportado de lá.
+
 ## Segurança
 - **O servidor só aceita a própria origem** (e as listadas em `ALLOWED_ORIGINS`). Outros sites não conseguem abrir
   WebSocket nem criar salas.
+- **Import por link e páginas públicas:**
+  - só links do Archidekt e do Moxfield, com a URL da API montada pelo servidor, sem seguir redirecionamentos,
+    timeout de 10 s e até 2 MB;
+  - 10 importações por minuto por IP;
+  - páginas públicas de deck com 120 consultas por minuto por IP, sem o id da conta.
 - **Limites:** cada IP pode criar até 20 salas por hora, cada conexão pode mandar até 20 mensagens por segundo, e
   mensagens e decks têm tamanho máximo.
 - **Tokens de lugar:** ficam só no navegador de cada jogador. O servidor guarda apenas o hash (SHA-256).

@@ -603,3 +603,15 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 .public-deck .deck-view { min-width: 0; }
 .deck-description { margin: 0; white-space: pre-line; max-width: 80ch; }
 @media (max-width: 899px) { .public-layout { grid-template-columns: 1fr; } }
+
+/* Épico 10, T10.14: 44 px touch targets in the editor, library and public page below desktop width and on touch
+   screens. Exception: in stacks the name strip is the target (tap opens the art, long press opens the menu). */
+@media (max-width: 1099px), (pointer: coarse) {
+  :is(.editor, .library, .public-deck) :is(.btn, select, input:not([type='checkbox']), .seg button, .folder-btn, .stat-btn) { min-height: 44px; }
+  :is(.editor, .library, .public-deck) .btn.tiny { min-height: 44px; padding-inline: 12px; }
+  .deck-row .card-name, .maybe-toggle, .history-item { min-height: 44px; min-width: 44px; }
+  .deck-row { padding-block: 2px; }
+  .view-list { columns: 440px; } /* the bigger controls need the room: one column on a tablet */
+  .group-stack .deck-card .more-btn { min-height: 0; }
+}
+.deck-card-face:focus-visible { outline-offset: -3px; } /* inside: in stacks the next card would cover it */

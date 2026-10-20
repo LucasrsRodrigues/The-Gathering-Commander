@@ -52,6 +52,18 @@ servidor guarda sobre a conta.
 
 Partidas jogadas sem conta também entram no histórico, sem vínculo com ninguém.
 
+**Link público de deck (opcional):** quando você liga o link de um deck, qualquer pessoa com o link vê:
+- o nome e a descrição do deck;
+- o comandante, as cartas, o Talvez e as categorias;
+- o seu nome de exibição.
+
+A página não mostra o id da sua conta, as pastas, o histórico do deck nem os outros decks. Desligar o link tira a
+página do ar na hora, e um link novo nunca reaproveita o antigo. Excluir a conta derruba todos os links. Quem copia
+o deck fica com uma cópia própria, que não muda quando você edita o seu.
+
+**Importar por link:** o servidor busca o deck público no Archidekt ou no Moxfield só no momento da importação e não
+guarda nada da resposta. O endereço é montado a partir do id do deck, nunca a partir do link colado.
+
 ## Pedido de remoção
 Se a Wizards of the Coast ou outro titular de direitos pedir a remoção de algum conteúdo, os mantenedores tiram o
 conteúdo do ar assim que o pedido chegar. Abra uma issue marcada como `legal` ou fale diretamente com os
