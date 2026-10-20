@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
 import type { BracketSuggestion, Preset, Violation } from '@gathering-hall/formats'
-import type { DeckStats } from '../model'
+import type { DeckStats, StatFilter } from '../model'
+import { StatsCard } from './StatsCard'
 
-const COLOR_LABELS = { W: 'Branco', U: 'Azul', B: 'Preto', R: 'Vermelho', G: 'Verde', C: 'Incolor' } as const
-
-export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, presets, presetId, onPreset, selected, onSelectViolation, children }: {
+export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, presets, presetId, onPreset, selected, onSelectViolation, statFilter, onStatFilter, children }: {
   stats: DeckStats
   deckSizeTarget: number
   violations: Violation[]
@@ -14,36 +13,14 @@ export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, preset
   onPreset: (id: string) => void
   selected: number | null
   onSelectViolation: (i: number | null) => void
+  statFilter: StatFilter | null
+  onStatFilter: (f: StatFilter | null) => void
   children?: ReactNode // more cards at the end (categories)
 }) {
-  const peak = Math.max(1, ...stats.curve)
   const blocking = violations.filter((v) => v.level === 'block').length
   return (
     <aside className="deck-side">
-      <section className="side-card">
-        <div className="big-count">
-          <span className={stats.total === deckSizeTarget ? 'ok' : ''}>{stats.total}</span>/{deckSizeTarget}
-        </div>
-        <p className="muted small">{stats.lands} terrenos · valor de mana médio {stats.averageManaValue}</p>
-        <table className="curve" aria-label="Curva de mana (cartas que não são terreno)">
-          <tbody>
-            <tr>
-              {stats.curve.map((n, mv) => (
-                <td key={mv}>
-                  <div className="bar" style={{ height: `${(n / peak) * 100}%` }} />
-                  <span className="sr-only">{n} carta(s) de valor {mv === 7 ? '7 ou mais' : mv}</span>
-                </td>
-              ))}
-            </tr>
-            <tr aria-hidden="true">{stats.curve.map((n, mv) => <th key={mv}>{mv === 7 ? '7+' : mv}<small>{n || ''}</small></th>)}</tr>
-          </tbody>
-        </table>
-        <ul className="color-counts" aria-label="Cartas por cor">
-          {(Object.keys(COLOR_LABELS) as (keyof typeof COLOR_LABELS)[]).filter((c) => stats.colors[c]).map((c) => (
-            <li key={c} className={`pip pip-${c}`}>{COLOR_LABELS[c]} <b>{stats.colors[c]}</b></li>
-          ))}
-        </ul>
-      </section>
+      <StatsCard stats={stats} deckSizeTarget={deckSizeTarget} filter={statFilter} onFilter={onStatFilter} />
 
       <section className="side-card">
         <label className="field">Validar com as regras

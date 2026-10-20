@@ -177,12 +177,31 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
   - Verificado no navegador:
     - "Goblin Guide" com "Ao Talvez" e Enter entra no Talvez (3 → 4), e o total do deck fica em 53;
     - "Ao deck" leva a carta ao deck em um clique (53 → 54).
-- [ ] **T10.8 — Painel de estatísticas** _(req: 11, 12)_ · depende de T10.4
+- [x] **T10.8 — Painel de estatísticas** _(req: 11, 12)_ · depende de T10.4
   - Escopo: curva com e sem terrenos, MV médio, cores do custo, fontes por cor, tipos, categorias e terrenos; clicar
     num valor destaca as cartas.
   - Verificação:
     - os números conferem num deck de exemplo calculado à mão;
     - o destaque funciona nas três visualizações.
+  - Feito:
+    - `decks/manaInfo.ts` lê os símbolos coloridos do custo e as cores que a carta gera:
+      - `{W/U}` conta para as duas cores, e `{2/W}` e `{G/P}` contam para a sua cor;
+      - "qualquer cor" e "identidade do comandante" contam para cada cor do comandante;
+      - a fonte são as regras de carta do catálogo, ou o texto Oracle e os tipos básicos quando não há regras;
+    - `deckStats` passou a dar:
+      - a curva sem terrenos e o valor de mana médio com e sem terrenos;
+      - os símbolos e as fontes por cor;
+      - a contagem por tipo e por categoria principal;
+
+      e continua ignorando o Talvez;
+    - `cardsMatching` diz quais cartas cada número conta;
+    - o `StatsCard` mostra a curva (com "Curva com terrenos"), a tabela de cor (símbolos e fontes, com a fonte em
+      vermelho quando há símbolos e nenhuma fonte), os tipos e as categorias. Todo número é um botão que destaca
+      as cartas, e um segundo clique ou "Tirar o destaque" apaga.
+  - Verificado:
+    - os números de um deck de teste calculado à mão batem (curva, médias, símbolos, fontes, tipos e categorias);
+    - no navegador, a barra "valor 2" diz 7 cartas e destaca exatamente as 7;
+    - as fontes vermelhas destacam Arcane Signet e as Mountains.
 - [ ] **T10.9 — Modo texto em massa** _(req: 13–15)_ · depende de T10.3, T10.6
   - Verificação:
     - fitness "serializar e ler de volta = mesmo deck";

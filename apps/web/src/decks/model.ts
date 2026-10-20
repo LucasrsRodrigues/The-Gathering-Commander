@@ -2,6 +2,7 @@
 // All functions are pure and return new decks; adding and removing cards also records it in the deck's history.
 
 import { DECK_LIMITS, withChange, type Color, type DeckForValidation } from '@gathering-hall/formats'
+import { COLORS, type ManaInfo } from './manaInfo'
 
 // The document shape (and its validator) lives in @gathering-hall/formats: the server validates cloud decks with it.
 export type { Deck, DeckCard, DeckZone } from '@gathering-hall/formats'
@@ -185,6 +186,7 @@ export interface CardInfo {
   typeLine: string
   manaValue: number
   colorIdentity: Color[]
+  mana?: ManaInfo // cost symbols and colors it produces (stats)
 }
 
 export const TYPE_GROUPS = [
@@ -202,13 +204,23 @@ export interface DeckStats {
   total: number
   lands: number
   curve: number[] // nonland cards by mana value 0..6, index 7 = 7+
-  averageManaValue: number
+  averageManaValue: number // nonland cards
+  averageWithLands: number
   colors: Record<Color | 'C', number> // nonland cards by color identity (multicolor counts in each)
+  pips: Record<Color, number> // colored symbols in the costs (copies counted)
+  sources: Record<Color | 'C', number> // cards that can add each color (lands and the rest)
   types: Partial<Record<TypeGroup, number>>
+  categories: { name: string; count: number }[] // main category, in the deck's order
 }
 
-export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>): DeckStats {
-  const stats: DeckStats = { total: 0, lands: 0, curve: Array(8).fill(0), averageManaValue: 0, colors: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, types: {} }
+// The deck proper only (commanders + cards): the Talvez list never counts. `identity` lets "any color" sources
+// (Command Tower, Arcane Signet…) count for each color of the commander.
+export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>, identity: readonly Color[] = COLORS): DeckStats {
+  const stats: DeckStats = {
+    total: 0, lands: 0, curve: Array(8).fill(0), averageManaValue: 0, averageWithLands: 0,
+    colors: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, pips: { W: 0, U: 0, B: 0, R: 0, G: 0 },
+    sources: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, types: {}, categories: [],
+  }
   let mvSum = 0
   let nonLands = 0
   for (const c of [...deck.commanders, ...deck.cards]) {
@@ -217,6 +229,11 @@ export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>): Deck
     if (!card) continue
     const group = typeGroup(card.typeLine)
     stats.types[group] = (stats.types[group] ?? 0) + c.count
+    if (card.mana) {
+      for (const color of COLORS) stats.pips[color] += (card.mana.pips[color] ?? 0) * c.count
+      const produced = new Set<Color | 'C'>([...card.mana.sources, ...(card.mana.anyColor ? identity : [])])
+      for (const t of produced) stats.sources[t] += c.count
+    }
     if (group === 'land') {
       stats.lands += c.count
       continue
@@ -227,6 +244,34 @@ export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>): Deck
     if (card.colorIdentity.length === 0) stats.colors.C += c.count
     for (const color of card.colorIdentity) stats.colors[color] += c.count
   }
-  stats.averageManaValue = nonLands ? Math.round((mvSum / nonLands) * 100) / 100 : 0
+  const round = (n: number) => Math.round(n * 100) / 100
+  stats.averageManaValue = nonLands ? round(mvSum / nonLands) : 0
+  stats.averageWithLands = nonLands + stats.lands ? round(mvSum / (nonLands + stats.lands)) : 0
+  stats.categories = categoriesOf(deck).filter((cat) => cat.count > 0)
   return stats
+}
+
+// What a click on a number of the stats panel highlights (req. 12).
+export type StatFilter =
+  | { kind: 'mv'; mv: number; withLands?: boolean } // nonland (lands too at 0 when withLands), 7 = 7+
+  | { kind: 'type'; group: TypeGroup }
+  | { kind: 'color'; color: Color | 'C' }
+  | { kind: 'pip'; color: Color }
+  | { kind: 'source'; color: Color | 'C' }
+  | { kind: 'category'; name: string }
+
+export function cardsMatching(deck: Deck, info: ReadonlyMap<string, CardInfo>, filter: StatFilter, identity: readonly Color[] = COLORS): string[] {
+  return [...deck.commanders, ...deck.cards].filter((c) => {
+    const card = info.get(c.oracleId)
+    if (filter.kind === 'category') return !!c.tags?.[0] && c.tags[0].toLowerCase() === filter.name.toLowerCase()
+    if (!card) return false
+    const land = typeGroup(card.typeLine) === 'land'
+    switch (filter.kind) {
+      case 'mv': return land ? !!filter.withLands && filter.mv === 0 : Math.min(7, Math.max(0, Math.floor(card.manaValue))) === filter.mv
+      case 'type': return typeGroup(card.typeLine) === filter.group
+      case 'color': return !land && (filter.color === 'C' ? card.colorIdentity.length === 0 : card.colorIdentity.includes(filter.color))
+      case 'pip': return (card.mana?.pips[filter.color] ?? 0) > 0
+      case 'source': return !!card.mana && (card.mana.sources.includes(filter.color) || (card.mana.anyColor && identity.includes(filter.color as Color)))
+    }
+  }).map((c) => c.name)
 }

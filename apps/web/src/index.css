@@ -531,3 +531,18 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 /* Épico 10, T10.7: adding to the Talvez list from the search. */
 .add-target { justify-self: start; }
 .result .maybe-badge { top: auto; bottom: 4px; background: var(--surface-solid); color: var(--text); border: 1px dashed var(--control-border); }
+
+/* Épico 10, T10.8: stats panel with clickable numbers. */
+.stat-btn { padding: 2px 8px; border: 1px solid transparent; border-radius: 99px; background: var(--surface-hi); color: var(--text); cursor: pointer; font: inherit; }
+.stat-btn:hover { border-color: var(--control-border); }
+.stat-btn[aria-pressed='true'] { background: var(--gold); color: var(--gold-ink); }
+.stat-btn.inline { padding: 0 6px; }
+.stat-btn.warn { color: var(--danger); border-color: var(--danger); }
+.curve-bar { display: flex; align-items: flex-end; width: 100%; height: 72px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.curve-bar .bar { width: 100%; }
+.curve-bar[aria-pressed='true'] .bar { background: var(--text); }
+.curve-bar:focus-visible { outline: 2px solid var(--gold); }
+.color-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.color-table th, .color-table td { padding: 3px 4px; text-align: left; font-weight: 500; }
+.color-table thead th { color: var(--muted); font-size: 12px; }
+.stat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; }

@@ -3,6 +3,7 @@
 import type { CardRef, DeckInput } from '@gathering-hall/engine'
 import type { CardFacts } from '@gathering-hall/formats'
 import { normalizeName, type CardImages, type CatalogCard, type CatalogPort } from '../catalog/catalog'
+import { manaInfoOf } from './manaInfo'
 import type { CardInfo, Deck, DeckCard } from './model'
 
 export interface DeckCardData {
@@ -23,7 +24,10 @@ export function indexCards(cards: Iterable<CatalogCard>, into: DeckCardData = em
     into.byOracle.set(oracleId, card)
     if (card.facts) {
       into.facts.set(oracleId, card.facts)
-      into.info.set(oracleId, { typeLine: card.facts.typeLine, manaValue: card.manaValue, colorIdentity: card.facts.colorIdentity })
+      into.info.set(oracleId, {
+        typeLine: card.facts.typeLine, manaValue: card.manaValue, colorIdentity: card.facts.colorIdentity,
+        mana: manaInfoOf(card.ref.rules, card.facts.oracleText, card.facts.typeLine),
+      })
     }
   }
   return into

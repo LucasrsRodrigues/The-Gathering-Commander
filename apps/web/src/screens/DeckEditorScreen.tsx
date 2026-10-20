@@ -7,8 +7,9 @@ import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../
 import { exportDecklist } from '../decks/importExport'
 import { isEligibleAlone } from '@gathering-hall/formats'
 import {
-  addCard, addCategory, categoriesOf, deckStats, deleteCategory, moveCard, moveCategory, moveEntry, removeCard, removeEntry,
+  addCard, addCategory, cardsMatching, categoriesOf, deckStats, deleteCategory, moveCard, moveCategory, moveEntry, removeCard, removeEntry,
   renameCategory, renameDeck, setMainCategory, setPrinting, toggleCategory, toValidation, type Deck, type DeckCard, type DeckZone,
+  type StatFilter,
 } from '../decks/model'
 import { suggestionsFor } from '../decks/tags'
 import { CategoryPanel } from '../decks/ui/CategoryPanel'
@@ -58,6 +59,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [naming, setNaming] = useState<{ kind: 'new'; targets: Target[] } | { kind: 'rename'; from: string } | null>(null)
   const [shownCategory, setShownCategory] = useState<string | null>(null) // highlights its cards
   const [searchToMaybe, setSearchToMaybe] = useState(false)
+  const [statFilter, setStatFilter] = useState<StatFilter | null>(null) // a clicked number of the stats panel
 
   useEffect(() => {
     services.decks.get(deckId).then(async (d) => {
@@ -101,7 +103,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
     return {
       violations: validateDeck(validation, facts, deckRules),
       bracket: suggestBracket(validation, facts),
-      stats: deckStats(deck, data.info),
+      stats: deckStats(deck, data.info, commanders.length ? [...commanderIdentity(commanders)] : undefined),
       identity: commanders.length ? [...commanderIdentity(commanders)] : null,
     }
   }, [deck, data, facts, deckRules])
@@ -122,6 +124,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   )
   const highlight = new Set([
     ...(selectedViolation !== null ? (derived.violations[selectedViolation]?.cards ?? []) : []),
+    ...(statFilter ? cardsMatching(deck, data.info, statFilter, derived.identity ?? undefined) : []),
     ...(shownCategory ? (['commanders', 'cards', 'maybe'] as const).flatMap((z) => deck[z])
       .filter((c) => c.tags?.some((t) => t.toLowerCase() === shownCategory.toLowerCase())).map((c) => c.name) : []),
   ])
@@ -317,7 +320,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       <DeckSidebar stats={derived.stats} deckSizeTarget={deckRules.deckSize} violations={derived.violations}
         bracket={derived.bracket} presets={presets} presetId={preset.id}
         onPreset={(id) => update((d, now) => ({ ...d, presetId: id === OFFICIAL_PRESET_ID ? undefined : id, updatedAt: now }))}
-        selected={selectedViolation} onSelectViolation={setSelectedViolation}>
+        selected={selectedViolation} onSelectViolation={setSelectedViolation} statFilter={statFilter} onStatFilter={setStatFilter}>
         <CategoryPanel categories={categories} suggestions={suggestions}
           onNew={() => setNaming({ kind: 'new', targets: [] })}
           onRename={(from) => setNaming({ kind: 'rename', from })}
