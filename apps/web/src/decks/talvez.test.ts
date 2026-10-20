@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { emptyCardData, toGameDeck } from './cardData'
-import { addCard, deckSize, deckStats, moveCard, newDeck, setPrinting, toValidation } from './model'
+import { addCard, deckSize, deckStats, moveCard, newDeck, removeCard, setPrinting, toValidation } from './model'
 
 // Fitness (épico 10, req. 9): the "Talvez" list never reaches validation, stats, the deck size or the game.
 describe('the Talvez list stays out of the deck', () => {
@@ -28,5 +28,26 @@ describe('the Talvez list stays out of the deck', () => {
 
   it('new decks are written in the v2 format', () => {
     expect(newDeck('x', 'X', 1)).toMatchObject({ schemaVersion: 2, maybe: [], history: [] })
+  })
+})
+
+describe('editing records the history (épico 10, T10.3)', () => {
+  it('adding, removing and moving cards are recorded; quick edits become one entry', () => {
+    let deck = addCard(newDeck('d', 'D', 0), { oracleId: 'o1', name: 'Sol Ring' }, 'cards', 0)
+    deck = addCard(deck, { oracleId: 'o2', name: 'Mind Stone' }, 'cards', 60_000)
+    deck = moveCard(deck, 'o2', 'cards', 120_000, 'maybe')
+    expect(deck.history).toHaveLength(1)
+    expect(deck.history[0]).toMatchObject({
+      added: [{ zone: 'cards', oracleId: 'o1', count: 1 }, { zone: 'maybe', oracleId: 'o2', count: 1 }],
+      removed: [],
+    })
+    const later = removeCard(deck, 'o1', 'cards', 60 * 60_000)
+    expect(later.history).toHaveLength(2)
+    expect(later.history[1]).toMatchObject({ added: [], removed: [{ oracleId: 'o1', name: 'Sol Ring' }] })
+  })
+
+  it('choosing art is not a change in the history', () => {
+    const deck = addCard(newDeck('d', 'D', 0), { oracleId: 'o1', name: 'Sol Ring' }, 'cards', 0)
+    expect(setPrinting(deck, 'o1', 'art', 60 * 60_000).history).toEqual(deck.history)
   })
 })

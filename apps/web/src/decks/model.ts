@@ -1,7 +1,7 @@
 // Deck model: references to cards (oracleId + name, optional chosen printing), never card data.
-// All functions are pure and return new decks.
+// All functions are pure and return new decks; adding and removing cards also records it in the deck's history.
 
-import type { Color, DeckForValidation } from '@gathering-hall/formats'
+import { withChange, type Color, type DeckForValidation } from '@gathering-hall/formats'
 
 // The document shape (and its validator) lives in @gathering-hall/formats: the server validates cloud decks with it.
 export type { Deck, DeckCard, DeckZone } from '@gathering-hall/formats'
@@ -27,12 +27,12 @@ export function addCard(deck: Deck, card: Omit<DeckCard, 'count'>, zone: DeckZon
   const next = existing
     ? list.map((c) => (c === existing ? { ...c, count: c.count + count } : c))
     : [...list, { ...card, count }]
-  return touch(deck, { [zone]: next }, now)
+  return withChange(deck, touch(deck, { [zone]: next }, now), now)
 }
 
 export function removeCard(deck: Deck, oracleId: string, zone: DeckZone, now: number, count = 1): Deck {
   const next = deck[zone].flatMap((c) => (c.oracleId !== oracleId ? [c] : c.count > count ? [{ ...c, count: c.count - count }] : []))
-  return touch(deck, { [zone]: next }, now)
+  return withChange(deck, touch(deck, { [zone]: next }, now), now)
 }
 
 // Moves one copy between lists, keeping its chosen printing and its categories. Without `to`, it switches between

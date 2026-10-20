@@ -57,7 +57,7 @@ export const DECK_LIMITS = {
   folder: 40,
   description: 2_000,
   history: 50,
-  linesPerChange: 200,
+  linesPerChange: 900, // a whole deck swapped at once (300 + 150 out, 300 + 150 in): a change is never cut short
 } as const
 export const MAX_DECK_NAME = DECK_LIMITS.name
 export const MAX_DECK_ENTRIES = DECK_LIMITS.entries

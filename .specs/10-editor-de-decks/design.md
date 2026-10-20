@@ -63,7 +63,7 @@ ChangeLine { zone: 'commanders' | 'cards' | 'maybe'; oracleId: string; name: str
 - **Limites** (no `formats`, os mesmos no app e no servidor):
   - 300 entradas no deck e 150 no "Talvez";
   - 8 tags por carta e 60 categorias distintas;
-  - 50 mudanças no histórico, com até 200 linhas cada;
+  - 50 mudanças no histórico, com até 900 linhas cada (uma mudança nunca é cortada) e até 64 KB no total;
   - documento de até 128 KB. Hoje o limite da nuvem é 64 KB; ele sobe.
 
 ### Nuvem e versões

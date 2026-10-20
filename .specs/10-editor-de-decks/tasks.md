@@ -40,13 +40,27 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - o `CloudStore.put` ganhou um `keepOver` opcional, decidido dentro da mesma transação.
   - **Mudança no design:** recusar todo v1 sobre v2 travaria o app antigo para sempre, porque desde a T10.1 o
     servidor já guarda tudo como v2. A recusa só quando haveria perda protege o mesmo e não trava ninguém.
-- [ ] **T10.3 — Histórico no modelo: diff, junção e volta** _(req: 16–18)_ · depende de T10.1
+- [x] **T10.3 — Histórico no modelo: diff, junção e volta** _(req: 16–18)_ · depende de T10.1
   - Escopo: `deckHistory` (`diff`, `record` com junção de 10 minutos, `replayBack`, restaurar); as operações do
     modelo registram as mudanças.
   - Verificação:
     - fitness "voltar tudo e reaplicar = deck atual";
     - uma carta que entra e sai na mesma junção some do histórico;
     - o limite de 50 descarta as mais antigas.
+  - Feito:
+    - `formats/deckHistory.ts`:
+      - `diff` faz a diferença líquida por lista;
+      - `record` e `withChange` juntam mudanças com menos de 10 minutos entre elas, e o que entrou e saiu se anula;
+      - `versionAt` desfaz do fim para trás;
+      - `restore` grava uma mudança nova, que nunca é juntada à anterior;
+      - `applyForward` e `applyBackward` aplicam uma mudança para frente ou para trás;
+    - no app, `addCard`, `removeCard` e `moveCard` registram sozinhos; um import vira uma mudança só;
+    - trocar arte, nome ou categorias não entra no histórico;
+    - uma carta restaurada que continua em outra lista do deck mantém as categorias e a arte.
+  - **Mudança nos limites:** uma mudança nunca é cortada pela metade, senão o restaurar fica errado. Por isso, o
+    limite de linhas por mudança sobe de 200 para 900 (um deck inteiro trocado). O tamanho fica controlado pela
+    parte do histórico no documento (`MAX_HISTORY_BYTES`, 64 KB): as mudanças mais antigas saem primeiro, e a
+    mais nova sempre fica.
 
 ## Onda 1 — Editor
 - [ ] **T10.4 — Casca nova do editor, visualizações e agrupamentos** _(req: 4, 5)_ · depende de T10.1
