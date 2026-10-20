@@ -1,7 +1,8 @@
 // The engine's card rules (épico 09, T9.3) come from the server catalog, never from the client: a modified client
 // cannot make Sol Ring add ten mana. Cards the catalog does not know play without rules (manual costs).
 
-import { deriveCardRules, type CardRef, type DeckInput, type OracleFacts } from '@gathering-hall/engine'
+import { rulesFor } from '@gathering-hall/cards'
+import type { CardRef, DeckInput, OracleFacts } from '@gathering-hall/engine'
 import { normalizeName, type ClientCard } from './normalize'
 import { stripRules } from '../room/room'
 import type { CatalogLookup } from './lookup'
@@ -32,7 +33,7 @@ export function makeRulesFiller(catalog: CatalogLookup): DeckRulesFiller {
       const key = normalizeName(ref.name)
       if (!cache.has(key)) {
         const card = found.get(key)
-        cache.set(key, card ? deriveCardRules(oracleFactsOf(card)) : undefined)
+        cache.set(key, card ? rulesFor(oracleFactsOf(card), card.oracle_id) : undefined)
       }
       const rules = cache.get(key)
       return rules ? { ...ref, rules } : ref

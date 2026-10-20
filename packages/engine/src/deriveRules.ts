@@ -4,6 +4,7 @@
 // import it (fitness function). It recognizes whole sentences of Oracle text by their structure, never by card
 // name; anything it does not recognize degrades to "manual" (declared mana, manual cost), never to wrong rules.
 
+import { PATTERNS, recognize, type LinePattern } from './oracle/patterns'
 import {
   KEYWORDS, type CardRules, type CardType, type Keyword, type ManaAbility, type ManaAmount, type ManaColor,
   type ManaCost, type ManaProduction, type ManaType, type Supertype,
@@ -36,6 +37,11 @@ const KEYWORD_TEXT: Record<string, Keyword> = Object.fromEntries(
 ) // 'firstStrike' → 'first strike'
 
 export function deriveCardRules(facts: OracleFacts): CardRules {
+  return deriveCardRulesWith(facts, PATTERNS)
+}
+
+// The reader with a given pattern list (tests use small lists of their own).
+export function deriveCardRulesWith(facts: OracleFacts, patterns: readonly LinePattern[]): CardRules {
   const { types, supertypes, subtypes } = parseTypeLine(facts.typeLine)
   const power = parsePT(facts.power)
   const toughness = parsePT(facts.toughness)
@@ -63,7 +69,44 @@ export function deriveCardRules(facts: OracleFacts): CardRules {
   if (mana.entersTapped) rules.entersTapped = true
   const spellMana = (types.includes('instant') || types.includes('sorcery')) && lines.length === 1 ? fixedAdd(lines[0]!) : null
   if (spellMana) rules.spellMana = spellMana
+
+  // Épico 11: coverage, line by line. A line counts as understood only when the engine does everything it says.
+  const shown = displayLines(facts)
+  const manual: string[] = []
+  let understood = 0
+  lines.forEach((line, i) => {
+    const hit = spellMana ? null : recognize(line, { types }, patterns)
+    if (hit) {
+      if (hit.spell) rules.spell = hit.spell
+      if (hit.etb) rules.etb = [...(rules.etb ?? []), hit.etb]
+      if (hit.activated) rules.activated = [...(rules.activated ?? []), hit.activated]
+      if (hit.mana) rules.manaAbilities = dedupe([...rules.manaAbilities, hit.mana])
+      understood++
+    } else if (spellMana || knownLine(line)) understood++
+    else manual.push(shown[i] ?? line)
+  })
+  rules.coverage = manual.length === 0 ? 'automated' : understood === 0 ? 'manual' : 'partial'
+  if (manual.length) rules.manualText = manual
   return rules
+}
+
+// Lines the engine already handled before épico 11: its own keywords, recognized mana abilities, "enters tapped",
+// pain lands' "deals 1 damage to you".
+function knownLine(line: string): boolean {
+  const items = line.split(/,\s*/).map((i) => i.toLowerCase().trim())
+  if (items.length && items.every((i) => KEYWORD_TEXT[i])) return true
+  if (ENTERS_TAPPED.test(line) || TAP_DAMAGE.test(line)) return true
+  if (GRANTS_OTHERS.test(line)) return false
+  if (/\{T\}/.test(line) && /\badd\b/i.test(line)) {
+    const ability = parseManaAbility(line)
+    return !!ability && !ability.partial
+  }
+  return false
+}
+
+// The same lines as oracleLines, as the players read them (the card's name, no reminder text): the "Manual:" list.
+function displayLines(facts: OracleFacts): string[] {
+  return facts.oracleText.replace(/[’]/g, "'").split('\n').map((l) => l.replace(/\s*\([^)]*\)/g, '').trim()).filter(Boolean)
 }
 
 // ---- Type line ----------------------------------------------------------------

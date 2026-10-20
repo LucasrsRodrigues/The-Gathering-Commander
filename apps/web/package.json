@@ -11,13 +11,14 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@gathering-hall/cards": "*",
     "@gathering-hall/engine": "*",
     "@gathering-hall/formats": "*",
+    "@gathering-hall/protocol": "*",
     "@react-three/fiber": "^9.8.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "three": "^0.186.1",
-    "@gathering-hall/protocol": "*"
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

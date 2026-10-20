@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@gathering-hall/cards": "*",
     "@gathering-hall/engine": "*",
     "@gathering-hall/formats": "*",
     "@gathering-hall/protocol": "*",

@@ -35,6 +35,13 @@ describe('engine fitness functions', () => {
     }
   })
 
+  it('keeps the sentence patterns inside the reader (only deriveRules.ts imports oracle/)', () => {
+    for (const { name, code } of files) {
+      if (name === 'deriveRules.ts' || name.startsWith('oracle/')) continue
+      expect(/from\s+['"](\.\.?\/)+oracle\//.test(code), name).toBe(false)
+    }
+  })
+
   it('has no hidden sources of nondeterminism', () => {
     for (const { name, code } of files) {
       expect(/Math\.random|Date\.now|new Date\(|performance\.now/.test(code), name).toBe(false)

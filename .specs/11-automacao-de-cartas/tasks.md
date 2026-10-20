@@ -35,7 +35,7 @@ Quatro ondas e um fechamento:
     antigo é um estado válido. O teste confirma que um estado salvo volta igual.
   - As `TokenDef` prontas (Treasure, Food, Clue) entram com os efeitos de ficha na T11.6, junto do sacrifício da
     Treasure.
-- [ ] **T11.2 — Leitor por frases e exceções em `packages/cards`** _(req: 2–4)_ · depende de T11.1
+- [x] **T11.2 — Leitor por frases e exceções em `packages/cards`** _(req: 2–4)_ · depende de T11.1
   - Escopo:
     - quebra do Oracle em frases (lembrete fora, nome vira `~`);
     - lista de padrões vazia com a estrutura de teste;
@@ -45,6 +45,29 @@ Quatro ondas e um fechamento:
     - fitness "nunca automática com frase não reconhecida";
     - uma exceção substitui o leitor;
     - as palavras-chave conhecidas contam como reconhecidas.
+  - Feito:
+    - `engine/src/oracle/patterns.ts`: o registro de padrões (`LinePattern`, `recognize`), vazio por enquanto. Só o
+      leitor o importa (nova fitness);
+    - a cobertura é calculada no `deriveCardRules`, linha a linha (a unidade é a linha de habilidade do Oracle, sem
+      lembrete):
+      - uma linha conta como entendida se um padrão a reconhece ou se o motor já fazia tudo o que ela diz (as
+        nossas palavras-chave, a habilidade de mana entendida sem sobra, "entra virado", o dano ao virar, o ritual);
+      - o resto vai para `manualText`, como os jogadores leem (com o nome da carta);
+      - carta sem texto (vanilla, básico) é automática;
+    - `deriveCardRulesWith(facts, patterns)` existe para os testes;
+    - pacote novo `packages/cards`:
+      - `OVERRIDES` por `oracleId`, ainda vazio, com o formato documentado e o aviso de não copiar scripts de outros
+        projetos;
+      - `validateRules` confere as exceções contra o modelo;
+      - `rulesFor(facts, oracleId)` é o leitor mais a exceção. O app (Scryfall) e o servidor (catálogo) passaram a
+        usar o `rulesFor`.
+  - **Mudança no design:** o marcador do nome continua sendo o que o leitor do épico 09 já usava ("this card"), e não
+    `~`, para os padrões de mana existentes seguirem iguais. Os padrões novos usam o mesmo marcador.
+  - Verificado:
+    - Sol Ring, Llanowar Elves, Command Tower, Dark Ritual, Forest, Caves of Koilos e Dimir Signet saem automáticas;
+    - Evolving Wilds sai manual;
+    - "Flying + Ward {2}" sai parcial;
+    - fitness: uma frase desconhecida acrescentada a cada carta do fixture nunca a deixa automática.
 - [ ] **T11.3 — `edhrec_rank` no catálogo e o comando de cobertura** _(req: 16)_ · depende de T11.2
   - Escopo:
     - migração 0006 (coluna `edhrec_rank`) e o import lendo o campo;

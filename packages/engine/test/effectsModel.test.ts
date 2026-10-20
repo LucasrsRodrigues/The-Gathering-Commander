@@ -94,6 +94,6 @@ describe('effect model (épico 11, T11.1)', () => {
     expect(migrateState(JSON.parse(JSON.stringify(s)))).toEqual(s)
     const [after, forest] = put(s, 'Forest')
     expect(pool(act(after, { type: 'activateMana', player: 'p1', objectId: forest, abilityIndex: 0 }).state)).toEqual({ G: 1 })
-    expect(FOREST.rules!.coverage).toBeUndefined() // absent = manual: plays by hand as before
+    expect(FOREST.rules!.coverage).toBe('automated') // a basic land: the engine already does all it says
   })
 })

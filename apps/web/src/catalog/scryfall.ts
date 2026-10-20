@@ -2,7 +2,8 @@
 // batched /cards/collection (max 75 identifiers) and a local cache so repeat lookups cost nothing.
 // Responses and cache entries are untrusted: everything goes through toCatalogCard().
 
-import { deriveCardRules, type CardRules, type OracleFacts } from '@gathering-hall/engine'
+import { rulesFor } from '@gathering-hall/cards'
+import type { CardRules, OracleFacts } from '@gathering-hall/engine'
 import type { CardFacts, Color } from '@gathering-hall/formats'
 import {
   normalizeName, printKey, rememberImages, type CardImages, type CatalogCard, type CatalogPort, type RequestOptions,
@@ -126,7 +127,7 @@ function rulesOf(card: ScryfallCard, front: ScryfallFace | undefined, keywords: 
     const v = field(k, 10)
     if (v !== undefined) facts[k] = v
   }
-  return deriveCardRules(facts)
+  return rulesFor(facts, card.oracle_id ?? front?.oracle_id)
 }
 
 export class ScryfallCatalog implements CatalogPort {
