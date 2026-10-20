@@ -27,7 +27,7 @@ const LEGALITIES = ['legal', 'banned', 'not_legal', 'restricted'] as const
 // oxlint-disable-next-line no-control-regex -- rejecting control characters and bidi overrides is the point
 const UNSAFE = /[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/
 
-interface ScryfallImages { small?: string; normal?: string; large?: string }
+interface ScryfallImages { small?: string; normal?: string; large?: string; art_crop?: string }
 interface RulesFields { mana_cost?: string; power?: string; toughness?: string; loyalty?: string }
 interface ScryfallFace extends RulesFields { name?: string; type_line?: string; oracle_text?: string; oracle_id?: string; image_uris?: ScryfallImages }
 interface ScryfallCard extends RulesFields {
@@ -55,7 +55,7 @@ function isText(value: unknown, max = MAX_TEXT): value is string {
 
 function safeImages(images: ScryfallImages | undefined): CardImages | null {
   if (!images || !isImageUrl(images.small) || !isImageUrl(images.normal) || !isImageUrl(images.large)) return null
-  return { small: images.small, normal: images.normal, large: images.large }
+  return { small: images.small, normal: images.normal, large: images.large, ...(isImageUrl(images.art_crop) ? { artCrop: images.art_crop } : {}) }
 }
 
 // Only the fields we use, so the cache stays small; re-validated by toCatalogCard on every read.

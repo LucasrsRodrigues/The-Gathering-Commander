@@ -3,9 +3,37 @@ import { useEffect, useState } from 'react'
 import type { Services } from '../app/services'
 import { AppFooter } from '../app/AppNav'
 import { importDecklist } from '../decks/importExport'
+import { DECK_LIMITS, type Color } from '@gathering-hall/formats'
+import {
+  cleanFolder, foldersOf, inFolder, LIBRARY_SORT_LABELS, matchesQuery, setFolder, sortDecks, type FolderFilter, type LibrarySort,
+} from '../decks/library'
 import { deckSize, newDeck, type Deck } from '../decks/model'
+import { NameDialog } from '../decks/ui/NameDialog'
+import { useDeckSummaries, type DeckSummary } from '../decks/useDeckSummaries'
+import { DragGhost } from '../decks/views/DragGhost'
+import { useCardGestures } from '../decks/views/gestures'
 import { Dialog } from '../ui/Dialog'
 import { toast } from '../ui/stores'
+
+const FOLDERS_KEY = 'gh-deck-folders-v1' // folders with no deck yet (this browser only)
+
+function readFolders(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FOLDERS_KEY) ?? '[]') as unknown
+    return Array.isArray(raw) ? raw.filter((f): f is string => typeof f === 'string').slice(0, 100) : []
+  } catch {
+    return []
+  }
+}
+function writeFolders(list: string[]) {
+  try {
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(list))
+  } catch {
+    // only a convenience
+  }
+}
+
+const COLOR_NAMES: Record<Color, string> = { W: 'branco', U: 'azul', B: 'preto', R: 'vermelho', G: 'verde' }
 
 export function DeckLibraryScreen({ services, onOpen, onTest }: {
   services: Services
@@ -14,7 +42,13 @@ export function DeckLibraryScreen({ services, onOpen, onTest }: {
 }) {
   const [decks, setDecks] = useState<Deck[] | null>(null)
   const [importing, setImporting] = useState(false)
+  const [filter, setFilter] = useState<FolderFilter>({ kind: 'all' })
+  const [query, setQuery] = useState('')
+  const [sortBy, setSortBy] = useState<LibrarySort>('updated')
+  const [emptyFolders, setEmptyFolders] = useState<string[]>(readFolders)
+  const [naming, setNaming] = useState<{ kind: 'new' } | { kind: 'rename'; from: string } | null>(null)
   const reload = () => services.decks.list().then(setDecks)
+  const summaries = useDeckSummaries(decks, services)
 
   const cloudVersion = useCloudVersion(services)
   useEffect(() => {
@@ -22,15 +56,22 @@ export function DeckLibraryScreen({ services, onOpen, onTest }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudVersion])
 
+  const saveFolders = (list: string[]) => {
+    setEmptyFolders(list)
+    writeFolders(list)
+  }
+  const folders = foldersOf(decks ?? [], emptyFolders)
+
   async function create() {
-    const deck = newDeck(crypto.randomUUID(), 'Deck novo', Date.now())
+    const base = newDeck(crypto.randomUUID(), 'Deck novo', Date.now())
+    const deck = filter.kind === 'folder' ? setFolder(base, filter.name, base.updatedAt) : base
     await services.decks.save(deck)
     onOpen(deck.id)
   }
 
   async function duplicate(deck: Deck) {
     const now = Date.now()
-    await services.decks.save({ ...deck, id: crypto.randomUUID(), name: `${deck.name} (cópia)`.slice(0, 60), createdAt: now, updatedAt: now })
+    await services.decks.save({ ...deck, id: crypto.randomUUID(), name: `${deck.name} (cópia)`.slice(0, 60), history: [], createdAt: now, updatedAt: now })
     reload()
   }
 
@@ -43,12 +84,42 @@ export function DeckLibraryScreen({ services, onOpen, onTest }: {
     })
   }
 
+  async function moveTo(list: Deck[], folder: string | null) {
+    const now = Date.now()
+    for (const d of list) await services.decks.save(setFolder(d, folder, now))
+    if (folder) saveFolders(emptyFolders.filter((f) => f.toLowerCase() !== folder.toLowerCase()))
+    reload()
+  }
+
+  async function renameFolder(from: string, to: string) {
+    const name = cleanFolder(to)
+    if (!name) return
+    await moveTo((decks ?? []).filter((d) => inFolder(d, { kind: 'folder', name: from })), name)
+    saveFolders(emptyFolders.map((f) => (f.toLowerCase() === from.toLowerCase() ? name : f)))
+    if (filter.kind === 'folder' && filter.name.toLowerCase() === from.toLowerCase()) setFilter({ kind: 'folder', name })
+  }
+
+  async function deleteFolder(name: string) {
+    const inside = (decks ?? []).filter((d) => inFolder(d, { kind: 'folder', name }))
+    await moveTo(inside, null)
+    saveFolders(emptyFolders.filter((f) => f.toLowerCase() !== name.toLowerCase()))
+    if (filter.kind === 'folder') setFilter({ kind: 'all' })
+    toast(`Pasta "${name}" excluída. ${inside.length ? `Os ${inside.length} deck(s) dela continuam, sem pasta.` : ''}`, inside.length ? {
+      label: 'Desfazer', run: () => void moveTo(inside, name),
+    } : undefined)
+  }
+
+  const shown = decks
+    ? sortDecks(decks.filter((d) => inFolder(d, filter) && matchesQuery(d, query)), sortBy, (d) => summaries.get(d.id)?.identity ?? undefined)
+    : []
+  const isActive = (f: FolderFilter) => JSON.stringify(f) === JSON.stringify(filter)
+
   return (
-    <main className="page">
+    <main className="page library">
       <header className="page-head">
         <div>
           <h1>Decks</h1>
-          <p className="muted">Seus decks ficam salvos neste navegador.</p>
+          <p className="muted">Seus decks ficam salvos neste navegador{services.cloud ? ' e, com conta, na nuvem' : ''}.</p>
         </div>
         <div className="row">
           <button className="btn" onClick={() => setImporting(true)}>Importar lista</button>
@@ -66,29 +137,120 @@ export function DeckLibraryScreen({ services, onOpen, onTest }: {
           </div>
         </section>
       ) : (
-        <ul className="deck-grid">
-          {decks.map((deck) => (
-            <li key={deck.id} className="deck-tile">
-              <button className="deck-open" onClick={() => onOpen(deck.id)}>
-                <strong>{deck.name}</strong>
-                <span className="muted">{deck.commanders.map((c) => c.name).join(' + ') || 'Sem comandante'}</span>
-                <span className={deckSize(deck) === 100 ? 'count ok' : 'count'}>{deckSize(deck)}/100</span>
-              </button>
-              <div className="deck-actions">
-                <button className="btn ghost" onClick={() => onTest(deck)}>Testar</button>
-                <button className="btn ghost" onClick={() => duplicate(deck)}>Duplicar</button>
-                <button className="btn ghost danger" onClick={() => remove(deck)}>Excluir</button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="library-layout">
+          <nav className="folder-list" aria-label="Pastas">
+            <ul>
+              <li data-drop="folder:*"><button className="folder-btn" aria-pressed={isActive({ kind: 'all' })} onClick={() => setFilter({ kind: 'all' })}>
+                Todas <span className="count">{decks.length}</span></button></li>
+              <li data-drop="folder:"><button className="folder-btn" aria-pressed={isActive({ kind: 'none' })} onClick={() => setFilter({ kind: 'none' })}>
+                Sem pasta <span className="count">{decks.filter((d) => !d.folder).length}</span></button></li>
+              {folders.map((f) => (
+                <li key={f.name} data-drop={`folder:${f.name}`}>
+                  <button className="folder-btn" aria-pressed={isActive({ kind: 'folder', name: f.name })} onClick={() => setFilter({ kind: 'folder', name: f.name })}>
+                    {f.name} <span className="count">{f.count}</span>
+                  </button>
+                  <span className="row-actions">
+                    <button className="btn ghost tiny" onClick={() => setNaming({ kind: 'rename', from: f.name })}>Renomear</button>
+                    <button className="btn ghost tiny danger-text" aria-label={`Excluir a pasta ${f.name}`} onClick={() => void deleteFolder(f.name)}>Excluir</button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button className="btn small" onClick={() => setNaming({ kind: 'new' })}>Nova pasta</button>
+          </nav>
+
+          <section className="library-main" aria-label="Decks">
+            <div className="library-tools">
+              <label className="field search-field">Buscar
+                <input type="search" value={query} placeholder="Nome do deck ou do comandante" onChange={(e) => setQuery(e.target.value)} />
+              </label>
+              <label className="inline-field">Ordenar
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as LibrarySort)}>
+                  {(Object.keys(LIBRARY_SORT_LABELS) as LibrarySort[]).map((k) => <option key={k} value={k}>{LIBRARY_SORT_LABELS[k]}</option>)}
+                </select>
+              </label>
+            </div>
+            {shown.length === 0 ? <p className="muted">Nenhum deck aqui{query ? ' com essa busca' : ''}.</p> : (
+              <ul className="deck-grid">
+                {shown.map((deck) => (
+                  <DeckTile key={deck.id} deck={deck} summary={summaries.get(deck.id)} folders={folders.map((f) => f.name)}
+                    onOpen={() => onOpen(deck.id)} onTest={() => onTest(deck)} onDuplicate={() => void duplicate(deck)}
+                    onRemove={() => void remove(deck)} onMove={(folder) => void moveTo([deck], folder)} />
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
       )}
 
+      <DragGhost />
+      {naming && (
+        <NameDialog title={naming.kind === 'new' ? 'Nova pasta' : `Renomear "${naming.from}"`} label="Nome da pasta" maxLength={DECK_LIMITS.folder}
+          initial={naming.kind === 'rename' ? naming.from : ''} confirm={naming.kind === 'new' ? 'Criar' : 'Renomear'}
+          onClose={() => setNaming(null)}
+          onSubmit={(name) => {
+            const clean = cleanFolder(name)
+            if (!clean) return
+            if (naming.kind === 'rename') return void renameFolder(naming.from, clean)
+            if (!folders.some((f) => f.name.toLowerCase() === clean.toLowerCase())) saveFolders([...emptyFolders, clean])
+            setFilter({ kind: 'folder', name: clean })
+          }} />
+      )}
       {importing && (
         <ImportDialog services={services} onClose={() => setImporting(false)} onImported={(id) => onOpen(id)} />
       )}
       <AppFooter />
     </main>
+  )
+}
+
+function DeckTile({ deck, summary, folders, onOpen, onTest, onDuplicate, onRemove, onMove }: {
+  deck: Deck; summary: DeckSummary | undefined; folders: string[]
+  onOpen: () => void; onTest: () => void; onDuplicate: () => void; onRemove: () => void; onMove: (folder: string | null) => void
+}) {
+  const gestures = useCardGestures({
+    onMenu: () => {},
+    onDragStart: () => ({ label: deck.name, image: summary?.art ?? null, count: 1 }),
+    onDrop: (target) => {
+      if (!target.startsWith('folder:') || target === 'folder:*') return
+      onMove(target.slice(7) || null)
+    },
+  })
+  const { consumeClick, onContextMenu: _menu, ...pointer } = gestures
+  const size = deckSize(deck)
+  const status = !summary ? 'verificando…'
+    : summary.status === 'ok' ? `✓ válido para ${summary.presetName}`
+      : summary.status === 'warn' ? `✓ válido para ${summary.presetName}, com avisos`
+        : summary.status === 'blocked' ? `✗ ${summary.problems} problema(s) em ${summary.presetName}` : 'sem conexão para validar'
+  return (
+    <li className="deck-tile">
+      <button className="deck-open" {...pointer} onClick={() => !consumeClick() && onOpen()}>
+        <span className="deck-art" aria-hidden="true">{summary?.art ? <img src={summary.art} alt="" loading="lazy" draggable={false} /> : null}</span>
+        <strong>{deck.name}</strong>
+        <span className="muted">{deck.commanders.map((c) => c.name).join(' + ') || 'Sem comandante'}</span>
+        <span className="deck-meta">
+          {summary?.identity && (
+            <span className="identity" aria-label={`Cores: ${summary.identity.length ? summary.identity.map((c) => COLOR_NAMES[c]).join(', ') : 'incolor'}`}>
+              {summary.identity.length ? summary.identity.map((c) => <span key={c} className={`mana-dot dot-${c}`} />) : <span className="mana-dot dot-C" />}
+            </span>
+          )}
+          <span className={size === 100 ? 'count ok' : 'count'}>{size} cartas</span>
+          <span className={`small deck-status${summary ? ` status-${summary.status}` : ''}`}>{status}</span>
+        </span>
+        {deck.folder && <span className="tag-chip">{deck.folder}</span>}
+      </button>
+      <div className="deck-actions">
+        <button className="btn ghost" onClick={onTest}>Testar</button>
+        <button className="btn ghost" onClick={onDuplicate}>Duplicar</button>
+        <label className="inline-field small">Pasta
+          <select value={deck.folder ?? ''} onChange={(e) => onMove(e.target.value || null)} aria-label={`Pasta de ${deck.name}`}>
+            <option value="">Sem pasta</option>
+            {folders.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </label>
+        <button className="btn ghost danger" onClick={onRemove}>Excluir</button>
+      </div>
+    </li>
   )
 }
 

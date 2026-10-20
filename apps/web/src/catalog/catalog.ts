@@ -7,6 +7,7 @@ export interface CardImages {
   small: string
   normal: string
   large: string
+  artCrop?: string // the art alone (library cards)
 }
 
 export interface CatalogCard {

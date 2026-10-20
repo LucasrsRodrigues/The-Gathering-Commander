@@ -254,12 +254,37 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     cartas ao Talvez, com rolagem fluida em 100 cartas.
 
 ## Onda 2 — Biblioteca e importar
-- [ ] **T10.11 — Biblioteca com pastas, busca e cards com arte** _(req: 19–21)_ · depende de T10.1
+- [x] **T10.11 — Biblioteca com pastas, busca e cards com arte** _(req: 19–21)_ · depende de T10.1
   - Verificação:
     - mover decks entre pastas pelo menu e arrastando;
     - excluir uma pasta mantém os decks;
     - a busca encontra pelo comandante;
     - as pastas sincronizam pela nuvem.
+  - Feito:
+    - `decks/library.ts` (puro):
+      - lista as pastas uma vez cada, sem diferenciar maiúsculas, com contagem;
+      - filtra por todas, sem pasta ou uma pasta;
+      - busca pelo nome do deck ou do comandante, sem acento nem maiúscula;
+      - ordena por editado, nome ou cor (WUBRG, multicolor, incolor, sem dados);
+      - `setFolder` grava a pasta no deck;
+    - pastas vazias ficam só neste navegador (`gh-deck-folders-v1`) até receber um deck. As outras são um campo do
+      deck e sincronizam com ele (o servidor valida desde a T10.1);
+    - `useDeckSummaries` calcula em segundo plano, deck a deck, a identidade, a arte do comandante (`art_crop`) e
+      a validade contra as regras do próprio deck, guardando por versão do deck;
+    - a tela:
+      - coluna de pastas com Todas, Sem pasta e as pastas, cada uma com contagem, renomear e excluir (com
+        "Desfazer"), mais "Nova pasta";
+      - busca e ordenação;
+      - cards com arte, cores, cartas, validade e pasta;
+      - um "Pasta" em cada card, e arrastar o card até uma pasta;
+      - "Novo deck" dentro de uma pasta já nasce nela;
+    - abaixo de 900 px, as pastas viram uma faixa no topo, e só a pasta aberta mostra renomear e excluir.
+  - Verificado no navegador:
+    - criar "Casuais" (vazia), arrastar o deck Krenko para ela, buscar por "mob boss", renomear para "Festa",
+      excluir (os decks continuam) e desfazer;
+    - os cards mostram a arte, as cores e "✗ 2 problema(s) em Commander oficial".
+  - Observação: a validade na biblioteca usa o mesmo caminho do setup (`factsForDate`), então a primeira visita
+    com muitos decks busca as cartas que ainda não estão no cache.
 - [ ] **T10.12 — Importar por link do Archidekt e do Moxfield** _(req: 22–24)_ · depende de T10.1
   - Escopo: `POST /api/import/deck` (allowlist, URL montada pelo id, timeout, limite de tamanho, rate limit),
     normalização dos dois formatos e o campo "Colar link" no app.

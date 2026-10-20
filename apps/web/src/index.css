@@ -564,3 +564,36 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 .history-cards > div { break-inside: avoid; margin-bottom: 10px; }
 .history-cards h4 { margin: 0 0 4px; font-size: 15px; }
 @media (max-width: 699px) { .history-layout { grid-template-columns: 1fr; max-height: none; } }
+
+/* Épico 10, T10.11: library with folders and deck cards. */
+.library-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: start; }
+.folder-list { display: grid; gap: 10px; position: sticky; top: 12px; }
+.folder-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.folder-list li { display: grid; gap: 2px; border-radius: 8px; }
+.folder-list li .row-actions { padding-left: 10px; }
+.folder-btn { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.folder-btn:hover { background: var(--surface-hi); }
+.folder-btn[aria-pressed='true'] { border-color: var(--gold); background: rgb(217 178 90 / 0.08); }
+.library-main { display: grid; gap: 14px; min-width: 0; }
+.library-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.search-field { flex: 1; min-width: 220px; }
+.deck-art { display: block; margin: -14px -16px 6px; aspect-ratio: 626 / 300; background: var(--surface-hi); overflow: hidden; }
+.deck-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-open { -webkit-touch-callout: none; user-select: none; }
+.deck-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.deck-meta .count { margin-top: 0; }
+.deck-status.status-blocked { color: var(--danger); }
+.deck-status.status-ok, .deck-status.status-warn { color: var(--ok); }
+.identity { display: inline-flex; gap: 3px; }
+.mana-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgb(0 0 0 / 0.5); }
+.dot-W { background: #f4ecd2; } .dot-U { background: #6fa8dc; } .dot-B { background: #8a7f8f; }
+.dot-R { background: #e06c4f; } .dot-G { background: #6bbf72; } .dot-C { background: #b8b8b8; }
+.deck-actions .inline-field select { min-height: 32px; max-width: 140px; }
+@media (max-width: 899px) {
+  .library-layout { grid-template-columns: 1fr; }
+  .folder-list { position: static; }
+  .folder-list ul { display: flex; flex-wrap: wrap; }
+  .folder-list li .row-actions { display: none; }
+  .folder-list li:has(.folder-btn[aria-pressed='true']) .row-actions { display: flex; } /* the open folder keeps rename/delete */
+}
+.deck-open .tag-chip { justify-self: start; }
