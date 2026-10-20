@@ -71,6 +71,7 @@ describe('characteristics (épico 12, T12.1)', () => {
         expect(charsOf(s, obj)).toEqual({
           types: r.types, subtypes: r.subtypes, supertypes: r.supertypes, colors: colorsOfCost(r.cost), keywords: r.keywords,
           power: (r.power ?? 0) + delta + mods.p, toughness: (r.toughness ?? 0) + delta + mods.t, controller: obj.controller, known: true,
+          statics: r.statics ?? [], manaAbilities: r.manaAbilities,
         })
       }
     }

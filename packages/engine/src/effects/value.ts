@@ -11,6 +11,14 @@ export interface ValueContext {
   sourceId?: ObjectId
   targets?: readonly Target[]
   x?: number
+  affectedId?: ObjectId // épico 12: the object a continuous effect is changing right now (layers.ts)
+}
+
+// CR 202.3: the total of the mana cost, X as 0.
+export function manaValueOf(card: CardRef | null | undefined): number {
+  const c = card?.rules?.cost
+  if (!c) return 0
+  return c.generic + Object.values(c.colored).reduce((n, v) => n + (v ?? 0), 0) + c.hybrid.length + c.twoBrid.length * 2 + c.phyrexian.length
 }
 
 const lower = (list: readonly string[]) => list.map((s) => s.toLowerCase())
@@ -36,6 +44,7 @@ export function matchesFilter(state: GameState | null, obj: FilterSubject, filte
     if (!lower(filter.subtypes).some((s) => subs.includes(s))) return false
   }
   if (filter.supertypes?.length && !filter.supertypes.some((t) => c.supertypes.includes(t))) return false
+  if (filter.notSupertypes?.some((t) => c.supertypes.includes(t))) return false
   if (filter.controller === 'you' && c.controller !== ctx.controller) return false
   if (filter.controller === 'opponent' && c.controller === ctx.controller) return false
   if (filter.colors?.length && !filter.colors.some((col) => c.colors.includes(col))) return false
@@ -63,6 +72,7 @@ export function evalValueInView(view: PlayerView, ctx: ValueContext, value: Valu
       const key = self && Object.keys(self.counters).find((k) => k.toLowerCase() === value.counter.toLowerCase())
       return key ? Math.max(0, self.counters[key] ?? 0) : 0
     }
+    case 'manaValue': return manaValueOf(view.objects[value.of === 'affected' ? (ctx.affectedId ?? '') : (ctx.sourceId ?? '')]?.card)
     case 'count': {
       if (value.zone !== 'battlefield') return 0
       return view.battlefield.filter((id) => {
@@ -83,6 +93,7 @@ export function evalValue(state: GameState, ctx: ValueContext, value: Value): nu
       if (!obj) return 0
       return Math.max(0, value.kind === 'power' ? powerOf(state, obj) : toughnessOf(state, obj))
     }
+    case 'manaValue': return manaValueOf(state.objects[value.of === 'affected' ? (ctx.affectedId ?? '') : (ctx.sourceId ?? '')]?.card)
     case 'counters': {
       const obj = ctx.sourceId ? state.objects[ctx.sourceId] : undefined
       if (!obj) return 0

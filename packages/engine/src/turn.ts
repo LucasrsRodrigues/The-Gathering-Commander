@@ -7,6 +7,7 @@ import { stillLegal } from './effects/targets'
 import { onCombatStep } from './combat'
 import { clearPassUntil } from './stops'
 import { putTriggersOnStack } from './triggers'
+import { endEffects } from './continuous'
 import { nextDamagePhase } from './damage'
 import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
@@ -101,6 +102,7 @@ export function finishCleanup(tx: Tx) {
       w.ptMods = []
     }
   }
+  endEffects(tx)
   // CR 514.3: normally no priority in cleanup.
   const next = nextPlayerAfter(s, s.turn.active)
   if (next) beginTurn(tx, next, s.turn.number + 1)

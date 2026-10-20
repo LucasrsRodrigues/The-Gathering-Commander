@@ -91,6 +91,7 @@ export interface CardRules {
   spell?: Ability // instants and sorceries: the effect on resolution
   etb?: Ability[] // "When ~ enters, …"
   activated?: ActivatedAbility[] // non-mana activated abilities
+  statics?: StaticAbility[] // épico 12: continuous effects while the permanent is on the battlefield (CR 604, 611.3)
   coverage?: Coverage // absent = 'manual'
   manualText?: string[] // the sentences left to the players (partial cards)
 }
@@ -100,6 +101,52 @@ export interface CardRules {
 
 export type Coverage = 'automated' | 'partial' | 'manual'
 
+// ---- Continuous effects and layers (épico 12, CR 611, 613) ----------------------
+
+export type Layer = 1 | 2 | 3 | 4 | 5 | 6 | '7a' | '7b' | '7c' | '7d'
+
+// What an effect changes. Each kind belongs to one layer (layers.ts: layerOf).
+export type Change =
+  | { kind: 'copy'; of: ObjectId } // 1: the copiable values of another object (CR 707.2)
+  | { kind: 'control'; to: PlayerId | 'sourceController' } // 2
+  | { kind: 'text' } // 3: in the model only; the reader produces none (épico 12, Fora)
+  | { kind: 'addTypes' | 'setTypes'; types?: CardType[]; subtypes?: string[]; landTypes?: boolean } // 4 (landTypes: CR 305.7)
+  | { kind: 'addColors' | 'setColors'; colors: ManaColor[] } // 5
+  | { kind: 'addKeywords'; keywords: Keyword[] } // 6
+  | { kind: 'loseAllAbilities' } // 6
+  | { kind: 'setPT'; power: Value; toughness: Value } // 7a when cda, otherwise 7b
+  | { kind: 'modifyPT'; power: Value; toughness: Value } // 7c
+  | { kind: 'switchPT' } // 7d
+
+// Which objects: the source, what it is attached to, a filter (re-evaluated as the board changes), or a set locked
+// when a spell resolved (CR 611.2c).
+export type Affected =
+  | { kind: 'self' }
+  | { kind: 'attached' }
+  | { kind: 'objects'; filter: Filter }
+  | { kind: 'ids'; ids: ObjectId[] }
+
+export type Duration = { kind: 'endOfTurn' } | { kind: 'whileSourceOnBattlefield' }
+
+// A static ability of a permanent: an effect for as long as the permanent is on the battlefield (CR 611.3).
+export interface StaticAbility {
+  affects: Affected
+  changes: Change[] // one ability may act in several layers (Opalescence: type in 4, P/T in 7b); CR 613.6
+  cda?: boolean // characteristic-defining (CR 604.3): applied first in its layer, also outside the battlefield
+  text: string
+}
+
+// An effect a spell or ability created when it resolved, kept in the state (CR 611.2).
+export interface ContinuousEffect {
+  id: string
+  source: ObjectId | null
+  controller: PlayerId // who controls the effect ("you control" in its filter, "sourceController")
+  timestamp: number // CR 613.7
+  affects: Affected
+  change: Change
+  until: Duration
+}
+
 // How much: fixed, the X paid, a P/T, a count, or counters on the source.
 export type Value =
   | { kind: 'fixed'; n: number }
@@ -107,11 +154,13 @@ export type Value =
   | { kind: 'power' | 'toughness'; of: 'self' | 'target' }
   | { kind: 'count'; what: Filter; zone: 'battlefield' | 'hand' | 'graveyard' }
   | { kind: 'counters'; counter: string; of: 'self' }
+  | { kind: 'manaValue'; of: 'self' | 'affected' } // épico 12, CR 202.3; 'affected': each object the effect changes (Opalescence)
 
 // Which objects: for targets, counts and searches. Every field narrows; an empty filter matches everything.
 export interface Filter {
   types?: CardType[] // any of these
   notTypes?: CardType[]
+  notSupertypes?: Supertype[] // épico 12: "nonbasic"
   subtypes?: string[] // any of these (case-insensitive)
   supertypes?: Supertype[]
   controller?: 'you' | 'opponent' | 'any'
@@ -209,7 +258,8 @@ export interface GameObject {
   damage: number // CR 120.6: marked damage, removed in cleanup
   deathtouchDamage: boolean // CR 704.5h
   controlledSince: number // turn number since which its controller has controlled it (CR 302.6)
-  ptMods: { power: number; toughness: number }[] // manual "until end of turn" adjustments
+  ptMods: { power: number; toughness: number }[] // manual "until end of turn" adjustments (layer 7c, épico 12)
+  attachedTo?: ObjectId // épico 12: the object this Equipment or Aura is attached to (T12.4)
 }
 
 export type LossReason = 'life' | 'poison' | 'commanderDamage' | 'emptyLibrary' | 'conceded'
@@ -410,6 +460,7 @@ export interface GameState {
   pending: PendingDecision | null
   winners: PlayerId[] | null
   triggers?: PendingTrigger[] // épico 11: triggered, not yet on the stack (CR 603.3)
+  effects?: ContinuousEffect[] // épico 12: effects of resolved spells and abilities still in force
 }
 
 // ---- Actions (commands) ----------------------------------------------------

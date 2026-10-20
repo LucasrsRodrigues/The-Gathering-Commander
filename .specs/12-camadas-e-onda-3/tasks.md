@@ -50,7 +50,7 @@ Cinco ondas e um fechamento.
         são iguais à carta impressa mais marcadores e ajustes;
       - orçamento: 100 permanentes em menos de 2 ms;
       - a cor a partir do custo.
-- [ ] **T12.2 — Camadas 1 a 7, timestamps e dependências** _(req: 2–5)_ · depende de T12.1
+- [x] **T12.2 — Camadas 1 a 7, timestamps e dependências** _(req: 2–5)_ · depende de T12.1
   - Escopo:
     - `ContinuousEffect`, `Affected`, `Change` e `Duration` em `types.ts`;
     - `state.effects` para os efeitos resolvidos;
@@ -67,6 +67,60 @@ Cinco ondas e um fechamento.
       - Blood Moon e um terreno que ganha habilidade;
     - replay determinístico;
     - partida salva antiga abre.
+  - Feito:
+    - **Modelo** (`types.ts`):
+      - `Layer`, `Change`, `Affected`, `Duration`;
+      - `StaticAbility { affects, changes[], cda? }`: uma habilidade com partes em várias camadas, como
+        Opalescence (tipo na 4, P/R na 7b);
+      - `ContinuousEffect`, guardado em `state.effects`;
+      - `GameObject.attachedTo`, já previsto para a T12.4;
+      - `Filter.notSupertypes` ("nonbasic");
+      - `Value.manaValue` da origem ou do objeto afetado.
+    - **Algoritmo** (`layers.ts`), por camada (1, 2, 3, 4, 5, 6, 7a, 7b, 7c, 7d):
+      - os marcadores e os ajustes manuais entram na 7c (613.4c);
+      - as características definidas por habilidade vêm primeiro;
+      - depois, o menor timestamp que não depende de outro que falta, ou o menor timestamp num ciclo (613.8b);
+      - uma estática perdida antes de começar não aplica, mas uma que já começou numa camada anterior continua até
+        o fim, nos mesmos objetos (613.5, 613.6);
+      - um conjunto travado na resolução não segue um objeto que saiu e voltou (timestamp, CR 400.7);
+      - 305.7: definir o tipo de terreno tira as habilidades do texto e dá a mana do tipo básico; somar dá a mana a
+        mais (305.6);
+      - permanente virada para baixo: 2/2 sem nada (708.2).
+    - **Dependência** (613.8a): testada de verdade, aplicando o outro efeito numa cópia e comparando três coisas:
+      - se o efeito existe;
+      - em que ele se aplica;
+      - o que ele faz.
+
+      Antes do teste há um filtro barato: mudanças de P/R ou de palavras-chave só criam dependência com um efeito
+      que lê força ou resistência.
+    - **Cache:** por estado, com os fatos que o cálculo usou, comparados antes de reaproveitar:
+      - os objetos do campo, os marcadores, os ajustes e o anexo;
+      - os efeitos;
+      - o tamanho das mãos e dos cemitérios.
+
+      Assim, a escrita feita por referência dentro do `Tx` não deixa o cálculo velho. Sem nenhum efeito no campo, o
+      caminho rápido do impresso continua.
+    - `continuous.ts`: `addEffect` (com timestamp) e `endEffects` na limpeza. Os "até o fim do turno" acabam (514.2),
+      e os de fonte que saiu do campo também.
+    - **Mudança no plano:** os `ptMods` manuais não viraram `state.effects`. Eles já são exatamente um efeito 7c
+      "até o fim do turno" do objeto, e o `layers.ts` os aplica nessa subcamada. Assim, o `migrateState` não precisou
+      mudar, e as partidas salvas abrem iguais.
+  - Verificado (`test/layers613.test.ts`, 12 testes, com cartas de teste):
+    - 7b antes da 7c, seja qual for o timestamp; marcadores na 7c; troca na 7d;
+    - o anthem acompanha o campo e some com a fonte;
+    - camada 2 antes da 7c: a criatura roubada ganha o anthem do novo controlador;
+    - camada 4 antes da 6: o artefato virado criatura ganha voar de um efeito mais antigo e a P/R do próprio custo;
+    - Humility e Opalescence nas duas ordens: o timestamp decide na 7b, e a Humility, que perdeu as próprias
+      habilidades, continua valendo (613.6);
+    - Blood Moon e Urborg nas duas ordens: o Urborg depende do Blood Moon, perde a habilidade e não deixa a
+      Floresta virar Pântano. Sem o Blood Moon, todo terreno vira também Pântano, com a mana;
+    - cópia (camada 1) com os valores impressos, e o anthem por cima;
+    - característica definida por habilidade (7a) e depois o anthem;
+    - conjunto travado e objeto que voltou;
+    - fim do turno.
+    - **Orçamento:** 100 permanentes e 10 anthems, 0,4 ms por tabuleiro sem cache. O teste usa o melhor de 5 lotes,
+      porque a média passou de 2 ms com a suíte inteira em paralelo e a máquina com carga 8.
+    - Todos os 237 testes de antes passam iguais.
 - [ ] **T12.3 — A visão e a prévia com as características calculadas** _(req: 6)_ · depende de T12.2
   - Escopo:
     - `ObjectView` com tipos, palavras-chave, cores, P/R, controlador e anexo calculados;
