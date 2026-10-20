@@ -6,7 +6,9 @@ import { factsForDate, type DatedFacts } from '../catalog/legality'
 import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../decks/cardData'
 import { exportDecklist } from '../decks/importExport'
 import { addCard, deckStats, moveCard, removeCard, renameDeck, setPrinting, toValidation, type Deck, type DeckCard } from '../decks/model'
-import { DeckList, type DeckListActions } from '../decks/ui/DeckList'
+import { DeckView, type DeckCardActions } from '../decks/views/DeckView'
+import { GROUP_BY_LABELS, groupCards, SORT_BY_LABELS, VIEW_LABELS, type DeckViewMode, type GroupBy, type SortBy } from '../decks/views/grouping'
+import { useEditorPrefs, useMediaQuery } from '../decks/views/prefs'
 import { DeckSidebar } from '../decks/ui/DeckSidebar'
 import { SearchPanel } from '../decks/ui/SearchPanel'
 import { Dialog } from '../ui/Dialog'
@@ -34,6 +36,10 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [exporting, setExporting] = useState(false)
   const [selectedViolation, setSelectedViolation] = useState<number | null>(null)
   const loaded = useRef(false)
+  const [prefs, setPrefs] = useEditorPrefs()
+  const phone = useMediaQuery('(max-width: 699px)')
+  const [pane, setPane] = useState<'deck' | 'stats'>('deck') // tablet and phone: one of the two at a time
+  const view: DeckViewMode = phone ? 'list' : prefs.view
 
   useEffect(() => {
     services.decks.get(deckId).then(async (d) => {
@@ -81,6 +87,10 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       identity: commanders.length ? [...commanderIdentity(commanders)] : null,
     }
   }, [deck, data, facts, deckRules])
+  const groups = useMemo(
+    () => (deck ? groupCards(deck.cards, data.info, prefs.groupBy, prefs.sortBy, deck.tagOrder) : []),
+    [deck, data.info, prefs.groupBy, prefs.sortBy],
+  )
 
   if (missing) return <main className="page"><p>Esse deck não existe mais.</p><button className="btn" onClick={onBack}>Voltar</button></main>
   if (!deck || !derived) return <main className="page"><p className="muted">Carregando deck…</p></main>
@@ -98,7 +108,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
     toast(commanderMode ? `${card.ref.name} é o comandante.` : `+1 ${card.ref.name}`)
   }
 
-  const actions: DeckListActions = {
+  const actions: DeckCardActions = {
     add: (c, zone) => update((d, now) => addCard(d, c, zone, now)),
     remove: (c, zone) => update((d, now) => removeCard(d, c.oracleId, zone, now)),
     move: (c, from) => update((d, now) => moveCard(d, c.oracleId, from, now)),
@@ -106,7 +116,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   }
 
   return (
-    <main className="editor">
+    <main className="editor" data-pane={pane}>
       <header className="editor-head">
         <button className="btn ghost" onClick={onBack}>← Decks</button>
         <input className="deck-name" aria-label="Nome do deck" value={deck.name} maxLength={60}
@@ -116,10 +126,33 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
           <button className="btn primary" onClick={() => onTest(deck)}>Testar (goldfish)</button>
         </div>
       </header>
+      <div className="editor-tools" role="toolbar" aria-label="Como ver o deck">
+        <div className="seg pane-tabs" role="tablist" aria-label="Painel">
+          <button role="tab" aria-selected={pane === 'deck'} onClick={() => setPane('deck')}>Deck</button>
+          <button role="tab" aria-selected={pane === 'stats'} onClick={() => setPane('stats')}>Estatísticas</button>
+        </div>
+        {!phone && (
+          <div className="seg" role="group" aria-label="Visualização">
+            {(Object.keys(VIEW_LABELS) as DeckViewMode[]).map((v) => (
+              <button key={v} aria-pressed={view === v} onClick={() => setPrefs({ view: v })}>{VIEW_LABELS[v]}</button>
+            ))}
+          </div>
+        )}
+        <label className="inline-field">Agrupar
+          <select value={prefs.groupBy} onChange={(e) => setPrefs({ groupBy: e.target.value as GroupBy })}>
+            {(Object.keys(GROUP_BY_LABELS) as GroupBy[]).map((g) => <option key={g} value={g}>{GROUP_BY_LABELS[g]}</option>)}
+          </select>
+        </label>
+        <label className="inline-field">Ordenar
+          <select value={prefs.sortBy} onChange={(e) => setPrefs({ sortBy: e.target.value as SortBy })}>
+            {(Object.keys(SORT_BY_LABELS) as SortBy[]).map((o) => <option key={o} value={o}>{SORT_BY_LABELS[o]}</option>)}
+          </select>
+        </label>
+      </div>
 
       <SearchPanel catalog={services.catalog} commanderMode={commanderMode} identity={derived.identity}
         countOf={countOf} onAdd={addFromSearch} />
-      <DeckList deck={deck} data={data} actions={actions} highlight={highlight} />
+      <DeckView mode={view} commanders={deck.commanders} groups={groups} data={data} actions={actions} highlight={highlight} />
       <DeckSidebar stats={derived.stats} deckSizeTarget={deckRules.deckSize} violations={derived.violations}
         bracket={derived.bracket} presets={presets} presetId={preset.id}
         onPreset={(id) => update((d, now) => ({ ...d, presetId: id === OFFICIAL_PRESET_ID ? undefined : id, updatedAt: now }))}

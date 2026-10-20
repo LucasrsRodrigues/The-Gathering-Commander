@@ -63,7 +63,7 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     mais nova sempre fica.
 
 ## Onda 1 — Editor
-- [ ] **T10.4 — Casca nova do editor, visualizações e agrupamentos** _(req: 4, 5)_ · depende de T10.1
+- [x] **T10.4 — Casca nova do editor, visualizações e agrupamentos** _(req: 4, 5)_ · depende de T10.1
   - Escopo:
     - barra (visualização, agrupar, ordenar);
     - `grouping.ts`;
@@ -74,6 +74,21 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - trocar de visualização ou de agrupamento com 100 cartas em menos de 100 ms;
     - as imagens só carregam quando visíveis;
     - no celular, só a lista.
+  - Feito:
+    - `decks/views/grouping.ts` (puro): agrupa por tipo, valor (com 7+ junto e os terrenos à parte), cor (cada cor,
+      multicolor, incolor e terrenos) ou categoria principal (na ordem do deck, depois em ordem alfabética, com
+      "Sem categoria" no fim); ordena por nome ou valor;
+    - `DeckView` com lista, pilhas (só a faixa do nome aparece, e a última carta fica inteira) e grade, todas a
+      partir dos mesmos grupos;
+    - imagens `small` com `loading="lazy"`, e grupos com `content-visibility: auto`;
+    - barra com visualização, agrupar e ordenar, guardados neste navegador (`gh-editor-view-v1`), com volta ao
+      padrão se o armazenamento falhar;
+    - abaixo de 1100 px, abas "Deck | Estatísticas" e alvos de 44 px; abaixo de 700 px, só a lista, numa coluna,
+      com a página rolando por inteiro;
+    - a `DeckList` antiga saiu.
+  - Medido no navegador (57 entradas, 86 cartas): trocar de visualização leva cerca de 20 ms.
+  - Pendente para a T10.5: nas pilhas, no toque, os botões +/− ficam escondidos. Até o menu da carta chegar, a
+    edição por toque é pela lista.
 - [ ] **T10.5 — Menu da carta, seleção múltipla e arrastar** _(req: 7, 10)_ · depende de T10.4
   - Verificação:
     - toda ação de arrastar também existe no menu;

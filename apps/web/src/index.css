@@ -393,12 +393,70 @@ button.deck-open:hover { background: var(--surface-hi); }
 
 .toast.has-action { pointer-events: auto; display: flex; gap: 12px; align-items: center; }
 
-@media (max-width: 1000px) {
-  .editor { grid-template-columns: 1fr 1fr; height: auto; }
-  .deck-side { grid-column: 1 / -1; }
+/* Épico 10: toolbar, the three deck views, and one pane at a time below desktop width. */
+.editor { grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(260px, 300px); grid-template-rows: auto auto minmax(0, 1fr); }
+.editor-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.seg button[aria-selected='true'] { background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+.pane-tabs { display: none; }
+.inline-field { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
+.inline-field select { min-height: 36px; }
+.deck-view { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.deck-group { content-visibility: auto; contain-intrinsic-size: auto 240px; }
+.deck-group h2 { margin: 0 0 6px; font-size: 18px; }
+.deck-view ul { list-style: none; margin: 0; padding: 0; }
+.view-list { display: block; columns: 300px; column-gap: 20px; }
+.view-list .deck-group { break-inside: avoid; margin-bottom: 14px; content-visibility: visible; }
+.group-rows { display: grid; gap: 2px; }
+.deck-row { grid-template-columns: 2.2em 1fr 2em auto; }
+.tag-chips { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px; margin-top: -2px; }
+.tag-chip { font-size: 12px; padding: 0 6px; border-radius: 99px; background: var(--surface-hi); color: var(--muted); }
+
+.deck-card { position: relative; }
+.deck-card-face {
+  position: relative; display: grid; place-items: center; width: 100%; padding: 0; border: 0; border-radius: 7px; overflow: hidden;
+  aspect-ratio: 63 / 88; background: var(--surface-hi); cursor: pointer; color: var(--text);
 }
-@media (max-width: 680px) {
+.deck-card-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-card-name { padding: 8px; font-size: 13px; text-align: center; }
+.deck-card-count {
+  position: absolute; top: 6%; right: 6px; padding: 0 7px; border-radius: 99px; background: rgb(12 17 15 / 0.85);
+  color: var(--gold); font-weight: 700; font-size: 14px;
+}
+.deck-card.flagged .deck-card-face { outline: 3px solid var(--danger); outline-offset: -3px; }
+.deck-card .row-actions { position: absolute; right: 4px; bottom: 4px; opacity: 0; transition: opacity 120ms; }
+.deck-card:hover .row-actions, .deck-card:focus-within .row-actions { opacity: 1; }
+@media (hover: none) { .view-grid .deck-card .row-actions { opacity: 1; } } /* stacks on touch: the list view (and T10.5's menu) edit */
+.deck-card .step-btn, .deck-card .btn.tiny { background: rgb(12 17 15 / 0.85); }
+
+.view-grid .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+
+/* Stacks: each group is a column; cards overlap showing the name strip, the last one whole. */
+.view-stacks { flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+.view-stacks .deck-group { width: 150px; contain-intrinsic-size: auto 420px; }
+.view-stacks .deck-group h2 { font-size: 16px; overflow-wrap: anywhere; }
+.group-stack { display: grid; }
+.group-stack .deck-card + .deck-card { margin-top: -118%; }
+.group-stack .deck-card:hover, .group-stack .deck-card:focus-within { z-index: 2; }
+.group-stack .deck-card:hover .deck-card-face, .group-stack .deck-card:focus-within .deck-card-face { box-shadow: 0 10px 28px rgb(0 0 0 / 0.6); }
+.group-stack .deck-card .row-actions { top: 6px; bottom: auto; left: 4px; right: auto; }
+.group-stack .deck-card:not(:last-child) .deck-card-count { top: 4px; }
+
+@media (max-width: 1099px) {
+  .editor { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); height: auto; }
+  .pane-tabs { display: inline-flex; }
+  .editor[data-pane='deck'] .deck-side { display: none; }
+  .editor[data-pane='stats'] .deck-view { display: none; }
+  .deck-view, .search-panel, .deck-side { overflow: visible; min-height: auto; } /* the editor scrolls, not each pane */
+  .editor { grid-template-rows: none; align-content: start; }
+  .deck-side { grid-column: 2; }
+  .view-stacks .deck-group { width: 132px; }
+  .seg button { min-height: 44px; }
+  .step-btn { min-width: 44px; min-height: 44px; }
+}
+@media (max-width: 699px) {
   .editor { grid-template-columns: 1fr; }
+  .deck-side { grid-column: auto; } /* auto, so it stays after the search box */
+  .view-list { columns: auto; }
 }
 
 /* ---------- Online ---------- */
