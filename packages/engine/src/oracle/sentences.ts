@@ -100,6 +100,10 @@ const PARSERS: Parser[] = [
   (s) => { const m = re(`You (gain|lose) ${NUM} life\\.`).exec(s); return m ? { effects: [{ kind: m[1] === 'gain' ? 'gainLife' : 'loseLife', who: 'you', amount: value(m[2]!) }] } : null },
   (s) => { const m = re(`Each opponent loses ${NUM} life\\.`).exec(s); return m ? { effects: [{ kind: 'loseLife', who: 'each opponent', amount: value(m[1]!) }] } : null },
   (s) => {
+    const m = re(`Each opponent loses ${NUM} life and you gain ${NUM} life\\.`).exec(s)
+    return m ? { effects: [{ kind: 'loseLife', who: 'each opponent', amount: value(m[1]!) }, { kind: 'gainLife', who: 'you', amount: value(m[2]!) }] } : null
+  },
+  (s) => {
     const m = re(`Target player (gains|loses) ${NUM} life\\.`).exec(s)
     return m ? { targets: [{ kind: 'player', who: 'any' }], effects: [{ kind: m[1] === 'gains' ? 'gainLife' : 'loseLife', who: 'target', amount: value(m[2]!) }] } : null
   },

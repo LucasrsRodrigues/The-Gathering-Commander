@@ -17,6 +17,7 @@ export function defaultAnswer(game: GameState, player: PlayerId, decision: SkipD
       return pending?.kind === 'bottomCards' ? { type: 'bottomCards', player, objectIds: lastInHand(pending.count) } : null
     case 'discard':
       return pending?.kind === 'discard' ? { type: 'discard', player, objectIds: lastInHand(pending.count) } : null
+    case 'chooseTargets': return { type: 'chooseTargets', player, targets: [], manual: true } // no one chooses for them
     case 'confirmDamage':
       return pending?.kind === 'confirmDamage' ? { type: 'assignDamage', player, assignments: pending.proposal.assignments } : null
     default:

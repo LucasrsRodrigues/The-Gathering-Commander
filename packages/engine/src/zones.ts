@@ -2,6 +2,7 @@
 
 import { shuffle } from './rng'
 import { LOYALTY } from './stats'
+import { queueEnterTriggers } from './triggers'
 import type { Tx } from './tx'
 import type { GameObject, ObjectId, PlayerId, PlayerZoneKind, ZoneKind } from './types'
 
@@ -72,6 +73,7 @@ export function moveObject(tx: Tx, id: ObjectId, to: ZoneKind, opts: MoveOptions
     // CR 306.5b: a planeswalker enters with its printed loyalty.
     const loyalty = obj.card.rules?.types.includes('planeswalker') ? obj.card.rules.loyalty : null
     if (loyalty) obj.counters = { [LOYALTY]: loyalty }
+    if (!obj.faceDown) queueEnterTriggers(tx, id) // épico 11: "when this enters"
   } else if (to === 'stack') {
     if (obj.isCommander && from === 'command') obj.commanderCasts += 1
     const item = { id, kind: 'card' as const, controller: obj.controller, objectId: id }

@@ -61,6 +61,7 @@ const SKIPPED: Record<SkipDecision, string> = {
   declareBlockers: 'não bloqueou',
   confirmDamage: 'confirmou o dano proposto',
   discard: 'descartou as últimas cartas da mão',
+  chooseTargets: 'deixou a habilidade para resolver à mão',
   exception: 'recusou o pedido de exceção',
   priority: 'passou a prioridade',
 }

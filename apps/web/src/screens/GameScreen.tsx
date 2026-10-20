@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { CombatPanel } from '../hud/Combat'
+import { ChooseTargetsPanel } from '../hud/ChooseTargets'
 import { AwayNotice, type AwayControls } from '../hud/AwayNotice'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
@@ -111,6 +112,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
             dispatch={(a) => { const error = session.dispatch(a); if (error) toast(error.message) }} />
         )}
         {!curtain && view.status === 'playing' && <CombatPanel view={view} seat={seat} dispatch={dispatch} />}
+        {!curtain && view.status === 'playing' && <ChooseTargetsPanel view={view} seat={seat} dispatch={dispatch} />}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
         {blocked && !curtain && (
           <BlockedDialog blocked={blocked} view={view} online={connection !== 'local'} dispatch={dispatch}

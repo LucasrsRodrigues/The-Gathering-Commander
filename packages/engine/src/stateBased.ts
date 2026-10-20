@@ -8,6 +8,7 @@ import type { Tx } from './tx'
 import type { GameEvent, LossReason, PlayerId, PlayerState } from './types'
 import { hasKeyword } from './cards'
 import { hasKnownStats, isCreature, isPlaneswalker, LOYALTY, MINUS_ONE, PLUS_ONE, toughnessOf } from './stats'
+import { leaveTriggers } from './triggers'
 import { moveObject } from './zones'
 
 function lossReason(p: PlayerState, poisonLimit: number, commanderDamageLimit: number): LossReason | null {
@@ -88,6 +89,7 @@ export function eliminate(tx: Tx, player: PlayerId, reason: LossReason) {
 
   if (finishIfOver(tx)) return
   leaveCombatDecision(tx, player)
+  leaveTriggers(tx, player)
   const s = tx.s
   if (s.status === 'mulligan') {
     if (s.pending?.player === player) continueMulligans(tx)

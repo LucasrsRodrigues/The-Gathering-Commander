@@ -6,6 +6,7 @@ import { applyAbility } from './effects/apply'
 import { stillLegal } from './effects/targets'
 import { onCombatStep } from './combat'
 import { clearPassUntil } from './stops'
+import { putTriggersOnStack } from './triggers'
 import { nextDamagePhase } from './damage'
 import { addMana, emptyPools } from './mana'
 import { drawCards, isPermanentCard, moveObject } from './zones'
@@ -26,7 +27,9 @@ export function nextPlayerAfter(state: GameState, current: PlayerId): PlayerId |
   return undefined
 }
 
+// CR 603.3: triggered abilities go on the stack the next time a player would receive priority.
 export function givePriority(tx: Tx, player: PlayerId) {
+  putTriggersOnStack(tx, player)
   tx.s.priority = { player, passed: [] }
 }
 

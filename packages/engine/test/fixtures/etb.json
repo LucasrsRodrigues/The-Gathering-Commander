@@ -1,0 +1,207 @@
+[
+ {
+  "name": "Elvish Visionary",
+  "typeLine": "Creature — Elf Shaman",
+  "manaCost": "{1}{G}",
+  "oracleText": "When this creature enters, draw a card.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Flametongue Kavu",
+  "typeLine": "Creature — Kavu",
+  "manaCost": "{3}{R}",
+  "oracleText": "When this creature enters, it deals 4 damage to target creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "4",
+  "toughness": "2"
+ },
+ {
+  "name": "Man-o'-War",
+  "typeLine": "Creature — Jellyfish",
+  "manaCost": "{2}{U}",
+  "oracleText": "When this creature enters, return target creature to its owner's hand.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Ravenous Chupacabra",
+  "typeLine": "Creature — Beast Horror",
+  "manaCost": "{2}{B}{B}",
+  "oracleText": "When this creature enters, destroy target creature an opponent controls.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Bloodfell Caves",
+  "typeLine": "Land",
+  "manaCost": "",
+  "oracleText": "This land enters tapped.\nWhen this land enters, you gain 1 life.\n{T}: Add {B} or {R}.",
+  "keywords": [],
+  "colorIdentity": [
+   "B",
+   "R"
+  ]
+ },
+ {
+  "name": "Thragtusk",
+  "typeLine": "Creature — Beast",
+  "manaCost": "{4}{G}",
+  "oracleText": "When this creature enters, you gain 5 life.\nWhen this creature leaves the battlefield, create a 3/3 green Beast creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "5",
+  "toughness": "3"
+ },
+ {
+  "name": "Goblin Instigator",
+  "typeLine": "Creature — Goblin Rogue",
+  "manaCost": "{1}{R}",
+  "oracleText": "When this creature enters, create a 1/1 red Goblin creature token.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Mulldrifter",
+  "typeLine": "Creature — Elemental",
+  "manaCost": "{4}{U}",
+  "oracleText": "Flying\nWhen this creature enters, draw two cards.\nEvoke {2}{U} (You may cast this spell for its evoke cost. If you do, it's sacrificed when it enters.)",
+  "keywords": [
+   "Flying",
+   "Evoke"
+  ],
+  "colorIdentity": [
+   "U"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Llanowar Visionary",
+  "typeLine": "Creature — Elf Druid",
+  "manaCost": "{2}{G}",
+  "oracleText": "When this creature enters, draw a card.\n{T}: Add {G}.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Siege Rhino",
+  "typeLine": "Creature — Rhino",
+  "manaCost": "{1}{W}{B}{G}",
+  "oracleText": "Trample\nWhen this creature enters, each opponent loses 3 life and you gain 3 life.",
+  "keywords": [
+   "Trample"
+  ],
+  "colorIdentity": [
+   "B",
+   "G",
+   "W"
+  ],
+  "power": "4",
+  "toughness": "5"
+ },
+ {
+  "name": "Solemn Simulacrum",
+  "typeLine": "Artifact Creature — Golem",
+  "manaCost": "{4}",
+  "oracleText": "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card.",
+  "keywords": [],
+  "colorIdentity": [],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Reclamation Sage",
+  "typeLine": "Creature — Elf Shaman",
+  "manaCost": "{2}{G}",
+  "oracleText": "When this creature enters, you may destroy target artifact or enchantment.",
+  "keywords": [],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Wall of Omens",
+  "typeLine": "Creature — Wall",
+  "manaCost": "{1}{W}",
+  "oracleText": "Defender\nWhen this creature enters, draw a card.",
+  "keywords": [
+   "Defender"
+  ],
+  "colorIdentity": [
+   "W"
+  ],
+  "power": "0",
+  "toughness": "4"
+ },
+ {
+  "name": "Cloudkin Seer",
+  "typeLine": "Creature — Elemental Wizard",
+  "manaCost": "{2}{U}",
+  "oracleText": "Flying\nWhen this creature enters, draw a card.",
+  "keywords": [
+   "Flying"
+  ],
+  "colorIdentity": [
+   "U"
+  ],
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Acidic Slime",
+  "typeLine": "Creature — Ooze",
+  "manaCost": "{3}{G}{G}",
+  "oracleText": "Deathtouch (Any amount of damage this deals to a creature is enough to destroy it.)\nWhen this creature enters, destroy target artifact, enchantment, or land.",
+  "keywords": [
+   "Deathtouch"
+  ],
+  "colorIdentity": [
+   "G"
+  ],
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Kitchen Finks",
+  "typeLine": "Creature — Ouphe",
+  "manaCost": "{1}{G/W}{G/W}",
+  "oracleText": "When this creature enters, you gain 2 life.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)",
+  "keywords": [
+   "Persist"
+  ],
+  "colorIdentity": [
+   "G",
+   "W"
+  ],
+  "power": "3",
+  "toughness": "2"
+ }
+]

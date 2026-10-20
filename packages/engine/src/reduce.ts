@@ -18,6 +18,7 @@ import { Tx } from './tx'
 import { STEPS, type Action, type CardRef, type GameObject, type GameState, type ManaActivation, type PlayerId, type ReduceResult, type Step, type ZoneKind } from './types'
 import { drawCards, moveObject, shuffleLibrary } from './zones'
 import { checkTargets } from './effects/targets'
+import { pushTrigger, stackTriggers } from './triggers'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
@@ -25,11 +26,12 @@ const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'botto
 // Mana abilities (CR 605.3a) are activated while paying costs, without holding priority.
 const NO_PRIORITY_ACTIONS = new Set<Action['type']>([
   'setArrangement', 'concede', 'passPriority', 'advanceStep', 'activateMana', 'declareMana', 'declareAttackers', 'declareBlockers',
-  'setStops', 'passUntil',
+  'setStops', 'passUntil', 'chooseTargets',
 ])
 // While combat waits for a declaration, only that (and leaving or making mana) can happen.
 const DURING_DECLARATION = new Set<Action['type']>([
   'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'concede', 'activateMana', 'declareMana', 'setArrangement', 'setStops', 'passUntil',
+  'chooseTargets',
 ])
 const MAX_BATCH = 100
 const MAX_TEXT = 200
@@ -44,7 +46,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
-  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil',
+  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil', 'chooseTargets',
 ])
 const MAX_PT_DELTA = 100
 const WAITING: Record<string, string> = {
@@ -52,6 +54,7 @@ const WAITING: Record<string, string> = {
   declareBlockers: 'Esperando os bloqueios.',
   confirmDamage: 'Confirme o dano de combate primeiro.',
   discard: 'Descarte até o tamanho máximo da mão primeiro.',
+  chooseTargets: 'Esperando a escolha dos alvos de uma habilidade.',
 }
 const MAX_X = 100
 const MAX_PAY_WITH = 60
@@ -423,6 +426,22 @@ function applyGameAction(tx: Tx, action: Action) {
         p.life -= damage
         tx.emit({ type: 'lifeChanged', player: target, from, to: p.life })
       }
+      return
+    }
+
+    // Épico 11, CR 603.3d: the targets of a trigger going on the stack ("manual": it goes on the stack to be done by hand).
+    case 'chooseTargets': {
+      const pending = s.pending
+      if (pending?.kind !== 'chooseTargets' || pending.player !== actor) fail('notYourDecision', 'Não há alvos para escolher agora.')
+      optionalBoolean(action.manual)
+      if (!action.manual) {
+        const problem = checkTargets(s, pending.specs, action.targets, { controller: actor, sourceId: pending.trigger.sourceId })
+        if (problem) fail('invalidTarget', problem)
+      }
+      s.pending = null
+      pushTrigger(tx, pending.trigger, pending.text, action.manual ? { manual: true } : { targets: action.targets })
+      stackTriggers(tx, pending.priorityTo, pending.rest)
+      if (!s.pending) givePriority(tx, pending.priorityTo)
       return
     }
 

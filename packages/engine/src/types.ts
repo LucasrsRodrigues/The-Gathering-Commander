@@ -137,6 +137,7 @@ export interface TokenDef {
   toughness: number | null
   keywords: Keyword[]
   manaAbilities: ManaAbility[]
+  etb?: Ability[] // a token with its own "when this enters" (from a card exception)
 }
 
 export type Effect =
@@ -250,7 +251,26 @@ export type PendingDecision =
   | { kind: 'declareBlockers'; player: PlayerId; players: PlayerId[] } // CR 509.1: each attacked player; `player` = next
   | { kind: 'confirmDamage'; player: PlayerId; proposal: DamageProposal } // CR 510.1: the active player confirms or adjusts
   | { kind: 'discard'; player: PlayerId; count: number } // CR 514.1: discard down to the maximum hand size
+  | ChooseTargets
   | ExceptionRequest
+
+// Épico 11, CR 603.3: a "when this enters" ability waiting to go on the stack (index into the source's `etb`).
+export interface PendingTrigger {
+  sourceId: ObjectId
+  controller: PlayerId
+  index: number
+}
+
+// CR 603.3d: the controller chooses the targets of a trigger as it goes on the stack. `priorityTo` gets priority afterwards.
+export interface ChooseTargets {
+  kind: 'chooseTargets'
+  player: PlayerId
+  trigger: PendingTrigger
+  specs: TargetSpec[]
+  text: string
+  priorityTo: PlayerId
+  rest: PendingTrigger[] // the triggers after this one, already in stacking order
+}
 
 // "Fazer mesmo assim" (épico 09): an action a 'block' policy rejected, waiting for the other players' approval.
 // Public on purpose: approvers must see what they approve, so a card from hand is revealed with the request.
@@ -361,6 +381,7 @@ export interface GameState {
   priority: PriorityState | null
   pending: PendingDecision | null
   winners: PlayerId[] | null
+  triggers?: PendingTrigger[] // épico 11: triggered, not yet on the stack (CR 603.3)
 }
 
 // ---- Actions (commands) ----------------------------------------------------
@@ -390,6 +411,7 @@ export type Action =
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[]; targets?: Target[] }> // CR 601.2 (payWith: tap these first, atomically; targets: épico 11)
+  | ActionOf<'chooseTargets', { targets: Target[]; manual?: boolean }> // épico 11: answers ChooseTargets (manual: do it by hand)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
   | ActionOf<'adjustPT', { objectId: ObjectId; power: number; toughness: number }> // until end of turn (unscripted pumps)
@@ -442,6 +464,7 @@ export type GameEvent =
   | { type: 'stackItemAdded'; item: StackItem }
   | { type: 'stackItemResolved'; item: StackItem }
   | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
+  | { type: 'triggerSkipped'; sourceId: ObjectId; text: string } // CR 603.3d: no legal target, the trigger is removed
   | { type: 'abilityResolving'; item: StackItem; text: string } // épico 11: an automated ability applies its effects
   | { type: 'manualStep'; text: string; objectId?: ObjectId } // épico 11: a part the players do by hand
   | { type: 'commanderMayReturn'; objectId: ObjectId; owner: PlayerId }

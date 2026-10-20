@@ -202,6 +202,8 @@ export function actionIntent(v: unknown): ActionIntent {
         ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
         ...(a.targets !== undefined ? { targets: targets(a.targets) } : {}),
       }
+    case 'chooseTargets':
+      return { type, targets: targets(a.targets), ...(a.manual !== undefined ? { manual: bool(a.manual, 'manual') } : {}) }
     case 'setFaceDown':
       return { type, objectId: id(a.objectId, 'objectId'), faceDown: bool(a.faceDown, 'faceDown') }
     case 'addCounter':

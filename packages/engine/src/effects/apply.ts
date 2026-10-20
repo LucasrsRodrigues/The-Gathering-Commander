@@ -9,6 +9,7 @@ import type { Tx } from '../tx'
 import type {
   Ability, CardRef, CardRules, Effect, Filter, GameObject, ManaColor, ObjectId, PlayerId, StackItem, TokenDef, Who,
 } from '../types'
+import { queueEnterTriggers } from '../triggers'
 import { drawCards, moveObject } from '../zones'
 import { evalValue, matchesFilter, type ValueContext } from './value'
 
@@ -87,6 +88,7 @@ function tokenCard(def: TokenDef): CardRef {
   const rules: CardRules = {
     types: def.types, supertypes: [], subtypes: def.subtypes, cost: null, power: def.power, toughness: def.toughness, loyalty: null,
     keywords: def.keywords, manaAbilities: def.manaAbilities, colorIdentity: def.colors as ManaColor[], coverage: 'automated',
+    ...(def.etb ? { etb: def.etb } : {}),
   }
   return { name: def.name, typeLine, rules }
 }
@@ -102,6 +104,7 @@ function createTokens(tx: Tx, controller: PlayerId, def: TokenDef, count: number
     tx.battlefield().push(id)
     tx.emit({ type: 'tokenCreated', objectId: id })
     tx.emit({ type: 'zoneChanged', objectId: id, owner: controller, from: null, to: 'battlefield' })
+    queueEnterTriggers(tx, id)
   }
 }
 

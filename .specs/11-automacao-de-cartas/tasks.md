@@ -215,13 +215,45 @@ Quatro ondas e um fechamento:
       determinístico.
   - **Medição (catálogo de 2026-10-20):** no top 1.000, automáticas de 9,3% para 11,3%, e automáticas ou parciais de
     37,1% para 41,3%. No top 5.000, automáticas de 3,6% para 4,8%.
-- [ ] **T11.7 — "Quando entra no campo"** _(req: 6)_ · depende de T11.6
+- [x] **T11.7 — "Quando entra no campo"** _(req: 6)_ · depende de T11.6
   - Verificação:
     - o gatilho vai para a pilha ao entrar;
     - os alvos são pedidos antes;
     - sem alvo válido, sai sem efeito;
     - fichas que entram também disparam;
     - a ordem de vários gatilhos é a do texto.
+  - Feito:
+    - `triggers.ts`: ao entrar no campo (carta, terreno jogado ou ficha), cada `etb` da permanente vira um gatilho na
+      fila `state.triggers`. A fila vai para a pilha na próxima vez que alguém receberia prioridade (CR 603.3):
+      - primeiro os do jogador ativo, depois os outros na ordem do turno (CR 603.3b);
+      - os de cada jogador resolvem na ordem do texto. Escolher a ordem fica para a onda 3;
+      - carta virada para baixo não dispara, e a ficha que já saiu do campo não deixa gatilho.
+    - **Alvos:** um gatilho com alvo cria a decisão `chooseTargets` (com o texto, os alvos possíveis e os gatilhos que
+      vêm depois). A ação nova `chooseTargets { targets }` responde, com os alvos checados como no conjurar.
+      - Com `manual: true`, o gatilho entra na pilha para ser feito à mão.
+      - Sem nenhum alvo válido, o gatilho sai sem efeito, com o evento `triggerSkipped` (CR 603.3d).
+      - Quem sai da partida leva os próprios gatilhos, e a escolha pendente dele some.
+    - **Online:** o protocolo valida a ação nova. Se o jogador sai, o host responde "resolver à mão" por ele.
+    - **Leitor:** "When this creature/land/artifact/… enters, <frases da onda 1>." nas permanentes, com "it deals" e
+      "this creature deals" lidos como dano da própria carta.
+      - "you may", "if" e "enters or dies" ficam manuais.
+      - Frase nova: "Each opponent loses N life and you gain N life." (Siege Rhino).
+    - **Mesa:** painel provisório com a lista dos alvos válidos, "Confirmar" e "Resolver à mão", para a partida não
+      ficar esperando. O destaque na mesa 3D vem na T11.9. Verificado no navegador só que a mesa abre sem erros: os
+      decks de exemplo não têm gatilho com alvo.
+  - Verificado com o Oracle real de 16 cartas:
+    - automáticas: Elvish Visionary, Flametongue Kavu, Man-o'-War, Ravenous Chupacabra, Bloodfell Caves, Goblin
+      Instigator, Siege Rhino e outras;
+    - parciais: Thragtusk e Mulldrifter;
+    - manuais: Solemn Simulacrum, Reclamation Sage ("you may") e Acidic Slime (lista com vírgulas).
+    - No motor: compra pela pilha; o Kavu pede o alvo, recusa jogador e alvo vazio, e mata o urso; o Chupacabra sem
+      criatura do oponente sai sem efeito; alvo que sai antes de resolver anula; duas frases resolvem na ordem do
+      texto; duas fichas com gatilho compram duas; terreno que entra ganha vida; replay determinístico.
+  - **Medição (bulk de 2026-10-19):** no top 1.000, automáticas de 11,3% para 12,0%. No top 5.000, de 4,8% para
+    5,4%.
+    - Os ETBs mais jogados quase sempre têm "you may", busca ou vidência, e ficam para a onda 2.
+    - A meta da onda (20%) depende das próximas frases: Equip, Enchant, modais e "Draw a card." depois de uma
+      frase manual.
 - [ ] **T11.8 — "Resolver à mão"** _(req: 9)_ · depende de T11.6
   - Verificação:
     - local resolve na hora;

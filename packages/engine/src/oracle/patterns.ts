@@ -34,7 +34,23 @@ const SPELL_LINE: LinePattern = {
   },
 }
 
-export const PATTERNS: LinePattern[] = [SPELL_LINE]
+// Wave 1: "When this creature enters, <known sentences>." on permanents (CR 603.6a). "you may", "if" (intervening if)
+// and "or another…" are other shapes and stay manual.
+const ENTERS = /^When this (?:card|creature|land|artifact|enchantment|permanent|Vehicle) enters, (?!you may |if )(.+)$/
+const SELF_DEALS = /^(?:it|this (?:creature|land|artifact|enchantment|permanent)) deals /i
+const ETB_LINE: LinePattern = {
+  id: 'etb-line',
+  match(line, ctx) {
+    if (ctx.types.includes('instant') || ctx.types.includes('sorcery')) return null
+    const m = ENTERS.exec(line)
+    if (!m) return null
+    const rest = m[1]!.replace(SELF_DEALS, 'this card deals ')
+    const parsed = parseSpellLine(rest.startsWith('this card ') ? rest : rest[0]!.toUpperCase() + rest.slice(1))
+    return parsed ? { etb: { ...parsed, text: line } } : null
+  },
+}
+
+export const PATTERNS: LinePattern[] = [SPELL_LINE, ETB_LINE]
 
 export function recognize(line: string, ctx: LineContext, patterns: readonly LinePattern[] = PATTERNS): Recognized | null {
   for (const p of patterns) {
