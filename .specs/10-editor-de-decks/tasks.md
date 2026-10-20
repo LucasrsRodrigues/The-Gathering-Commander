@@ -230,11 +230,26 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - linhas reais do Moxfield e do Archidekt;
     - no navegador, editar o deck Krenko pelo texto (+1 Goblin Guide, −1 Mountain e um nome inexistente) salva o
       resto, lista o nome que faltou e grava uma mudança só no histórico.
-- [ ] **T10.10 — Tela do histórico e restaurar** _(req: 16–18)_ · depende de T10.3, T10.4
+- [x] **T10.10 — Tela do histórico e restaurar** _(req: 16–18)_ · depende de T10.3, T10.4
   - Verificação:
     - ver o deck num ponto antigo sem alterá-lo;
     - restaurar e desfazer;
     - mudanças agrupadas por dia.
+  - Feito:
+    - `decks/historyView.ts` (puro): o resumo por lista ("+2 Sol Ring, −1 Mind Stone", "Talvez: …") e o
+      agrupamento por dia ("Hoje", "Ontem", data), do mais novo para o mais antigo;
+    - botão "Histórico" no editor, com o diálogo:
+      - as mudanças por dia, mais "Antes da primeira mudança guardada";
+      - escolher uma mostra o deck como estava logo depois dela, só para leitura (cartas por tipo, comandante e
+        Talvez);
+      - o diálogo mostra o que restaurar faria;
+    - "Restaurar esta versão" grava uma mudança nova (`restoreVersion`), e o toast traz "Desfazer".
+  - Verificado no navegador, no deck Krenko:
+    - 4 mudanças em "Hoje", com o import inteiro como uma mudança só;
+    - ver a versão do import não altera o deck (54);
+    - restaurar leva a 56, e "Desfazer" volta a 54.
+  - O critério de aceite da onda (tablet real) fica para a medição da T10.14. No navegador, na largura de tablet,
+    pilhas por categoria, arrastar por toque e mandar ao Talvez já foram conferidos (T10.4 a T10.7).
   - Critério de aceite da onda: no tablet real, montar um deck em pilhas por categoria, arrastando cartas, e mandar
     cartas ao Talvez, com rolagem fluida em 100 cartas.
 

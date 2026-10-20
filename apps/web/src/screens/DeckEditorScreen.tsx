@@ -5,7 +5,7 @@ import type { CatalogCard } from '../catalog/catalog'
 import { factsForDate, type DatedFacts } from '../catalog/legality'
 import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../decks/cardData'
 import { exportDecklist } from '../decks/importExport'
-import { isEligibleAlone } from '@gathering-hall/formats'
+import { isEligibleAlone, restoreVersion } from '@gathering-hall/formats'
 import {
   addCard, addCategory, cardsMatching, categoriesOf, deckStats, deleteCategory, moveCard, moveCategory, moveEntry, removeCard, removeEntry,
   renameCategory, renameDeck, setMainCategory, setPrinting, toggleCategory, toValidation, type Deck, type DeckCard, type DeckZone,
@@ -15,6 +15,7 @@ import { applyBulk } from '../decks/bulkApply'
 import { parseBulk, serializeBulk } from '../decks/bulkText'
 import { suggestionsFor } from '../decks/tags'
 import { BulkTextDialog } from '../decks/ui/BulkTextDialog'
+import { HistoryDialog } from '../decks/ui/HistoryDialog'
 import { CategoryPanel } from '../decks/ui/CategoryPanel'
 import { NameDialog } from '../decks/ui/NameDialog'
 import { CardMenu, type MenuSection } from '../decks/views/CardMenu'
@@ -63,6 +64,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [shownCategory, setShownCategory] = useState<string | null>(null) // highlights its cards
   const [searchToMaybe, setSearchToMaybe] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [statFilter, setStatFilter] = useState<StatFilter | null>(null) // a clicked number of the stats panel
 
   useEffect(() => {
@@ -262,6 +264,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
           onChange={(e) => update((d, now) => renameDeck(d, e.target.value, now))} />
         <div className="row">
           <button className="btn" onClick={() => setBulkOpen(true)}>Texto</button>
+          <button className="btn" onClick={() => setHistoryOpen(true)}>Histórico</button>
           <button className="btn" onClick={() => setExporting(true)}>Exportar lista</button>
           <button className="btn primary" onClick={() => onTest(deck)}>Testar (goldfish)</button>
         </div>
@@ -338,6 +341,15 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
           }}
           onShow={(name) => setShownCategory((c) => (c === name ? null : name))} />
       </DeckSidebar>
+      {historyOpen && (
+        <HistoryDialog deck={deck} data={data} onClose={() => setHistoryOpen(false)}
+          onRestore={(index) => {
+            const before = deck
+            setDeck(restoreVersion(deck, index, Date.now()))
+            clearSelection()
+            toast('Versão restaurada. Ela entrou no histórico como uma mudança nova.', { label: 'Desfazer', run: () => setDeck({ ...before, updatedAt: Date.now() }) })
+          }} />
+      )}
       {bulkOpen && (
         <BulkTextDialog initial={serializeBulk(deck, (id) => data.printings.get(id)?.print ?? null)} onClose={() => setBulkOpen(false)}
           onSave={async (text) => {

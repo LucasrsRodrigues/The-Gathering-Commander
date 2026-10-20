@@ -546,3 +546,21 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 .color-table th, .color-table td { padding: 3px 4px; text-align: left; font-weight: 500; }
 .color-table thead th { color: var(--muted); font-size: 12px; }
 .stat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; font-size: 14px; }
+
+/* Épico 10, T10.10: deck history. */
+.history-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.4fr); gap: 16px; max-height: 64vh; min-height: 0; }
+.history-list, .history-preview { min-height: 0; overflow: auto; }
+.history-list { display: grid; gap: 10px; align-content: start; padding-right: 6px; }
+.history-list h3 { margin: 0 0 4px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.history-list ul, .history-cards ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.history-item { width: 100%; display: grid; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.history-item:hover { border-color: var(--control-border); }
+.history-item[aria-pressed='true'] { border-color: var(--gold); background: rgb(217 178 90 / 0.08); }
+.history-line { font-size: 14px; overflow-wrap: anywhere; }
+.history-preview { display: grid; gap: 10px; align-content: start; }
+.history-preview p { margin: 0; }
+.history-diff { padding: 8px 10px; border: 1px dashed var(--control-border); border-radius: 8px; display: grid; gap: 2px; }
+.history-cards { columns: 200px; column-gap: 16px; font-size: 14px; }
+.history-cards > div { break-inside: avoid; margin-bottom: 10px; }
+.history-cards h4 { margin: 0 0 4px; font-size: 15px; }
+@media (max-width: 699px) { .history-layout { grid-template-columns: 1fr; max-height: none; } }
