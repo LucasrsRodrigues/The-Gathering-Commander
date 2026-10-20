@@ -6,7 +6,7 @@ Quatro ondas e um fechamento:
 - a onda 3 (gatilhos além de "entra no campo") é a próxima depois desta, decidida pela medição.
 
 ## Onda 0 — Modelo, leitor e medição
-- [ ] **T11.1 — Modelo de efeitos no `engine`** _(req: 1)_
+- [x] **T11.1 — Modelo de efeitos no `engine`** _(req: 1)_
   - Escopo:
     - `Value`, `Filter`, `TargetSpec`, `Effect`, `Ability`, `ActivatedAbility`, `TokenDef` (com Treasure, Food e
       Clue);
@@ -17,6 +17,24 @@ Quatro ondas e um fechamento:
     - fitness "estado serializável" com regras novas;
     - partidas salvas antigas abrem;
     - cartas sem regras novas jogam como hoje.
+  - Feito:
+    - em `types.ts`:
+      - `Coverage`, `Value`, `Filter`, `TargetSpec`, `Who`, `TokenDef`, `Effect`, `Ability`, `AbilityCost`,
+        `ActivatedAbility` e `Target`, tudo como dados;
+      - `CardRules` ganhou os campos opcionais `spell`, `etb`, `activated`, `coverage` e `manualText`;
+      - `StackItem` ganhou `ability`, `targets` e `manual`;
+      - `ManaProduction.dynamic` e `ManaAbility.sacrificeSelf` (para a Treasure);
+    - `effects/value.ts`:
+      - `evalValue` calcula fixo, X, força ou resistência da origem ou do alvo, marcadores da origem e contagens no
+        campo, na mão ou no cemitério;
+      - `matchesFilter` filtra por tipo, não-tipo, subtipo, supertipo, controlador, cor, virada, "outra" e ficha;
+    - a mana dinâmica já funciona ao ativar a fonte (`production` recebe a origem). O pagamento automático passa a
+      usá-la na T11.4;
+    - a fitness de imports do motor aceita subpastas, que só podem ir de uma para a outra dentro de `src/`.
+  - **Mudança no plano:** `migrateState` não precisou mudar, porque todos os campos novos são opcionais e um estado
+    antigo é um estado válido. O teste confirma que um estado salvo volta igual.
+  - As `TokenDef` prontas (Treasure, Food, Clue) entram com os efeitos de ficha na T11.6, junto do sacrifício da
+    Treasure.
 - [ ] **T11.2 — Leitor por frases e exceções em `packages/cards`** _(req: 2–4)_ · depende de T11.1
   - Escopo:
     - quebra do Oracle em frases (lembrete fora, nome vira `~`);

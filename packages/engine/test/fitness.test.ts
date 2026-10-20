@@ -1,7 +1,7 @@
 // Architectural fitness functions for packages/engine (see .specs/00-visao-geral/design.md).
 
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join, normalize } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const SRC = join(import.meta.dirname, '..', 'src')
@@ -14,7 +14,11 @@ describe('engine fitness functions', () => {
   it('imports only its own modules (no UI, network, node or third-party code)', () => {
     for (const { name, code } of files) {
       const imports = [...code.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]!)
-      for (const spec of imports) expect(spec.startsWith('./'), `${name} importa ${spec}`).toBe(true)
+      for (const spec of imports) {
+        // Relative and inside src/ (subfolders such as effects/ may reach their siblings with ../).
+        const inside = spec.startsWith('./') || (spec.startsWith('../') && !normalize(join(dirname(name), spec)).startsWith('..'))
+        expect(inside, `${name} importa ${spec}`).toBe(true)
+      }
     }
   })
 
@@ -27,7 +31,7 @@ describe('engine fitness functions', () => {
   it('keeps the Oracle parser out of the rules core (only index.ts re-exports it)', () => {
     for (const { name, code } of files) {
       if (name === 'index.ts' || name === 'deriveRules.ts') continue
-      expect(/from\s+['"]\.\/deriveRules['"]/.test(code), name).toBe(false)
+      expect(/from\s+['"](\.\.?\/)+deriveRules['"]/.test(code), name).toBe(false)
     }
   })
 

@@ -3,7 +3,8 @@
 import { fail, RuleViolation } from './errors'
 import { hasKeyword, typesOf } from './cards'
 import type { Tx } from './tx'
-import type { GameObject, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaPool, ManaType, PlayerId } from './types'
+import { evalValue } from './effects/value'
+import type { GameObject, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaPool, ManaType, ObjectId, PlayerId } from './types'
 
 export const MANA_TYPES: readonly ManaType[] = ['W', 'U', 'B', 'R', 'G', 'C']
 const COLORS: readonly ManaColor[] = ['W', 'U', 'B', 'R', 'G']
@@ -40,17 +41,22 @@ export function choicesFor(ability: ManaAbility, identity: readonly ManaColor[])
     case 'oneOf': return p.colors
     case 'anyColor': return [...COLORS]
     case 'commanderIdentity': return [...identity]
+    case 'dynamic': return null // one fixed color, an amount that depends on the table
   }
 }
 
-// What the ability adds, given the chosen color when there is a choice.
-export function production(state: GameState, player: PlayerId, ability: ManaAbility, color: ManaType | undefined): ManaAmount {
-  return productionFor(ability, color, commanderIdentity(state, player))
+// What the ability adds, given the chosen color when there is a choice. The source is needed for dynamic amounts
+// ("equal to ~'s power", "for each Elf you control").
+export function production(state: GameState, player: PlayerId, ability: ManaAbility, color: ManaType | undefined, sourceId?: ObjectId): ManaAmount {
+  const amount = ability.produces.kind === 'dynamic' ? evalValue(state, { controller: player, sourceId }, ability.produces.amount) : 0
+  return productionFor(ability, color, commanderIdentity(state, player), amount)
 }
 
-export function productionFor(ability: ManaAbility, color: ManaType | undefined, identity: readonly ManaColor[]): ManaAmount {
+// dynamicAmount: the value of a 'dynamic' production, computed by the caller from the state.
+export function productionFor(ability: ManaAbility, color: ManaType | undefined, identity: readonly ManaColor[], dynamicAmount = 0): ManaAmount {
   const p = ability.produces
   if (p.kind === 'fixed') return p.mana
+  if (p.kind === 'dynamic') return dynamicAmount > 0 ? { [p.color]: dynamicAmount } : {}
   const choices = choicesFor(ability, identity)!
   // CR 903.4f: "a color in your commander's identity" with a colorless commander produces no mana.
   if (!choices.length) return {}
@@ -94,7 +100,7 @@ export function simulatePool(state: GameState, player: PlayerId, activations: re
     if (!ability) return null
     let mana: ManaAmount
     try {
-      mana = production(state, player, ability, a.color)
+      mana = production(state, player, ability, a.color, obj.id)
     } catch (err) {
       if (err instanceof RuleViolation) return null
       throw err

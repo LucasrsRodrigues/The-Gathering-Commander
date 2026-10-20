@@ -453,7 +453,7 @@ function activateManaAbility(tx: Tx, actor: PlayerId, a: ManaActivation) {
   const ability = obj.card.rules?.manaAbilities[a.abilityIndex]
   if (!Number.isInteger(a.abilityIndex) || !ability) fail('invalidAction', 'Essa carta não tem essa habilidade de mana.')
   if (a.color !== undefined && !MANA_TYPES.includes(a.color)) fail('invalidAction', 'Cor de mana inválida.')
-  const mana = production(s, actor, ability, a.color)
+  const mana = production(s, actor, ability, a.color, obj.id)
   if (ability.extraCost && levelOf(s.ruleset, 'mana') !== 'off') {
     // Under 'warn' a missing payment is only logged (the policy did that); pay what there is.
     const pool = s.players[actor]!.manaPool

@@ -60,6 +60,7 @@ export type ManaProduction =
   | { kind: 'oneOf'; colors: ManaType[] } // {T}: Add {W}, {U}, or {B}.
   | { kind: 'anyColor'; amount: number } // one mana of any color / three mana of any one color
   | { kind: 'commanderIdentity' } // one mana of any color in your commander's color identity
+  | { kind: 'dynamic'; color: ManaType; amount: Value } // épico 11: "Add an amount of {G} equal to ~'s power."
 
 export interface ManaAbility {
   produces: ManaProduction
@@ -67,6 +68,7 @@ export interface ManaAbility {
   lifeCost?: number // "{T}, Pay 1 life: …"
   selfDamage?: number // "This land deals 1 damage to you." / "Whenever this land becomes tapped, it deals 1 damage to you."
   partial?: boolean // the ability does something else too (applied by hand)
+  sacrificeSelf?: boolean // "{T}, Sacrifice this artifact: Add …" (Treasure)
 }
 
 export interface CardRules {
@@ -84,7 +86,92 @@ export interface CardRules {
   entersTapped?: boolean
   spellMana?: ManaAmount // instants/sorceries whose whole text is "Add {B}{B}{B}."
   colorIdentity: ManaColor[]
+  // Épico 11: what the card does, as data the engine interprets. Absent = the card plays by hand, as before.
+  spell?: Ability // instants and sorceries: the effect on resolution
+  etb?: Ability[] // "When ~ enters, …"
+  activated?: ActivatedAbility[] // non-mana activated abilities
+  coverage?: Coverage // absent = 'manual'
+  manualText?: string[] // the sentences left to the players (partial cards)
 }
+
+// ---- Card effects (épico 11) ---------------------------------------------------
+// Pure data: the state stays serializable and replays stay deterministic. The engine interprets them (effects/).
+
+export type Coverage = 'automated' | 'partial' | 'manual'
+
+// How much: fixed, the X paid, a P/T, a count, or counters on the source.
+export type Value =
+  | { kind: 'fixed'; n: number }
+  | { kind: 'x' }
+  | { kind: 'power' | 'toughness'; of: 'self' | 'target' }
+  | { kind: 'count'; what: Filter; zone: 'battlefield' | 'hand' | 'graveyard' }
+  | { kind: 'counters'; counter: string; of: 'self' }
+
+// Which objects: for targets, counts and searches. Every field narrows; an empty filter matches everything.
+export interface Filter {
+  types?: CardType[] // any of these
+  notTypes?: CardType[]
+  subtypes?: string[] // any of these (case-insensitive)
+  supertypes?: Supertype[]
+  controller?: 'you' | 'opponent' | 'any'
+  colors?: ManaColor[] // any of these, from the color identity of the card
+  tapped?: boolean
+  other?: boolean // not the source itself ("another")
+  token?: boolean
+}
+
+export type TargetSpec =
+  | { kind: 'object'; filter: Filter; count: number; upTo?: boolean }
+  | { kind: 'player'; who: 'any' | 'opponent' }
+  | { kind: 'any' } // "any target": creature, planeswalker or player (CR 115.4)
+
+// Who an effect is about. 'target' = the first player target (or the controller of the first object target).
+export type Who = 'you' | 'target' | 'each opponent' | 'each player'
+
+export interface TokenDef {
+  name: string
+  types: CardType[]
+  subtypes: string[]
+  colors: ManaColor[]
+  power: number | null
+  toughness: number | null
+  keywords: Keyword[]
+  manaAbilities: ManaAbility[]
+}
+
+export type Effect =
+  | { kind: 'draw'; who: Who; amount: Value }
+  | { kind: 'damage'; to: 'target' | 'each opponent' | 'each creature'; amount: Value }
+  | { kind: 'gainLife' | 'loseLife'; who: Who; amount: Value }
+  | { kind: 'destroy' | 'exile' | 'bounce'; what: 'target' | { all: Filter } }
+  | { kind: 'counters'; what: 'target' | 'self' | { each: Filter }; counter: string; amount: Value }
+  | { kind: 'pump'; what: 'target' | 'self' | { each: Filter }; power: Value; toughness: Value } // until end of turn
+  | { kind: 'token'; token: TokenDef; amount: Value; tapped?: boolean }
+  | { kind: 'mill' | 'discard'; who: Who; amount: Value }
+  | { kind: 'search'; filter: Filter; to: 'hand' | 'battlefield'; tapped?: boolean; amount: Value }
+  | { kind: 'scry' | 'surveil'; amount: Value }
+  | { kind: 'addMana'; produces: ManaProduction }
+
+export interface Ability {
+  targets?: TargetSpec[]
+  effects: Effect[]
+  text: string // the sentence, for the log and the preview
+}
+
+export interface AbilityCost {
+  mana?: ManaCost
+  tap?: boolean
+  sacrifice?: Filter | 'self'
+  discard?: number
+  life?: number
+}
+
+export interface ActivatedAbility extends Ability {
+  cost: AbilityCost
+  sorcerySpeed?: boolean // "Activate only as a sorcery."
+}
+
+export type Target = { player: PlayerId } | { object: ObjectId }
 
 export interface Arrangement {
   x: number
@@ -150,6 +237,10 @@ export interface StackItem {
   sourceId?: ObjectId // for kind 'ability': where it came from
   description?: string
   x?: number // the value chosen for {X} when the spell was cast
+  // Épico 11: the automated ability this item resolves, and its chosen targets.
+  ability?: { from: 'spell' | 'etb' | 'activated'; index: number }
+  targets?: Target[]
+  manual?: boolean // "Resolver à mão": resolves without the automated effects
 }
 
 export type PendingDecision =
