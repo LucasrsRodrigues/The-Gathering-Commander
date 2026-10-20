@@ -3,9 +3,9 @@
 
 import { commanderTax } from './commander'
 import { isSummoningSick } from './mana'
-import { isCreature, powerOf, toughnessOf } from './stats'
+import { charsOf, type Characteristics } from './layers'
 import type {
-  Arrangement, CardRef, GameEvent, GameState, ManaPool, ObjectId, PlayerState, StopSettings, PendingDecision, PlayerId, PriorityState, Ruleset,
+  Arrangement, CardRef, CardType, GameEvent, Keyword, ManaColor, GameState, ManaPool, ObjectId, PlayerState, StopSettings, PendingDecision, PlayerId, PriorityState, Ruleset,
   StackItem, TurnState, ZoneKind,
 } from './types'
 
@@ -26,6 +26,15 @@ export interface ObjectView {
   power: number | null // current, for creatures with data (null = unknown or not a creature)
   toughness: number | null
   damage: number
+  // Épico 12: the characteristics now, after every layer (layers.ts). The table and the preview read these, not the
+  // printed card. A face-down permanent is a 2/2 creature with nothing else (CR 708.2), which everyone may know.
+  types: CardType[]
+  subtypes: string[]
+  keywords: Keyword[]
+  colors: ManaColor[]
+  attachedTo?: ObjectId
+  copyOf?: ObjectId
+  abilitiesLost?: boolean
 }
 
 export interface PlayerPublicView {
@@ -64,23 +73,36 @@ export interface PlayerView {
   stack: StackItem[]
 }
 
+const HIDDEN = (controller: PlayerId): Characteristics => ({
+  types: [], subtypes: [], supertypes: [], keywords: [], colors: [], power: 0, toughness: 0, controller, known: false, statics: [], manaAbilities: [],
+})
+
 export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
   const objects: Record<ObjectId, ObjectView> = {}
   const show = (id: ObjectId) => {
     const obj = state.objects[id]
     if (!obj) return
     const faceHidden = obj.faceDown && obj.controller !== viewer
-    const stats = !faceHidden && isCreature(state, obj) && !!obj.card.rules && !obj.card.rules.variablePT
+    // Hidden faces stay hidden: off the battlefield, a face-down card shows no characteristics at all.
+    const c = faceHidden && obj.zone !== 'battlefield'
+      ? HIDDEN(obj.controller)
+      : charsOf(state, obj)
+    const known = obj.faceDown && obj.zone === 'battlefield' ? true : !!obj.card.rules && !obj.card.rules.variablePT
+    const stats = c.types.includes('creature') && known
     objects[id] = {
-      id, owner: obj.owner, controller: obj.controller, zone: obj.zone,
+      id, owner: obj.owner, controller: c.controller, zone: obj.zone,
       card: faceHidden ? null : obj.card,
       tapped: obj.tapped, faceDown: obj.faceDown, counters: obj.counters,
       isToken: obj.isToken, isCommander: obj.isCommander,
       commanderTax: commanderTax(obj, state.ruleset),
       summoningSick: obj.zone === 'battlefield' && isSummoningSick(state, obj),
-      power: stats ? powerOf(state, obj) : null,
-      toughness: stats ? toughnessOf(state, obj) : null,
+      power: stats ? c.power : null,
+      toughness: stats ? c.toughness : null,
       damage: obj.damage,
+      types: c.types, subtypes: c.subtypes, keywords: c.keywords, colors: c.colors,
+      ...(obj.attachedTo ? { attachedTo: obj.attachedTo } : {}),
+      ...(c.copyOf ? { copyOf: c.copyOf } : {}),
+      ...(c.abilitiesLost ? { abilitiesLost: true } : {}),
       ...(obj.arrangement ? { arrangement: obj.arrangement } : {}),
     }
   }

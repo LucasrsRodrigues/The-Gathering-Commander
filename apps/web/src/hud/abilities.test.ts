@@ -9,6 +9,7 @@ const facts = (name: string, typeLine: string, oracleText: string, pt?: [string,
 const obj = (id: string, zone: ObjectView['zone'], name: string, rules: ReturnType<typeof deriveCardRules>, controller = 'p1'): ObjectView => ({
   id, owner: controller, controller, zone, card: { name, typeLine: '', rules }, tapped: false, faceDown: false, counters: {}, isToken: false,
   isCommander: false, commanderTax: 0, summoningSick: false, power: null, toughness: null, damage: 0,
+  types: rules.types, subtypes: rules.subtypes, keywords: rules.keywords, colors: [],
 })
 const BOMBARDMENT = facts('Goblin Bombardment', 'Enchantment', 'Sacrifice a creature: Goblin Bombardment deals 1 damage to any target.')
 const STONE = facts('Mind Stone', 'Artifact', '{T}: Add {C}.\n{1}, {T}, Sacrifice Mind Stone: Draw a card.')

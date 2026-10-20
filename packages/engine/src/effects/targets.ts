@@ -2,7 +2,7 @@
 // chosen list fits its specs, and which targets are still legal on resolution. Pure reads of the state; the view
 // variant lets the table highlight legal targets online.
 
-import { charsOf, printed, type Characteristics } from '../layers'
+import { charsOf, fromView, type Characteristics } from '../layers'
 import type { GameState, ObjectId, PlayerId, Target, TargetSpec } from '../types'
 import type { PlayerView } from '../view'
 import { matchesFilter, type FilterSubject } from './value'
@@ -38,7 +38,7 @@ function viewBoard(view: PlayerView): Board {
   return {
     zone: (id) => view.objects[id]?.zone,
     subject: (id) => view.objects[id],
-    chars: (id) => (view.objects[id]?.card ? printed(view.objects[id]!.card!, view.objects[id]!.controller) : undefined),
+    chars: (id) => (view.objects[id]?.card ? fromView(view.objects[id]!) : undefined),
     state: null,
     ids: (zone) => zone === 'battlefield' ? view.battlefield
       : zone === 'stack' ? view.stack.flatMap((i) => (i.objectId ? [i.objectId] : []))

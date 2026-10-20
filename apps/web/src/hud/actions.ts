@@ -15,8 +15,9 @@ export interface MenuGroup {
 const move = (objectId: string, to: ZoneKind, extra: { position?: 'top' | 'bottom'; faceDown?: boolean } = {}): Intent =>
   ({ type: 'moveObject', objectId, to, ...extra })
 
+// Épico 12: what the object is now (the view's characteristics, after every layer); the type line as a fallback.
 export function isLandCard(obj: ObjectView): boolean {
-  if (obj.card?.rules) return obj.card.rules.types.includes('land')
+  if (obj.types?.length) return obj.types.includes('land')
   const front = (obj.card?.typeLine ?? '').split('//')[0]!.split(/\s+[—-]\s+/)[0]!
   return /\bland\b/i.test(front)
 }

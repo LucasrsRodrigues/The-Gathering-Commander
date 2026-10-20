@@ -1,10 +1,10 @@
 // Values and filters of the effect model (épico 11): "equal to ~'s power", "for each Elf you control"… Pure reads of
 // the state. Counters use the names the table already uses (+1/+1, lealdade…), case-insensitive.
 
-import { charsOf, printed } from '../layers'
+import { charsOf, fromView, printed } from '../layers'
 import { powerOf, toughnessOf } from '../stats'
 import type { CardRef, Filter, GameObject, GameState, ObjectId, PlayerId, Target, Value } from '../types'
-import type { PlayerView } from '../view'
+import type { ObjectView, PlayerView } from '../view'
 
 export interface ValueContext {
   controller: PlayerId
@@ -36,7 +36,7 @@ export interface FilterSubject {
 export function matchesFilter(state: GameState | null, obj: FilterSubject, filter: Filter, ctx: Pick<ValueContext, 'controller' | 'sourceId'>): boolean {
   if (!obj.card) return false
   const live = state && Object.hasOwn(state.objects, obj.id) ? state.objects[obj.id] : undefined
-  const c = state && live && live.card === obj.card ? charsOf(state, live) : printed(obj.card, obj.controller)
+  const c = state && live && live.card === obj.card ? charsOf(state, live) : 'types' in obj ? fromView(obj as ObjectView) : printed(obj.card, obj.controller)
   if (filter.types?.length && !filter.types.some((t) => c.types.includes(t))) return false
   if (filter.notTypes?.some((t) => c.types.includes(t))) return false
   if (filter.subtypes?.length) {

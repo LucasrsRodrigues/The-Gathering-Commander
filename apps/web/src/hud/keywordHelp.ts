@@ -60,3 +60,9 @@ export function keywordHelp(keywords: readonly string[]): KeywordHelp[] {
     return [{ name: pt ? `${pt} (${titleCase(kw)})` : titleCase(kw), help }]
   })
 }
+
+// The Portuguese name of one of the engine's keywords ('firstStrike' → 'Iniciativa'); the English one when unsure.
+export function keywordLabel(keyword: string): string {
+  const key = keyword.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`)
+  return K[key]?.[0] ?? key
+}

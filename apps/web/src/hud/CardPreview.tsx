@@ -9,6 +9,7 @@ import { previewObjectStore, previewStore } from '../ui/stores'
 import { ManaText } from '../ui/ManaText'
 import { CoverageBadge } from '../ui/CoverageBadge'
 import { keywordHelp } from './keywordHelp'
+import { changesOf } from './changes'
 
 function costText(cost: ManaCost | null | undefined): string {
   if (!cost) return ''
@@ -44,6 +45,7 @@ function stateLines(obj: ObjectView, card: CardRef, view: PlayerView | undefined
   if (obj.summoningSick && obj.zone === 'battlefield') lines.push('Acabou de chegar: ainda não ataca nem usa {T}')
   if (obj.isCommander) lines.push(obj.commanderTax ? `Comandante · taxa de comandante {${obj.commanderTax}}` : 'Comandante')
   if (obj.isToken) lines.push('Ficha')
+  lines.push(...changesOf(obj, card, view)) // épico 12: what the layers changed
   return lines
 }
 
@@ -55,7 +57,9 @@ export function CardPreview({ view }: { view?: PlayerView }) {
   const img = imagesFor(card)
   const onTable = obj && obj.card === card ? obj : null
   const cost = costText(card.rules?.cost)
-  const keywords = keywordHelp(text?.keywords ?? [])
+  // Keywords the object gained on the table (épico 12) get their explanation too.
+  const gained = onTable ? (onTable.keywords ?? []).filter((k) => !(card.rules?.keywords ?? []).includes(k)).map((k) => k.replace(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`)) : []
+  const keywords = keywordHelp([...new Set([...(text?.keywords ?? []), ...gained])])
   const state = onTable ? stateLines(onTable, card, view) : []
   const body = pt?.text || text?.oracleText || ''
   return (

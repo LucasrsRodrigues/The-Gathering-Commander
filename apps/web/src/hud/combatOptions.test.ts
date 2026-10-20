@@ -6,7 +6,8 @@ const rules = (power: number, toughness: number, keywords: Keyword[] = [], types
   ({ types, supertypes: [], subtypes: [], cost: null, power, toughness, loyalty: null, keywords, manaAbilities: [], colorIdentity: [] })
 const obj = (id: string, controller: string, name: string, r: CardRules, extra: Partial<ObjectView> = {}): ObjectView => ({
   id, owner: controller, controller, zone: 'battlefield', card: { name, rules: r }, tapped: false, faceDown: false, counters: {},
-  isToken: false, isCommander: false, commanderTax: 0, summoningSick: false, power: r.power, toughness: r.toughness, damage: 0, ...extra,
+  isToken: false, isCommander: false, commanderTax: 0, summoningSick: false, power: r.power, toughness: r.toughness, damage: 0,
+  types: r.types, subtypes: r.subtypes, keywords: r.keywords, colors: [], ...extra, // as the view computes them (épico 12)
 })
 const player = (id: string, name: string) => ({
   id, name, life: 40, poison: 0, commanderDamage: {}, mulligans: 0, hasKept: true, lost: false,

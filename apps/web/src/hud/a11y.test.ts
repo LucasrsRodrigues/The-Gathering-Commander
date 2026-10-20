@@ -50,7 +50,8 @@ describe('closeTopmost (Escape)', () => {
 describe('text alternatives', () => {
   const obj = (patch: Partial<ObjectView>): ObjectView => ({
     id: 'o1', owner: 'p1', controller: 'p1', zone: 'battlefield', card: { name: 'Llanowar Elves' }, tapped: false,
-    faceDown: false, counters: {}, isToken: false, isCommander: false, commanderTax: 0, summoningSick: false, power: null, toughness: null, damage: 0, ...patch,
+    faceDown: false, counters: {}, isToken: false, isCommander: false, commanderTax: 0, summoningSick: false, power: null, toughness: null, damage: 0,
+    types: ['creature'], subtypes: ['Elf'], keywords: [], colors: ['G'], ...patch,
   })
 
   it('describes name, tapped state and counters', () => {

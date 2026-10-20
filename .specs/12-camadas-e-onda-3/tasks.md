@@ -121,7 +121,7 @@ Cinco ondas e um fechamento.
     - **Orçamento:** 100 permanentes e 10 anthems, 0,4 ms por tabuleiro sem cache. O teste usa o melhor de 5 lotes,
       porque a média passou de 2 ms com a suíte inteira em paralelo e a máquina com carga 8.
     - Todos os 237 testes de antes passam iguais.
-- [ ] **T12.3 — A visão e a prévia com as características calculadas** _(req: 6)_ · depende de T12.2
+- [x] **T12.3 — A visão e a prévia com as características calculadas** _(req: 6)_ · depende de T12.2
   - Escopo:
     - `ObjectView` com tipos, palavras-chave, cores, P/R, controlador e anexo calculados;
     - a mesa e a prévia leem daí;
@@ -129,6 +129,31 @@ Cinco ondas e um fechamento.
   - Verificação:
     - a prévia no navegador com um efeito de teste;
     - a visão filtrada continua sem vazar informação oculta (fitness).
+  - Feito:
+    - **Motor:**
+      - `ObjectView` ganha `types`, `subtypes`, `keywords`, `colors`, `attachedTo`, `copyOf` e `abilitiesLost`,
+        todos calculados;
+      - `controller`, `power` e `toughness` passam a vir das camadas;
+      - uma permanente virada para baixo mostra 2/2 criatura para todos (informação pública, CR 708.2);
+      - fora do campo, uma carta virada para baixo de outro jogador não mostra nenhuma característica (nada vaza);
+      - `fromView` monta as características a partir da visão. Os filtros e alvos da mesa online usam isso, então
+        destacam o que o motor aceita mesmo com efeitos. Uma visão sem os campos cai para o impresso.
+    - **Web:**
+      - `isLandCard` e as opções de combate (voar, ameaça, atropelar, toque mortífero, vínculo, indestrutível) leem
+        a visão;
+      - `hud/changes.ts` (puro) diz o que mudou em relação à carta impressa: cópia, tipos novos, subtipos, "Perdeu
+        as habilidades do texto", palavras-chave ganhas e perdidas em português, "Equipando X" ou "Encantando X", e
+        "Com <anexos>";
+      - a prévia mostra essas linhas no estado da mesa e explica também as palavras-chave ganhas.
+  - Verificado:
+    - motor (249) e web (195) passam;
+    - os testes de invariantes conferem a visão sem vazamento;
+    - `changes.test.ts` (4 casos);
+    - no navegador: a mesa e a prévia de uma Floresta no campo continuam iguais sem efeitos ("Controlada por
+      Jogador 1", sem linhas de mudança).
+    - A prévia com um efeito de verdade no navegador fica para a T12.4, com as Swiftfoot Boots: ainda não há carta
+      que gere efeito contínuo.
+    - **Achado:** `npm run typecheck` não confere os testes da web; o `npm run build` (`tsc -b`) confere.
 
 ## Onda B — Anexar e estáticas
 - [ ] **T12.4 — Equipar e Auras** _(req: 7–9)_ · depende de T12.2

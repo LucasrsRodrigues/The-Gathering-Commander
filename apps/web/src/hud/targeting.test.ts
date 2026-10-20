@@ -10,6 +10,7 @@ const rules = (types: string[], extra: object = {}) => ({
 const obj = (id: string, zone: ObjectView['zone'], name: string, r: NonNullable<ObjectView['card']>['rules'], controller = 'p1'): ObjectView => ({
   id, owner: controller, controller, zone, card: { name, typeLine: '', rules: r }, tapped: false, faceDown: false, counters: {}, isToken: false,
   isCommander: false, commanderTax: 0, summoningSick: false, power: null, toughness: null, damage: 0,
+  types: r?.types ?? [], subtypes: r?.subtypes ?? [], keywords: r?.keywords ?? [], colors: [],
 })
 function view(pending: PlayerView['pending'] = null): PlayerView {
   const objects = {

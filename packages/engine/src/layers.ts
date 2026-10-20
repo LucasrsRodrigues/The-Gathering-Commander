@@ -12,6 +12,7 @@ import type {
   Affected, CardRef, CardType, Change, ContinuousEffect, GameObject, GameState, Keyword, Layer, ManaAbility, ManaColor, ManaCost,
   ObjectId, PlayerId, StaticAbility, Supertype, Value,
 } from './types'
+import type { ObjectView } from './view'
 
 export interface Characteristics {
   types: CardType[]
@@ -343,6 +344,15 @@ export function charsOf(state: GameState, obj: GameObject): Characteristics {
   }
   if (obj.zone !== 'battlefield' || !hasEffects(state)) return plain(obj)
   return boardOf(state).get(obj.id) ?? plain(obj)
+}
+
+// What a player's view says an object is (the online table judges filters and targets with this).
+export function fromView(o: ObjectView): Characteristics {
+  const base = o.card ? printed(o.card, o.controller) : printed({ name: '' }, o.controller)
+  return {
+    ...base, types: o.types ?? base.types, subtypes: o.subtypes ?? base.subtypes, keywords: o.keywords ?? base.keywords, colors: o.colors ?? base.colors, controller: o.controller,
+    power: o.power ?? 0, toughness: o.toughness ?? 0, ...(o.copyOf ? { copyOf: o.copyOf } : {}), ...(o.abilitiesLost ? { abilitiesLost: true } : {}),
+  }
 }
 
 // Shorthands for the questions the rules ask most.

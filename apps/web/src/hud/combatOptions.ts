@@ -8,10 +8,11 @@ export interface Choice {
   label: string
 }
 
-const typesOf = (obj: ObjectView) => obj.card?.rules?.types ?? (/\bcreature\b/i.test(obj.card?.typeLine ?? '') ? ['creature'] : [])
+// Épico 12: the view's characteristics (after every layer); the type line only when the view has none.
+const typesOf = (obj: ObjectView): string[] => obj.types?.length ? obj.types : (/\bcreature\b/i.test(obj.card?.typeLine ?? '') ? ['creature'] : [])
 const isCreature = (obj: ObjectView) => typesOf(obj).includes('creature')
-const isPlaneswalker = (obj: ObjectView) => obj.card?.rules?.types.includes('planeswalker') ?? /planeswalker/i.test(obj.card?.typeLine ?? '')
-const has = (obj: ObjectView | undefined, k: string) => !!obj?.card?.rules?.keywords.includes(k as never)
+const isPlaneswalker = (obj: ObjectView) => obj.types?.length ? obj.types.includes('planeswalker') : /planeswalker/i.test(obj.card?.typeLine ?? '')
+const has = (obj: ObjectView | undefined, k: string) => !!obj?.keywords?.includes(k as never)
 const name = (view: PlayerView, id: string) => view.players[id]?.name ?? view.objects[id]?.card?.name ?? 'alvo'
 
 export function pt(obj: ObjectView): string {
