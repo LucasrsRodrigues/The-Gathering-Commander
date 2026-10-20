@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { CardRef, ObjectView, PlayerId, PlayerView } from '@gathering-hall/engine'
-import { focusStore, menuStore, previewStore, zoneViewerStore } from '../ui/stores'
+import { focusStore, menuStore, previewStore, showPreview, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { layoutTable, TABLE, type Area, type Piles, type TableLayout } from './layout'
 import { backMaterial, faceMaterial } from './textures'
@@ -212,7 +212,7 @@ const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, int
     if (e.pointerType !== 'mouse') {
       g.timer = window.setTimeout(() => {
         g.long = true
-        previewStore.set(obj.card)
+        showPreview(obj)
         openMenu(g.sx, g.sy)
       }, LONG_PRESS_MS)
     }
@@ -251,7 +251,7 @@ const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, int
 
   return (
     <group ref={group}
-      onPointerOver={(e) => { e.stopPropagation(); hovered.current = true; if (e.pointerType === 'mouse' && obj.card) previewStore.set(obj.card) }}
+      onPointerOver={(e) => { e.stopPropagation(); hovered.current = true; if (e.pointerType === 'mouse' && obj.card) showPreview(obj) }}
       onPointerOut={(e) => { hovered.current = false; if (e.pointerType === 'mouse') previewStore.set(null) }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

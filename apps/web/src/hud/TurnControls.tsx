@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { PlayerId, PlayerView, Step } from '@gathering-hall/engine'
 import { STEP_LABELS } from '../session/describe'
-import { menuStore, previewStore } from '../ui/stores'
+import { menuStore, previewStore, showPreview } from '../ui/stores'
 import type { Dispatch } from './PlayerPanels'
 import { menuAnchor } from './a11y'
 import { primaryAction } from './primaryAction'
@@ -62,9 +62,9 @@ export function StackPanel({ view, dispatch }: { view: PlayerView; dispatch: Dis
                 {obj ? (
                   <button className="stack-item" aria-haspopup="menu"
                     aria-label={`${i === 0 ? 'Topo: ' : ''}${obj.card?.name ?? 'Carta'}, de ${view.players[item.controller]?.name}`}
-                    onPointerEnter={() => obj.card && previewStore.set(obj.card)}
+                    onPointerEnter={() => obj.card && showPreview(obj)}
                     onPointerLeave={() => previewStore.set(null)}
-                    onFocus={() => obj.card && previewStore.set(obj.card)}
+                    onFocus={() => obj.card && showPreview(obj)}
                     onBlur={() => previewStore.set(null)}
                     onClick={(e) => menuStore.set({ target: { kind: 'object', objectId: obj.id }, ...menuAnchor(e, e.currentTarget.getBoundingClientRect()) })}>
                     <span>{obj.card?.name ?? 'Carta'}</span>

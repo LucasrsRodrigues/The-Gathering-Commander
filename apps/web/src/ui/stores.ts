@@ -1,8 +1,15 @@
-import type { CardRef, PlayerId } from '@gathering-hall/engine'
+import type { CardRef, ObjectView, PlayerId } from '@gathering-hall/engine'
 import { createStore } from './store'
 
 // Card shown enlarged on hover / long-press.
 export const previewStore = createStore<CardRef | null>(null)
+// The object on the table behind the preview, for its state (counters, current P/T…). The preview only uses it
+// while previewStore holds this object's card, so places without an object (deck editor) never show a stale state.
+export const previewObjectStore = createStore<ObjectView | null>(null)
+export function showPreview(obj: ObjectView) {
+  previewObjectStore.set(obj)
+  previewStore.set(obj.card)
+}
 
 // Context menu for a card or a pile, positioned at the pointer.
 export type MenuTarget =

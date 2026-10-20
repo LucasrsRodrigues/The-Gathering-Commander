@@ -11,14 +11,7 @@ import { cardLabel, zoneIds } from './labels'
 import { focusables, menuAnchor, trapTab, useFocusFirst, useRestoreFocus, wrapIndex } from './a11y'
 import type { Dispatch } from './PlayerPanels'
 
-export function CardPreview() {
-  const card = useStore(previewStore)
-  if (!card) return null
-  const img = imagesFor(card)
-  return img ? <img className="preview" src={img.large} alt={card.name} /> : (
-    <div className="preview placeholder"><strong>{card.name}</strong><span>{card.typeLine}</span></div>
-  )
-}
+export { CardPreview } from './CardPreview'
 
 export function CardMenu({ view, dispatch }: { view: PlayerView; dispatch: Dispatch }) {
   const menu = useStore(menuStore)

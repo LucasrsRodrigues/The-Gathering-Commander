@@ -89,6 +89,7 @@ export class GatheringHallCatalog implements CatalogPort, LegalityPort {
   }
 
   resolvePrintings(ids: string[]) { return this.fallback.resolvePrintings(ids) }
+  translation(oracleId: string) { return this.fallback.translation?.(oracleId) ?? Promise.resolve(null) }
   resolveSetNumbers(prints: { set: string; number: string }[]) { return this.fallback.resolveSetNumbers?.(prints) ?? Promise.resolve(new Map()) }
   search(query: string, opts?: RequestOptions): Promise<SearchPage> { return this.fallback.search(query, opts) }
   autocomplete(prefix: string, opts?: RequestOptions) { return this.fallback.autocomplete(prefix, opts) }

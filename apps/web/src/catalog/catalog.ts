@@ -42,6 +42,8 @@ export interface CatalogPort {
   // Printings by set code and collector number, keyed `${set}/${number}` (lower case). Optional: without it the deck
   // text keeps the default printing.
   resolveSetNumbers?(prints: { set: string; number: string }[]): Promise<Map<string, CatalogCard>>
+  // The printed text of a Portuguese printing, when there is one (card preview). Optional.
+  translation?(oracleId: string): Promise<{ name: string; typeLine: string; text: string } | null>
 }
 
 export const printKey = (set: string, number: string) => `${set.toLowerCase()}/${number.toLowerCase()}`
@@ -55,6 +57,13 @@ const imagesById = new Map<string, CardImages>()
 
 export function rememberImages(card: CatalogCard) {
   if (card.ref.imageKey && card.images) imagesById.set(card.ref.imageKey, card.images)
+  rememberText?.(card)
+}
+
+// The card text memory (cardText.ts) registers itself here, so every place that remembers images remembers text too.
+let rememberText: ((card: CatalogCard) => void) | null = null
+export function onRememberCard(fn: (card: CatalogCard) => void) {
+  rememberText = fn
 }
 
 export function imagesFor(ref: CardRef | null): CardImages | null {

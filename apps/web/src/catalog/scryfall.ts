@@ -8,6 +8,7 @@ import {
   normalizeName, printKey, rememberImages, type CardImages, type CatalogCard, type CatalogPort, type RequestOptions,
   type ResolveResult, type SearchPage,
 } from './catalog'
+import type { Translation } from './cardText'
 import { API_HOST, isApiUrl, isImageUrl } from './hosts'
 
 const BATCH = 75
@@ -26,7 +27,12 @@ const COLORS: readonly Color[] = ['W', 'U', 'B', 'R', 'G']
 const LEGALITIES = ['legal', 'banned', 'not_legal', 'restricted'] as const
 // oxlint-disable-next-line no-control-regex -- rejecting control characters and bidi overrides is the point
 const UNSAFE = /[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/
+// Rules text keeps its line breaks; everything else from UNSAFE stays out.
+// oxlint-disable-next-line no-control-regex -- rejecting control characters and bidi overrides is the point
+const UNSAFE_TEXT = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/
 
+interface PrintedFields { printed_name?: unknown; printed_type_line?: unknown; printed_text?: unknown }
+interface PrintedCard extends PrintedFields { card_faces?: PrintedFields[] }
 interface ScryfallImages { small?: string; normal?: string; large?: string; art_crop?: string }
 interface RulesFields { mana_cost?: string; power?: string; toughness?: string; loyalty?: string }
 interface ScryfallFace extends RulesFields { name?: string; type_line?: string; oracle_text?: string; oracle_id?: string; image_uris?: ScryfallImages }
@@ -205,6 +211,25 @@ export class ScryfallCatalog implements CatalogPort {
     this.writeCache(cache)
     found.forEach(rememberImages)
     return found
+  }
+
+  // The text of a Portuguese printing, if Scryfall has one (printed_* fields; both faces for double-faced cards).
+  async translation(oracleId: string): Promise<Translation | null> {
+    if (!ID.test(oracleId)) return null
+    const json = (await this.get('/cards/search', { q: `oracleid:${oracleId} lang:pt`, unique: 'prints', order: 'released', dir: 'desc' })) as { data?: unknown } | null
+    const cards = Array.isArray(json?.data) ? (json.data as PrintedCard[]) : []
+    for (const card of cards.slice(0, 5)) {
+      const faces = Array.isArray(card.card_faces) ? card.card_faces.slice(0, 2) : []
+      const pick = (field: keyof PrintedFields, max: number) => {
+        const parts = [card[field], ...faces.map((f) => f[field])].filter((v): v is string => isText(v, max) && !UNSAFE_TEXT.test(v))
+        return [...new Set(parts)]
+      }
+      const name = pick('printed_name', 200)[0]
+      const text = pick('printed_text', MAX_ORACLE).join('\n—\n')
+      // Basic lands and vanilla cards have no printed text: the name and type still come in Portuguese.
+      if (name) return { name, typeLine: pick('printed_type_line', MAX_TEXT)[0] ?? '', text }
+    }
+    return null
   }
 
   async search(query: string, opts: RequestOptions = {}): Promise<SearchPage> {

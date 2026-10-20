@@ -14,6 +14,7 @@ import { LocalPresetRepository } from '../presets/repository'
 import { AboutScreen } from '../screens/AboutScreen'
 import { AccountScreen } from '../screens/AccountScreen'
 import { MatchHistoryScreen } from '../screens/MatchHistoryScreen'
+import { setCardTextSource } from '../catalog/cardText'
 import { PublicDeckScreen } from '../screens/PublicDeckScreen'
 import { ShareClient } from '../decks/shareClient'
 import { DeckEditorScreen } from '../screens/DeckEditorScreen'
@@ -60,6 +61,11 @@ function screenFromHash(): Screen | null {
 
 export default function App() {
   const catalog = useMemo(() => new GatheringHallCatalog(SERVER_HTTP, new ScryfallCatalog()), [])
+  useEffect(() => {
+    // The card preview's text box: Oracle text from the catalog, Portuguese printing from Scryfall.
+    setCardTextSource({ resolve: (name) => catalog.resolve([name]).then(() => {}), translation: (id) => catalog.translation(id) })
+    return () => setCardTextSource(null)
+  }, [catalog])
   const localPresets = useMemo(() => new LocalPresetRepository(), [])
   const account = useMemo(() => new AccountClient(SERVER_HTTP), [])
   const shares = useMemo(() => new ShareClient(SERVER_HTTP), [])

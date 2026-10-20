@@ -102,7 +102,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
         </aside>
         <PhaseBar view={view} viewer={seat} dispatch={dispatch} />
         {!curtain && <HandArea key={seat} view={view} viewer={seat} dispatch={dispatch} />}
-        <CardPreview />
+        <CardPreview view={view} />
         <CardMenu view={view} dispatch={dispatch} />
         <ZoneViewer view={view} />
         <Toasts />
