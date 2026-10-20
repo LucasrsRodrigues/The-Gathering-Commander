@@ -202,12 +202,34 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - os números de um deck de teste calculado à mão batem (curva, médias, símbolos, fontes, tipos e categorias);
     - no navegador, a barra "valor 2" diz 7 cartas e destaca exatamente as 7;
     - as fontes vermelhas destacam Arcane Signet e as Mountains.
-- [ ] **T10.9 — Modo texto em massa** _(req: 13–15)_ · depende de T10.3, T10.6
+- [x] **T10.9 — Modo texto em massa** _(req: 13–15)_ · depende de T10.3, T10.6
   - Verificação:
     - fitness "serializar e ler de volta = mesmo deck";
     - aceita exportações reais do Moxfield e do Archidekt (com `(SET) número`, `*F*` e `#tags`);
     - salvar vira uma só mudança no histórico;
     - nomes não encontrados são listados sem perder o resto.
+  - Feito:
+    - `decks/bulkText.ts` (puro):
+      - `serializeBulk` escreve as seções `Commander`, `Deck` e `Talvez`, com `(SET) número` da arte escolhida e
+        `#tag` (`#"com espaço"`);
+      - `parseBulk` lê o nosso formato, as linhas do Moxfield (`*F*`, `*CMDR*`, `#tag`) e as do Archidekt
+        (`[Categoria, Outra]`, `^cores^` descartadas);
+      - as seções Maybeboard e Sideboard vão para o Talvez, e Tokens é ignorada;
+      - limites de 30.000 caracteres, 450 linhas e 200 por linha, e o texto é tratado só como texto;
+    - `decks/bulkApply.ts`:
+      - resolve os nomes e as artes por `(SET) número`;
+      - refaz as três listas, juntando linhas repetidas;
+      - sem `(SET)`, mantém a arte que a carta já tinha;
+      - grava uma mudança nova no histórico (`merge: false`) e devolve os nomes não encontrados;
+    - catálogo: `CatalogCard.print` (código e número da impressão) e `resolveSetNumbers` no Scryfall, por
+      `/cards/collection` com `{ set, collector_number }`. O cache local foi para a v4 e é rebaixado uma vez;
+    - botão "Texto" no editor, com o diálogo "Editar como texto". Ele mostra os nomes que ficaram de fora e as
+      linhas não entendidas.
+  - Verificado:
+    - fitness "escrever e salvar de volta = mesmo deck", e nada entra no histórico quando nada muda;
+    - linhas reais do Moxfield e do Archidekt;
+    - no navegador, editar o deck Krenko pelo texto (+1 Goblin Guide, −1 Mountain e um nome inexistente) salva o
+      resto, lista o nome que faltou e grava uma mudança só no histórico.
 - [ ] **T10.10 — Tela do histórico e restaurar** _(req: 16–18)_ · depende de T10.3, T10.4
   - Verificação:
     - ver o deck num ponto antigo sem alterá-lo;

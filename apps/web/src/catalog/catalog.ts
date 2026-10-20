@@ -14,6 +14,7 @@ export interface CatalogCard {
   images: CardImages | null
   facts: CardFacts | null // null when the source has no oracle id
   manaValue: number
+  print?: { set: string; number: string } // this printing's set code and collector number (deck text, épico 10)
 }
 
 export interface ResolveResult {
@@ -37,7 +38,12 @@ export interface CatalogPort {
   search(query: string, opts?: RequestOptions): Promise<SearchPage>
   autocomplete(prefix: string, opts?: RequestOptions): Promise<string[]>
   printings(oracleId: string, opts?: RequestOptions): Promise<CatalogCard[]>
+  // Printings by set code and collector number, keyed `${set}/${number}` (lower case). Optional: without it the deck
+  // text keeps the default printing.
+  resolveSetNumbers?(prints: { set: string; number: string }[]): Promise<Map<string, CatalogCard>>
 }
+
+export const printKey = (set: string, number: string) => `${set.toLowerCase()}/${number.toLowerCase()}`
 
 export function normalizeName(name: string): string {
   return name.trim().replace(/[’‘]/g, "'").replace(/\s+/g, ' ').toLowerCase()

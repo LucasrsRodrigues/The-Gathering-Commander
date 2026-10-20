@@ -117,3 +117,19 @@ describe('host allowlist', () => {
     expect(isApiUrl('https://cards.scryfall.io/x')).toBe(false)
   })
 })
+
+describe('printings by set and collector number (épico 10, T10.9)', () => {
+  it('asks Scryfall by { set, collector_number } and keys the answer by set/number', async () => {
+    const fetchFn = vi.fn(async (_url: string, init: RequestInit) => {
+      const { identifiers } = JSON.parse(String(init.body)) as { identifiers: { set: string; collector_number: string }[] }
+      const data = identifiers.map(({ set, collector_number }) => ({
+        id: uuid(`${set}${collector_number}`), oracle_id: 'or-sol', name: 'Sol Ring', type_line: 'Artifact', set, collector_number, image_uris: images('Sol Ring'),
+      }))
+      return { ok: true, status: 200, json: async () => ({ data }) }
+    })
+    const catalog = new ScryfallCatalog({ fetchFn, storage: null, sleep: async () => {} })
+    const found = await catalog.resolveSetNumbers([{ set: 'C21', number: '263' }, { set: 'c21', number: '263' }, { set: 'bad set!', number: '1' }])
+    expect(JSON.parse(String(fetchFn.mock.calls[0]![1].body)).identifiers).toEqual([{ set: 'c21', collector_number: '263' }])
+    expect(found.get('c21/263')?.print).toEqual({ set: 'c21', number: '263' })
+  })
+})

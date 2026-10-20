@@ -5,14 +5,14 @@
 import { deriveCardRules, type CardRules, type OracleFacts } from '@gathering-hall/engine'
 import type { CardFacts, Color } from '@gathering-hall/formats'
 import {
-  normalizeName, rememberImages, type CardImages, type CatalogCard, type CatalogPort, type RequestOptions,
+  normalizeName, printKey, rememberImages, type CardImages, type CatalogCard, type CatalogPort, type RequestOptions,
   type ResolveResult, type SearchPage,
 } from './catalog'
 import { API_HOST, isApiUrl, isImageUrl } from './hosts'
 
 const BATCH = 75
 const MIN_GAP_MS = 100 // Scryfall asks for 50–100 ms between requests
-const CACHE_KEY = 'gh-catalog-v3' // v3: cost, P/T and loyalty for the engine's card rules (épico 09)
+const CACHE_KEY = 'gh-catalog-v4' // v3: cost, P/T and loyalty for the engine's card rules (épico 09); v4: set and number
 const MAX_CACHE_ENTRIES = 2_500 // keeps the localStorage cache well under typical quotas
 const MAX_TEXT = 200
 const MAX_ORACLE = 3_000
@@ -20,6 +20,8 @@ const MAX_QUERY = 300
 const MAX_RESULTS = 60
 const TIMEOUT_MS = 20_000
 const ID = /^[0-9a-f-]{36}$/i
+const SET = /^[a-z0-9]{2,6}$/i
+const NUMBER = /^[\w★-]{1,10}$/
 const COLORS: readonly Color[] = ['W', 'U', 'B', 'R', 'G']
 const LEGALITIES = ['legal', 'banned', 'not_legal', 'restricted'] as const
 // oxlint-disable-next-line no-control-regex -- rejecting control characters and bidi overrides is the point
@@ -30,6 +32,8 @@ interface RulesFields { mana_cost?: string; power?: string; toughness?: string; 
 interface ScryfallFace extends RulesFields { name?: string; type_line?: string; oracle_text?: string; oracle_id?: string; image_uris?: ScryfallImages }
 interface ScryfallCard extends RulesFields {
   id: string
+  set?: string
+  collector_number?: string
   oracle_id?: string
   name: string
   type_line?: string
@@ -60,6 +64,7 @@ function slim(card: ScryfallCard): ScryfallCard {
   const face = (f: ScryfallFace): ScryfallFace => ({ name: f.name, type_line: f.type_line, oracle_text: f.oracle_text, oracle_id: f.oracle_id, image_uris: f.image_uris, ...rules(f) })
   return {
     id: card.id, oracle_id: card.oracle_id, name: card.name, type_line: card.type_line, oracle_text: card.oracle_text, ...rules(card),
+    set: card.set, collector_number: card.collector_number,
     color_identity: card.color_identity, keywords: card.keywords, legalities: { commander: card.legalities?.commander },
     game_changer: card.game_changer, cmc: card.cmc, image_uris: card.image_uris,
     ...(Array.isArray(card.card_faces) ? { card_faces: card.card_faces.slice(0, 2).map(face) } : {}),
@@ -95,6 +100,8 @@ export function toCatalogCard(card: ScryfallCard): CatalogCard | null {
     images: safeImages(card.image_uris ?? front?.image_uris),
     facts,
     manaValue,
+    ...(typeof card.set === 'string' && SET.test(card.set) && typeof card.collector_number === 'string' && NUMBER.test(card.collector_number)
+      ? { print: { set: card.set.toLowerCase(), number: card.collector_number } } : {}),
   }
 }
 
@@ -184,6 +191,22 @@ export class ScryfallCatalog implements CatalogPort {
     return found
   }
 
+  async resolveSetNumbers(prints: { set: string; number: string }[]): Promise<Map<string, CatalogCard>> {
+    const found = new Map<string, CatalogCard>()
+    const wanted = [...new Map(prints.filter((p) => SET.test(p.set) && NUMBER.test(p.number)).map((p) => [printKey(p.set, p.number), p])).values()]
+    const cache = this.readCache()
+    for (let i = 0; i < wanted.length; i += BATCH) {
+      const batch = wanted.slice(i, i + BATCH).map((p) => ({ set: p.set.toLowerCase(), collector_number: p.number }))
+      for (const raw of await this.collection(batch)) {
+        const entry = this.store(cache, raw)
+        if (entry?.print) found.set(printKey(entry.print.set, entry.print.number), entry)
+      }
+    }
+    this.writeCache(cache)
+    found.forEach(rememberImages)
+    return found
+  }
+
   async search(query: string, opts: RequestOptions = {}): Promise<SearchPage> {
     const q = cleanQuery(query)
     if (!q) return { cards: [], total: 0 }
@@ -225,7 +248,7 @@ export class ScryfallCatalog implements CatalogPort {
     }
   }
 
-  private async collection(identifiers: ({ name: string } | { id: string })[]): Promise<ScryfallCard[]> {
+  private async collection(identifiers: ({ name: string } | { id: string } | { set: string; collector_number: string })[]): Promise<ScryfallCard[]> {
     const url = `https://${API_HOST}/cards/collection`
     if (!isApiUrl(url)) throw new Error('destino fora da lista permitida')
     await this.throttle()

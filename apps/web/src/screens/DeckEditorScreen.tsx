@@ -11,7 +11,10 @@ import {
   renameCategory, renameDeck, setMainCategory, setPrinting, toggleCategory, toValidation, type Deck, type DeckCard, type DeckZone,
   type StatFilter,
 } from '../decks/model'
+import { applyBulk } from '../decks/bulkApply'
+import { parseBulk, serializeBulk } from '../decks/bulkText'
 import { suggestionsFor } from '../decks/tags'
+import { BulkTextDialog } from '../decks/ui/BulkTextDialog'
 import { CategoryPanel } from '../decks/ui/CategoryPanel'
 import { NameDialog } from '../decks/ui/NameDialog'
 import { CardMenu, type MenuSection } from '../decks/views/CardMenu'
@@ -59,6 +62,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [naming, setNaming] = useState<{ kind: 'new'; targets: Target[] } | { kind: 'rename'; from: string } | null>(null)
   const [shownCategory, setShownCategory] = useState<string | null>(null) // highlights its cards
   const [searchToMaybe, setSearchToMaybe] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
   const [statFilter, setStatFilter] = useState<StatFilter | null>(null) // a clicked number of the stats panel
 
   useEffect(() => {
@@ -257,6 +261,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
         <input className="deck-name" aria-label="Nome do deck" value={deck.name} maxLength={60}
           onChange={(e) => update((d, now) => renameDeck(d, e.target.value, now))} />
         <div className="row">
+          <button className="btn" onClick={() => setBulkOpen(true)}>Texto</button>
           <button className="btn" onClick={() => setExporting(true)}>Exportar lista</button>
           <button className="btn primary" onClick={() => onTest(deck)}>Testar (goldfish)</button>
         </div>
@@ -333,6 +338,22 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
           }}
           onShow={(name) => setShownCategory((c) => (c === name ? null : name))} />
       </DeckSidebar>
+      {bulkOpen && (
+        <BulkTextDialog initial={serializeBulk(deck, (id) => data.printings.get(id)?.print ?? null)} onClose={() => setBulkOpen(false)}
+          onSave={async (text) => {
+            const parsed = parseBulk(text)
+            const result = await applyBulk(deck, parsed, services.catalog, Date.now())
+            setData((d) => {
+              const next = withCards(d, result.cards)
+              for (const p of result.printings) if (p.ref.scryfallId) next.printings.set(p.ref.scryfallId, p)
+              return next
+            })
+            setDeck(result.deck)
+            clearSelection()
+            toast('Deck salvo pelo texto.')
+            return { missing: result.missing, errors: parsed.errors }
+          }} />
+      )}
       {naming && (
         <NameDialog title={naming.kind === 'new' ? 'Nova categoria' : `Renomear "${naming.from}"`} label="Nome"
           initial={naming.kind === 'rename' ? naming.from : ''} confirm={naming.kind === 'new' ? 'Criar' : 'Renomear'}
