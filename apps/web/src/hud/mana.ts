@@ -1,6 +1,6 @@
 // Mana on the table (épico 09): what tapping a source offers, and how mana is written ({G}{G}).
 
-import { planPaymentFromView, type ActionIntent, type ManaActivation, type ManaAmount, type ManaColor, type ManaType, type ObjectView, type PlayerId, type PlayerView } from '@gathering-hall/engine'
+import { planAbilityPaymentFromView, planPaymentFromView, type ActionIntent, type ManaActivation, type ManaAmount, type ManaColor, type ManaType, type ObjectView, type PlayerId, type PlayerView } from '@gathering-hall/engine'
 import type { MenuItem } from './actions'
 
 const MANA_TYPES: readonly ManaType[] = ['W', 'U', 'B', 'R', 'G', 'C']
@@ -47,13 +47,17 @@ export function manaItems(view: PlayerView, viewer: PlayerId | null, obj: Object
 }
 
 export interface PendingPayment {
-  action: Extract<ActionIntent, { type: 'castSpell' }>
+  action: Extract<ActionIntent, { type: 'castSpell' }> | Extract<ActionIntent, { type: 'activateAbility' }>
   plan: ManaActivation[]
 }
 
 // A cast that needs sources tapped becomes a confirmation; anything else goes straight to the engine (which
 // blocks it with the reason when it cannot be paid).
 export function paymentFor(view: PlayerView, seat: PlayerId, action: ActionIntent): PendingPayment | null {
+  if (action.type === 'activateAbility' && !action.payWith && view.ruleset.manaRules !== 'off') {
+    const plan = planAbilityPaymentFromView(view, seat, action.objectId, action.index)
+    return plan?.length ? { action, plan } : null
+  }
   if (action.type !== 'castSpell' || action.payWith || view.ruleset.manaRules === 'off') return null
   const plan = planPaymentFromView(view, seat, action.objectId, action.x ?? 0)
   return plan?.length ? { action, plan } : null

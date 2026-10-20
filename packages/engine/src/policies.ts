@@ -143,6 +143,38 @@ const discardCount: Policy = (state, action) => {
   return action.objectIds.length < count ? timing('discardCount', `Descarte ${count} carta(s) para ficar com ${state.ruleset.maxHandSize}.`) : null
 }
 
+// Épico 11, onda 2 (CR 602.2, 602.5d, 302.6): an activated ability needs priority, "Activate only as a sorcery" needs
+// sorcery speed, and {T} needs a creature that has been there since the turn began (or Haste).
+const activatedOf = (state: GameState, action: Action) => {
+  if (action.type !== 'activateAbility') return null
+  const obj = Object.hasOwn(state.objects, action.objectId) ? state.objects[action.objectId] : undefined
+  const ability = Number.isInteger(action.index) ? obj?.card.rules?.activated?.[action.index] : undefined
+  return obj && ability ? { obj, ability } : null
+}
+const abilityTiming: Policy = (state, action) => {
+  const found = activatedOf(state, action)
+  if (!found) return null
+  if (state.priority?.player !== action.player) return timing('noPriority', 'Você precisa ter prioridade para ativar.')
+  if (found.ability.sorcerySpeed) {
+    const speed = sorcerySpeed(state, action.player, 'Essa habilidade só pode ser ativada')
+    if (speed) return speed
+  }
+  if (found.ability.cost.tap && found.obj.zone === 'battlefield' && isSummoningSick(state, found.obj)) {
+    return timing('summoningSick', `${found.obj.card.name} acabou de chegar: só usa {T} a partir do seu próximo turno.`)
+  }
+  return null
+}
+const abilityPayment: Policy = (state, action) => {
+  const found = activatedOf(state, action)
+  const cost = found?.ability.cost.mana
+  if (!found || !cost || action.type !== 'activateAbility') return null
+  const simulated = action.payWith?.length ? simulatePool(state, action.player, action.payWith) : null
+  if (simulated?.sick) return mana('summoningSick', 'Uma criatura do pagamento acabou de chegar: só gera mana a partir do seu próximo turno.')
+  const pool = simulated?.pool ?? state.players[action.player]!.manaPool
+  if (!simulated?.short && findPayment(pool, cost, 0, 0)) return null
+  return mana('notEnoughMana', `Mana insuficiente: a habilidade custa ${formatCost(cost, 0, 0)}. Gere mana primeiro.`)
+}
+
 // Épico 11, req. 9: "Resolver à mão" changes what a card does, so like any rule exception the others approve it online.
 const manualResolution: Policy = (_state, action) =>
   action.type === 'resolveManually' ? timing('manualResolution', 'Resolver à mão deixa de aplicar o efeito automático: os outros jogadores aprovam.') : null
@@ -159,6 +191,8 @@ const POLICIES: { area: RuleArea; check: Policy }[] = [
   { area: 'timing', check: landTiming },
   { area: 'timing', check: spellTiming },
   { area: 'timing', check: manualResolution },
+  { area: 'timing', check: abilityTiming },
+  { area: 'mana', check: abilityPayment },
 ]
 
 // Findings for every area that is not 'off'.

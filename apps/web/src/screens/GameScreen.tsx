@@ -3,6 +3,8 @@ import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { CombatPanel } from '../hud/Combat'
 import { TargetBar } from '../hud/TargetBar'
+import { CostChoiceDialog } from '../hud/CostChoice'
+import { costChoiceFor, type CostChoice } from '../hud/abilities'
 import { castTargeting, targetingStore, toggleTarget, triggerTargeting } from '../hud/targeting'
 import { AwayNotice, type AwayControls } from '../hud/AwayNotice'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
@@ -31,23 +33,23 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
   const curtain = session.needsCurtain()
 
   const [payment, setPayment] = useState<PendingPayment | null>(null)
-  // Sends an action as is; dispatch below asks for targets and payment first.
+  const [costChoice, setCostChoice] = useState<CostChoice | null>(null)
+  // Sends an action without asking for targets again; dispatch below asks for them first. Either way, the cards a
+  // cost needs (épico 11, onda 2) and the sources to tap (automatic payment) are asked before the engine sees it.
   const send: Dispatch = useCallback((action) => {
+    const choice = costChoiceFor(session.view(), session.seat(), action)
+    if (choice) return setCostChoice(choice)
     const pending = paymentFor(session.view(), session.seat(), action)
     if (pending) return setPayment(pending)
     const error = session.dispatch(action)
     if (error) toast(error.message)
-  }, [session, setPayment])
+  }, [session, setPayment, setCostChoice])
   const dispatch: Dispatch = useCallback((action) => {
-    // Épico 11: a spell with targets asks for them on the table first.
+    // Épico 11: a spell or an ability with targets asks for them on the table first.
     const targeting = castTargeting(session.view(), action)
     if (targeting) return targetingStore.set(targeting)
-    // Casting that needs sources tapped asks first (automatic payment).
-    const pending = paymentFor(session.view(), session.seat(), action)
-    if (pending) return setPayment(pending)
-    const error = session.dispatch(action)
-    if (error) toast(error.message)
-  }, [session, setPayment])
+    send(action)
+  }, [session, send])
 
   const intents: TableIntents = useMemo(() => ({
     // Clicking a mana source makes mana: at once when there is one way, otherwise a menu of the options.
@@ -134,6 +136,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
           <PaymentDialog payment={payment} view={view} onClose={() => setPayment(null)}
             dispatch={(a) => { const error = session.dispatch(a); if (error) toast(error.message) }} />
         )}
+        {costChoice && <CostChoiceDialog choice={costChoice} onClose={() => setCostChoice(null)} dispatch={send} />}
         {!curtain && view.status === 'playing' && <CombatPanel view={view} seat={seat} dispatch={dispatch} />}
         {!curtain && view.status === 'playing' && <TargetBar view={view} seat={seat} dispatch={dispatch} send={send} />}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}

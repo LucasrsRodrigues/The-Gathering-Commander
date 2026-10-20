@@ -51,7 +51,7 @@ export function TargetBar({ view, seat, dispatch, send }: {
       <div className="row">
         <button className="btn" onClick={() => { done(); send(manualAction(t)) }}
           title={t.kind === 'cast' ? 'Lança sem alvos: o efeito fica com os jogadores' : 'A habilidade vai para a pilha para ser feita à mão'}>
-          {t.kind === 'cast' ? 'Lançar à mão' : 'Resolver à mão'}
+          {t.kind === 'trigger' ? 'Resolver à mão' : t.action?.type === 'activateAbility' ? 'Ativar à mão' : 'Lançar à mão'}
         </button>
         {t.kind === 'cast' && <button className="btn" onClick={close}>Cancelar</button>}
         <button className="btn primary" disabled={!ready} onClick={() => { done(); dispatch(confirmAction(t)) }}>

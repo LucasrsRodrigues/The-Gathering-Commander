@@ -19,6 +19,7 @@ import { STEPS, type Action, type CardRef, type GameObject, type GameState, type
 import { drawCards, moveObject, shuffleLibrary } from './zones'
 import { checkTargets } from './effects/targets'
 import { pushTrigger, stackTriggers } from './triggers'
+import { activateAbility } from './activate'
 
 const ZONES: readonly ZoneKind[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'stack', 'command']
 const MULLIGAN_ACTIONS = new Set<Action['type']>(['keepHand', 'mulligan', 'bottomCards'])
@@ -47,6 +48,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
   'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil', 'chooseTargets', 'resolveManually',
+  'activateAbility',
 ])
 const MAX_PT_DELTA = 100
 const WAITING: Record<string, string> = {
@@ -447,6 +449,10 @@ function applyGameAction(tx: Tx, action: Action) {
 
     // Épico 11, req. 9: whoever has priority may ask that the top item resolve by hand (a safety valve against a
     // misread card). It changes the game's outcome, so it is a rule exception (policies.ts): approved online.
+    case 'activateAbility':
+      activateAbility(tx, actor, action, activateManaAbility)
+      return
+
     case 'resolveManually': {
       const top = s.stack[s.stack.length - 1]
       if (!top || top.id !== action.stackItemId) fail('invalidAction', 'Só o item do topo da pilha pode ser resolvido à mão.')

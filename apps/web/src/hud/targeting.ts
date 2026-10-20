@@ -6,7 +6,7 @@
 import { legalTargetsInView, type ActionIntent, type PlayerId, type PlayerView, type Target, type TargetSpec } from '@gathering-hall/engine'
 import { createStore } from '../ui/store'
 
-type Cast = Extract<ActionIntent, { type: 'castSpell' }>
+type Cast = Extract<ActionIntent, { type: 'castSpell' }> | Extract<ActionIntent, { type: 'activateAbility' }>
 
 export interface Targeting {
   id: string // which choice this is: a new one starts with nothing chosen
@@ -16,7 +16,7 @@ export interface Targeting {
   title: string // the card's name
   text: string // the sentence that asks for targets
   chosen: Target[]
-  action?: Cast // kind 'cast': sent with the targets on confirm
+  action?: Cast // kind 'cast' (a spell or an activated ability): sent with the targets on confirm
 }
 
 export const targetingStore = createStore<Targeting | null>(null)
@@ -37,8 +37,16 @@ export function legalOptions(view: PlayerView, seat: PlayerId, t: Pick<Targeting
     .filter((target) => !seen.has(targetKey(target)) && !!seen.add(targetKey(target)))
 }
 
-// A cast whose spell asks for targets starts the target mode instead of going to the engine.
+// A cast whose spell asks for targets starts the target mode instead of going to the engine; so does an activated
+// ability with targets (épico 11, onda 2).
 export function castTargeting(view: PlayerView, action: ActionIntent): Targeting | null {
+  if (action.type === 'activateAbility') {
+    if (action.targets || action.payWith) return null
+    const obj = view.objects[action.objectId]
+    const ability = obj?.card?.rules?.activated?.[action.index]
+    if (!obj?.card || !ability?.targets?.length) return null
+    return { id: `ability:${obj.id}:${action.index}`, kind: 'cast', sourceId: obj.id, specs: ability.targets, title: obj.card.name, text: ability.text, chosen: [], action }
+  }
   if (action.type !== 'castSpell' || action.targets || action.payWith) return null
   const obj = view.objects[action.objectId]
   const spell = obj?.card?.rules?.spell

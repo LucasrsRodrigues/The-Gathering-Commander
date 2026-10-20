@@ -28,9 +28,9 @@ describe('engine fitness functions', () => {
     }
   })
 
-  it('keeps the Oracle parser out of the rules core (only index.ts re-exports it)', () => {
+  it('keeps the Oracle parser out of the rules core (only index.ts re-exports it; oracle/ belongs to the reader)', () => {
     for (const { name, code } of files) {
-      if (name === 'index.ts' || name === 'deriveRules.ts') continue
+      if (name === 'index.ts' || name === 'deriveRules.ts' || name.startsWith('oracle/')) continue // oracle/ is the reader too
       expect(/from\s+['"](\.\.?\/)+deriveRules['"]/.test(code), name).toBe(false)
     }
   })

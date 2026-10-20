@@ -54,15 +54,35 @@ export function planPaymentFromView(view: PlayerView, player: PlayerId, objectId
   const obj = view.objects[objectId]
   const pool = view.players[player]?.manaPool
   if (!obj?.card || !pool) return null
-  const sources = view.battlefield.flatMap((id) => {
+  const tax = obj.zone === 'command' ? obj.commanderTax : 0
+  return planFor(obj.card, tax, x, pool, viewSources(view, player), viewIdentity(view, player))
+}
+
+// Épico 11, onda 2: the plan for an activated ability's mana cost. The source itself is never tapped for it when
+// the cost already taps it ({2}, {T}: …).
+export function planAbilityPaymentFromView(view: PlayerView, player: PlayerId, objectId: ObjectId, index: number): ManaActivation[] | null {
+  const ability = view.objects[objectId]?.card?.rules?.activated?.[index]
+  const pool = view.players[player]?.manaPool
+  if (!ability || !pool) return null
+  const cost = ability.cost.mana
+  if (!cost) return []
+  if (cost.unknown || cost.hybrid.length + cost.twoBrid.length + cost.phyrexian.length > MAX_FLEXIBLE) return []
+  const sources = viewSources(view, player).filter((s) => !(ability.cost.tap && s.id === objectId))
+  return plan({ pool, cost, tax: 0, x: 0, sources, identity: viewIdentity(view, player) })
+}
+
+function viewSources(view: PlayerView, player: PlayerId): PlanInput['sources'] {
+  return view.battlefield.flatMap((id) => {
     const o = view.objects[id]
     return o && o.controller === player && !o.tapped && !o.summoningSick && o.card?.rules?.manaAbilities.length
       ? [{ id, abilities: o.card.rules.manaAbilities, dynamic: dynamicAmounts(o.card.rules.manaAbilities, (v) => evalValueInView(view, { controller: player, sourceId: id }, v)) }] : []
   })
+}
+
+function viewIdentity(view: PlayerView, player: PlayerId): ManaColor[] {
   const identity = new Set<ManaColor>()
   for (const o of Object.values(view.objects)) if (o.isCommander && o.owner === player) o.card?.rules?.colorIdentity.forEach((c) => identity.add(c))
-  const tax = obj.zone === 'command' ? obj.commanderTax : 0
-  return planFor(obj.card, tax, x, pool, sources, (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => identity.has(c)))
+  return (['W', 'U', 'B', 'R', 'G'] as const).filter((c) => identity.has(c))
 }
 
 // How much each 'dynamic' ability adds right now ("equal to ~'s power", "for each Elf"); 0 for the others.

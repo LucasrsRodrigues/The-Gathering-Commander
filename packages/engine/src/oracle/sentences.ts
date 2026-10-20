@@ -151,6 +151,18 @@ const PARSERS: Parser[] = [
     const m = /^Creatures you control get \+(\d{1,2})\/\+(\d{1,2}) until end of turn\.$/.exec(s)
     return m ? { effects: [{ kind: 'pump', what: { each: { types: ['creature'], controller: 'you' } }, power: value(m[1]!), toughness: value(m[2]!) }] } : null
   },
+  // The permanent itself (activated and "enters" abilities): "This creature gets +2/+2 until end of turn."
+  (s) => {
+    const m = /^(?:T|t)his (?:card|creature) gets ([+-](?:\d{1,2}|X))\/([+-](?:\d{1,2}|X)) until end of turn\.$/.exec(s)
+    if (!m) return null
+    const p = m[1]!.startsWith('-') ? neg(signed(m[1]!.slice(1))) : signed(m[1]!.slice(1))
+    const t = m[2]!.startsWith('-') ? neg(signed(m[2]!.slice(1))) : signed(m[2]!.slice(1))
+    return { effects: [{ kind: 'pump', what: 'self', power: p, toughness: t }] }
+  },
+  (s) => {
+    const m = re(`Put ${NUM} \\+1/\\+1 counters? on this (?:card|creature)\\.`).exec(s)
+    return m ? { effects: [{ kind: 'counters', what: 'self', counter: '+1/+1', amount: value(m[1]!) }] } : null
+  },
   (s) => {
     const m = re(`Put ${NUM} \\+1/\\+1 counters? on target creature\\.`).exec(s)
     return m ? { targets: [objectTarget({ types: ['creature'] })], effects: [{ kind: 'counters', what: 'target', counter: '+1/+1', amount: value(m[1]!) }] } : null

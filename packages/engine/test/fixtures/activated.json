@@ -1,0 +1,172 @@
+[
+ {
+  "name": "Mind Stone",
+  "typeLine": "Artifact",
+  "manaCost": "{2}",
+  "oracleText": "{T}: Add {C}.\n{1}, {T}, Sacrifice this artifact: Draw a card.",
+  "keywords": [],
+  "colorIdentity": []
+ },
+ {
+  "name": "Commander's Sphere",
+  "typeLine": "Artifact",
+  "manaCost": "{3}",
+  "oracleText": "{T}: Add one mana of any color in your commander's color identity.\nSacrifice this artifact: Draw a card.",
+  "keywords": [],
+  "colorIdentity": []
+ },
+ {
+  "name": "Goblin Bombardment",
+  "typeLine": "Enchantment",
+  "manaCost": "{1}{R}",
+  "oracleText": "Sacrifice a creature: This enchantment deals 1 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Mogg Fanatic",
+  "typeLine": "Creature — Goblin",
+  "manaCost": "{R}",
+  "oracleText": "Sacrifice this creature: It deals 1 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Shivan Dragon",
+  "typeLine": "Creature — Dragon",
+  "manaCost": "{4}{R}{R}",
+  "oracleText": "Flying\n{R}: This creature gets +1/+0 until end of turn.",
+  "keywords": [
+   "Flying"
+  ],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Bloodthrone Vampire",
+  "typeLine": "Creature — Vampire",
+  "manaCost": "{1}{B}",
+  "oracleText": "Sacrifice a creature: This creature gets +2/+2 until end of turn.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Carrion Feeder",
+  "typeLine": "Creature — Zombie",
+  "manaCost": "{B}",
+  "oracleText": "This creature can't block.\nSacrifice a creature: Put a +1/+1 counter on this creature.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Seal of Fire",
+  "typeLine": "Enchantment",
+  "manaCost": "{R}",
+  "oracleText": "Sacrifice this enchantment: It deals 2 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ },
+ {
+  "name": "Prodigal Sorcerer",
+  "typeLine": "Creature — Human Wizard Sorcerer",
+  "manaCost": "{2}{U}",
+  "oracleText": "{T}: This creature deals 1 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "U"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Wayfarer's Bauble",
+  "typeLine": "Artifact",
+  "manaCost": "{1}",
+  "oracleText": "{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+  "keywords": [],
+  "colorIdentity": []
+ },
+ {
+  "name": "Krenko, Mob Boss",
+  "typeLine": "Legendary Creature — Goblin Warrior",
+  "manaCost": "{2}{R}{R}",
+  "oracleText": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ],
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Walking Ballista",
+  "typeLine": "Artifact Creature — Construct",
+  "manaCost": "{X}{X}",
+  "oracleText": "This creature enters with X +1/+1 counters on it.\n{4}: Put a +1/+1 counter on this creature.\nRemove a +1/+1 counter from this creature: It deals 1 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [],
+  "power": "0",
+  "toughness": "0"
+ },
+ {
+  "name": "Viscera Seer",
+  "typeLine": "Creature — Vampire Wizard",
+  "manaCost": "{B}",
+  "oracleText": "Sacrifice a creature: Scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+  "keywords": [
+   "Scry"
+  ],
+  "colorIdentity": [
+   "B"
+  ],
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Ashnod's Altar",
+  "typeLine": "Artifact",
+  "manaCost": "{3}",
+  "oracleText": "Sacrifice a creature: Add {C}{C}.",
+  "keywords": [],
+  "colorIdentity": []
+ },
+ {
+  "name": "Liliana's Triumph",
+  "typeLine": "Instant",
+  "manaCost": "{1}{B}",
+  "oracleText": "Each opponent sacrifices a creature of their choice. If you control a Liliana planeswalker, each opponent also discards a card.",
+  "keywords": [],
+  "colorIdentity": [
+   "B"
+  ]
+ },
+ {
+  "name": "Fireblast",
+  "typeLine": "Instant",
+  "manaCost": "{4}{R}{R}",
+  "oracleText": "You may sacrifice two Mountains rather than pay this spell's mana cost.\nFireblast deals 4 damage to any target.",
+  "keywords": [],
+  "colorIdentity": [
+   "R"
+  ]
+ }
+]

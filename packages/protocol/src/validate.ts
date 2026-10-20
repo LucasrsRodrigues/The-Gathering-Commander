@@ -202,6 +202,19 @@ export function actionIntent(v: unknown): ActionIntent {
         ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
         ...(a.targets !== undefined ? { targets: targets(a.targets) } : {}),
       }
+    case 'activateAbility': {
+      const few = (v: unknown, what: string) => {
+        if (!Array.isArray(v) || v.length > 5) bad(`${what} inválido`)
+        return (v as unknown[]).map((x) => id(x, what))
+      }
+      return {
+        type, objectId: id(a.objectId, 'objectId'), index: int(a.index, 'index', 0, 19),
+        ...(a.targets !== undefined ? { targets: targets(a.targets) } : {}),
+        ...(a.payWith !== undefined ? { payWith: manaActivations(a.payWith) } : {}),
+        ...(a.sacrifice !== undefined ? { sacrifice: few(a.sacrifice, 'sacrifice') } : {}),
+        ...(a.discard !== undefined ? { discard: few(a.discard, 'discard') } : {}),
+      }
+    }
     case 'resolveManually':
       return { type, stackItemId: id(a.stackItemId, 'stackItemId') }
     case 'chooseTargets':

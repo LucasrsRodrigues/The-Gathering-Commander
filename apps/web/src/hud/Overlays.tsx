@@ -1,4 +1,5 @@
 import { manaItems } from './mana'
+import { abilityItems } from './abilities'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { PlayerView } from '@gathering-hall/engine'
 import { imagesFor } from '../catalog/catalog'
@@ -43,7 +44,12 @@ export function CardMenu({ view, dispatch }: { view: PlayerView; dispatch: Dispa
     if (!obj) return null
     title = obj.card?.name ?? 'Carta virada para baixo'
     const mana = manaItems(view, view.viewer, obj)
-    groups = [...(mana.length ? [{ title: obj.summoningSick ? 'Mana (acabou de chegar)' : 'Mana', items: mana }] : []), ...menuFor(obj)]
+    const abilities = abilityItems(view.viewer, obj)
+    groups = [
+      ...(mana.length ? [{ title: obj.summoningSick ? 'Mana (acabou de chegar)' : 'Mana', items: mana }] : []),
+      ...(abilities.length ? [{ title: 'Habilidades', items: abilities }] : []),
+      ...menuFor(obj),
+    ]
   }
   return (
     <div ref={ref} className="card-menu" role="menu" aria-label={title} style={pos}

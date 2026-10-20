@@ -13,13 +13,16 @@ export function PaymentDialog({ payment, view, onClose, dispatch }: {
 }) {
   const obj = view.objects[payment.action.objectId]
   const rules = obj?.card?.rules
-  const tax = obj?.zone === 'command' ? obj.commanderTax : 0
-  const cost = rules?.cost ? formatCost(rules.cost, payment.action.x ?? 0, tax) : ''
+  const ability = payment.action.type === 'activateAbility' ? rules?.activated?.[payment.action.index] : undefined
+  const tax = !ability && obj?.zone === 'command' ? obj.commanderTax : 0
+  const x = payment.action.type === 'castSpell' ? payment.action.x ?? 0 : 0
+  const printed = ability ? ability.cost.mana : rules?.cost
+  const cost = printed ? formatCost(printed, x, tax) : ''
   const sources = payment.plan.map((a) => {
     const source = view.objects[a.objectId]
-    const ability = source?.card?.rules?.manaAbilities[a.abilityIndex]
-    const made = a.color ? formatMana({ [a.color]: ability?.produces.kind === 'anyColor' ? ability.produces.amount : 1 })
-      : ability?.produces.kind === 'fixed' ? formatMana(ability.produces.mana) : ''
+    const manaAbility = source?.card?.rules?.manaAbilities[a.abilityIndex]
+    const made = a.color ? formatMana({ [a.color]: manaAbility?.produces.kind === 'anyColor' ? manaAbility.produces.amount : 1 })
+      : manaAbility?.produces.kind === 'fixed' ? formatMana(manaAbility.produces.mana) : ''
     return { key: `${a.objectId}-${a.abilityIndex}`, name: source?.card?.name ?? 'Fonte', made }
   })
 
@@ -29,13 +32,13 @@ export function PaymentDialog({ payment, view, onClose, dispatch }: {
   }
 
   return (
-    <Dialog title={`Lançar ${obj?.card?.name ?? 'carta'}`} onClose={onClose}>
+    <Dialog title={`${ability ? 'Ativar' : 'Lançar'} ${obj?.card?.name ?? 'carta'}`} onClose={onClose}>
       <p>Custo {cost}{tax ? ` (com taxa de comandante +${tax})` : ''}. Vamos virar:</p>
       <ul className="payment-sources">{sources.map((s) => <li key={s.key}>{s.name} <b>{s.made}</b></li>)}</ul>
       <p className="muted small">Prefere escolher? Feche, clique nas fontes que quiser e lance de novo.</p>
       <div className="row end">
         <button className="btn" onClick={onClose}>Pagar à mão</button>
-        <button className="btn primary" autoFocus onClick={cast}>Lançar</button>
+        <button className="btn primary" autoFocus onClick={cast}>{ability ? 'Ativar' : 'Lançar'}</button>
       </div>
     </Dialog>
   )

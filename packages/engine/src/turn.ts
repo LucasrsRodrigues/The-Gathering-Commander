@@ -161,6 +161,7 @@ export function resolveTop(tx: Tx) {
 }
 
 function abilityOf(tx: Tx, item: StackItem): Ability | undefined {
+  if (item.snapshot) return item.snapshot
   const source = item.objectId ?? item.sourceId
   const rules = source ? tx.s.objects[source]?.card.rules : undefined
   if (!item.ability || !rules) return undefined
@@ -170,6 +171,7 @@ function abilityOf(tx: Tx, item: StackItem): Ability | undefined {
 }
 
 function targetSpecsOf(tx: Tx, item: StackItem): TargetSpec[] {
+  if (item.snapshot) return item.snapshot.targets ?? []
   const source = item.objectId ?? item.sourceId
   const rules = source ? tx.s.objects[source]?.card.rules : undefined
   if (!item.ability || !rules) return []

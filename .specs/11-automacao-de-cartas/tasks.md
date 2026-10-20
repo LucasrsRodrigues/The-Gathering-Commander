@@ -342,7 +342,7 @@ Quatro ondas e um fechamento:
       cobre Equip, buscas e vidência, e medir de novo no fim dela.
 
 ## Onda 2 — Habilidades ativadas, contagens e buscas
-- [ ] **T11.10 — Habilidades ativadas** _(req: 12)_ · depende de T11.6
+- [x] **T11.10 — Habilidades ativadas** _(req: 12)_ · depende de T11.6
   - Escopo:
     - padrões de custo ({T}, mana, sacrificar, descartar, vida) e "Activate only as a sorcery";
     - ação `activateAbility`;
@@ -351,6 +351,58 @@ Quatro ondas e um fechamento:
     - o custo é pago certo;
     - as regras de tempo e o enjoo para {T} valem;
     - o item entra na pilha e resolve.
+  - Feito:
+    - **Motor** (`activate.ts`): a ação `activateAbility { objectId, index, targets?, payWith?, sacrifice?, discard? }`
+      faz tudo numa ação só, então acontece inteira ou nada (CR 602.2):
+      - alvos checados como no conjurar; sem alvos, o item entra na pilha para ser feito à mão;
+      - as cartas do custo vêm na ação e são checadas antes de pagar: só criaturas que o jogador controla e que
+        servem ao filtro, e só cartas da mão;
+      - as fontes do `payWith` viram primeiro, nunca a própria carta quando o custo já a vira;
+      - os custos: mana da reserva, {T}, vida (precisa ter a vida, CR 119.4), descartar, sacrificar outra e
+        sacrificar a própria carta;
+      - o item guarda a habilidade (`snapshot`) quando a carta se sacrifica, para uma ficha sacrificada ainda
+        resolver (CR 113.7a);
+      - só quem controla a carta ativa.
+    - **Políticas:**
+      - "tempo": prioridade, "só como feitiço" e o enjoo de invocação para {T} (CR 302.6);
+      - "mana": falta de mana para o custo.
+
+      Como as outras, dá para contornar com exceção.
+    - **Leitor:** linhas "<custo>: <frases conhecidas>." em permanentes:
+      - custo com {T}, mana, "Sacrifice this …", "Sacrifice a/an <tipo>", "Discard a card" e "Pay N life";
+      - "Activate only as a sorcery." no fim;
+      - lealdade, custo no cemitério, "Activate only once each turn." e "where X is…" ficam manuais;
+      - frases novas: "This creature gets +N/+N until end of turn." e "Put a +1/+1 counter on this creature.";
+      - "it deals" e "this enchantment deals" valem como dano da própria carta, igual no ETB.
+    - **Pagamento:** `planAbilityPaymentFromView` planeja o custo de mana sem virar a própria fonte.
+    - **Mesa:**
+      - o menu da carta ganha o grupo "Habilidades", com "Ativar: <texto>";
+      - ativar pede, em ordem, os alvos (a mesma faixa, com "Ativar à mão"), as cartas do custo
+        (`CostChoiceDialog`) e as fontes de mana (o diálogo de pagamento, agora "Ativar X");
+      - fechar qualquer passo não manda nada.
+    - **Protocolo:** valida a ação (índice até 19, até 5 cartas por custo).
+    - **Fitness:** `oracle/` pode importar `deriveRules` (os dois são o leitor). O núcleo de regras continua sem.
+  - Verificado:
+    - Oracle real de 16 cartas:
+      - automáticas: Mind Stone, Commander's Sphere, Goblin Bombardment, Mogg Fanatic, Shivan Dragon, Bloodthrone
+        Vampire, Seal of Fire e Prodigal Sorcerer;
+      - parciais: Carrion Feeder e Walking Ballista;
+      - manuais: Wayfarer's Bauble, Krenko e Viscera Seer.
+    - Motor:
+      - Prodigal Sorcerer vira e causa dano;
+      - com as regras ligadas: enjoo para {T}, "só como feitiço" e prioridade;
+      - Mind Stone paga {1} com uma Floresta, se sacrifica e compra pelo `snapshot`;
+      - Bombardment só aceita uma criatura sua;
+      - Mogg Fanatic se sacrifica e causa o dano, e Shivan Dragon se fortalece;
+      - descartar e pagar vida;
+      - replay determinístico.
+    - Navegador: Mogg Fanatic pelo menu "Ativar", faixa de alvo, a carta vai para o cemitério, e o registro mostra
+      "Mogg Fanatic causou 1 de dano a Jogador 1".
+  - **Medição (bulk de 2026-10-19):**
+    - top 1.000: automáticas de 12,0% para 12,8%;
+    - top 5.000: automáticas de 5,4% para 6,0%.
+
+    As ativadas mais jogadas dependem de contagens (T11.11) e de buscas (T11.12).
 - [ ] **T11.11 — Contagens nos efeitos** _(req: 13)_ · depende de T11.10
   - Verificação:
     - Wellwisher ganha 1 por Elfo, contando a própria;

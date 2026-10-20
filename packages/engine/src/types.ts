@@ -167,6 +167,16 @@ export interface AbilityCost {
   life?: number
 }
 
+// What activating an ability sends (CR 602.2): targets first, then the costs that need choosing.
+export interface ActivateAbility {
+  objectId: ObjectId
+  index: number // into rules.activated
+  targets?: Target[]
+  payWith?: ManaActivation[] // mana abilities to activate first, atomically (as in castSpell)
+  sacrifice?: ObjectId[] // for "Sacrifice a creature": which ones
+  discard?: ObjectId[] // for "Discard a card": which ones
+}
+
 export interface ActivatedAbility extends Ability {
   cost: AbilityCost
   sorcerySpeed?: boolean // "Activate only as a sorcery."
@@ -242,6 +252,7 @@ export interface StackItem {
   ability?: { from: 'spell' | 'etb' | 'activated'; index: number }
   targets?: Target[]
   manual?: boolean // "Resolver à mão": resolves without the automated effects
+  snapshot?: Ability // the ability as it was activated, for a source that left (a sacrificed token: CR 113.7a)
 }
 
 export type PendingDecision =
@@ -411,6 +422,7 @@ export type Action =
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[]; targets?: Target[] }> // CR 601.2 (payWith: tap these first, atomically; targets: épico 11)
+  | ActionOf<'activateAbility', ActivateAbility> // épico 11, CR 602: an automated activated ability
   | ActionOf<'resolveManually', { stackItemId: string }> // épico 11: the top item resolves without its automated effects
   | ActionOf<'chooseTargets', { targets: Target[]; manual?: boolean }> // épico 11: answers ChooseTargets (manual: do it by hand)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
