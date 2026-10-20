@@ -70,7 +70,7 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
     const obj = state.objects[id]
     if (!obj) return
     const faceHidden = obj.faceDown && obj.controller !== viewer
-    const stats = !faceHidden && isCreature(obj) && !!obj.card.rules && !obj.card.rules.variablePT
+    const stats = !faceHidden && isCreature(state, obj) && !!obj.card.rules && !obj.card.rules.variablePT
     objects[id] = {
       id, owner: obj.owner, controller: obj.controller, zone: obj.zone,
       card: faceHidden ? null : obj.card,
@@ -78,8 +78,8 @@ export function viewFor(state: GameState, viewer: PlayerId | null): PlayerView {
       isToken: obj.isToken, isCommander: obj.isCommander,
       commanderTax: commanderTax(obj, state.ruleset),
       summoningSick: obj.zone === 'battlefield' && isSummoningSick(state, obj),
-      power: stats ? powerOf(obj) : null,
-      toughness: stats ? toughnessOf(obj) : null,
+      power: stats ? powerOf(state, obj) : null,
+      toughness: stats ? toughnessOf(state, obj) : null,
       damage: obj.damage,
       ...(obj.arrangement ? { arrangement: obj.arrangement } : {}),
     }

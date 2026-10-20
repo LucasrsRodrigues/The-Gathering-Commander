@@ -1,7 +1,7 @@
 // Mana (épico 09, CR 106, 605): the pool, what a mana ability produces and summoning sickness for {T} abilities.
 
 import { fail, RuleViolation } from './errors'
-import { hasKeyword, typesOf } from './cards'
+import { charsOf, hasKeywordNow } from './layers'
 import type { Tx } from './tx'
 import { evalValue } from './effects/value'
 import type { GameObject, GameState, ManaAbility, ManaActivation, ManaAmount, ManaColor, ManaPool, ManaType, ObjectId, PlayerId } from './types'
@@ -16,8 +16,9 @@ export function poolTotal(pool: ManaAmount): number {
 
 // CR 302.6: a creature's {T} abilities need it under its controller's control since their most recent turn began.
 export function isSummoningSick(state: GameState, obj: GameObject): boolean {
-  if (!typesOf(obj.card).includes('creature') || hasKeyword(obj.card, 'haste')) return false
-  return obj.controlledSince >= (state.players[obj.controller]?.lastTurnStarted ?? 0)
+  const c = charsOf(state, obj)
+  if (!c.types.includes('creature') || hasKeywordNow(state, obj, 'haste')) return false
+  return obj.controlledSince >= (state.players[c.controller]?.lastTurnStarted ?? 0)
 }
 
 // CR 903.4: the combined color identity of the player's commanders.

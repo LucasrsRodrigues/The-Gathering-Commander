@@ -1,6 +1,7 @@
 // Zone mechanics shared by every handler: moving objects, drawing, shuffling.
 
 import { shuffle } from './rng'
+import { isType } from './layers'
 import { LOYALTY } from './stats'
 import { queueEnterTriggers } from './triggers'
 import type { Tx } from './tx'
@@ -71,7 +72,7 @@ export function moveObject(tx: Tx, id: ObjectId, to: ZoneKind, opts: MoveOptions
   if (to === 'battlefield') {
     tx.battlefield().push(id)
     // CR 306.5b: a planeswalker enters with its printed loyalty.
-    const loyalty = obj.card.rules?.types.includes('planeswalker') ? obj.card.rules.loyalty : null
+    const loyalty = isType(tx.s, obj, 'planeswalker') ? (obj.card.rules?.loyalty ?? null) : null
     if (loyalty) obj.counters = { [LOYALTY]: loyalty }
     if (!obj.faceDown) queueEnterTriggers(tx, id) // épico 11: "when this enters"
   } else if (to === 'stack') {

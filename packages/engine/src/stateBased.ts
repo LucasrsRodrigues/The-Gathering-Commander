@@ -6,7 +6,7 @@ import { continueMulligans } from './mulligan'
 import { beginTurn, givePriority, nextPlayerAfter, playersInOrder } from './turn'
 import type { Tx } from './tx'
 import type { GameEvent, LossReason, PlayerId, PlayerState } from './types'
-import { hasKeyword } from './cards'
+import { hasKeywordNow } from './layers'
 import { hasKnownStats, isCreature, isPlaneswalker, LOYALTY, MINUS_ONE, PLUS_ONE, toughnessOf } from './stats'
 import { leaveTriggers } from './triggers'
 import { moveObject } from './zones'
@@ -52,11 +52,11 @@ function checkPermanents(tx: Tx) {
       }
       if (!hasKnownStats(obj)) continue
       let reason: Extract<GameEvent, { type: 'destroyed' }>['reason'] | null = null
-      if (isCreature(obj)) {
-        const toughness = toughnessOf(obj)
+      if (isCreature(tx.s, obj)) {
+        const toughness = toughnessOf(tx.s, obj)
         if (toughness <= 0) reason = 'toughness' // CR 704.5f: not destruction, Indestructible does not help
-        else if ((obj.damage >= toughness || (obj.deathtouchDamage && obj.damage > 0)) && !hasKeyword(obj.card, 'indestructible')) reason = 'damage' // 704.5g–h
-      } else if (isPlaneswalker(obj) && obj.card.rules!.loyalty !== null && (obj.counters[LOYALTY] ?? 0) <= 0) {
+        else if ((obj.damage >= toughness || (obj.deathtouchDamage && obj.damage > 0)) && !hasKeywordNow(tx.s, obj, 'indestructible')) reason = 'damage' // 704.5g–h
+      } else if (isPlaneswalker(tx.s, obj) && obj.card.rules!.loyalty !== null && (obj.counters[LOYALTY] ?? 0) <= 0) {
         reason = 'loyalty' // CR 704.5i
       }
       if (!reason) continue

@@ -2,7 +2,7 @@
 // chosen list fits its specs, and which targets are still legal on resolution. Pure reads of the state; the view
 // variant lets the table highlight legal targets online.
 
-import { typesOf } from '../cards'
+import { charsOf, printed, type Characteristics } from '../layers'
 import type { GameState, ObjectId, PlayerId, Target, TargetSpec } from '../types'
 import type { PlayerView } from '../view'
 import { matchesFilter, type FilterSubject } from './value'
@@ -15,6 +15,8 @@ export interface TargetContext {
 interface Board {
   zone(id: ObjectId): string | undefined
   subject(id: ObjectId): FilterSubject | undefined
+  chars(id: ObjectId): Characteristics | undefined
+  state: GameState | null // the engine's state (characteristics with effects), or null for a player's view
   ids(zone: 'battlefield' | 'stack' | 'graveyard'): ObjectId[]
   players(): PlayerId[] // still in the game
 }
@@ -23,6 +25,8 @@ function stateBoard(state: GameState): Board {
   return {
     zone: (id) => state.objects[id]?.zone,
     subject: (id) => state.objects[id],
+    chars: (id) => (state.objects[id] ? charsOf(state, state.objects[id]!) : undefined),
+    state,
     ids: (zone) => zone === 'battlefield' ? state.battlefield
       : zone === 'stack' ? state.stack.flatMap((i) => (i.objectId ? [i.objectId] : []))
         : state.seats.flatMap((p) => state.zones[p]?.graveyard ?? []),
@@ -34,6 +38,8 @@ function viewBoard(view: PlayerView): Board {
   return {
     zone: (id) => view.objects[id]?.zone,
     subject: (id) => view.objects[id],
+    chars: (id) => (view.objects[id]?.card ? printed(view.objects[id]!.card!, view.objects[id]!.controller) : undefined),
+    state: null,
     ids: (zone) => zone === 'battlefield' ? view.battlefield
       : zone === 'stack' ? view.stack.flatMap((i) => (i.objectId ? [i.objectId] : []))
         : Object.values(view.objects).filter((o) => o.zone === 'graveyard').map((o) => o.id),
@@ -52,12 +58,12 @@ function legalOn(board: Board, spec: TargetSpec, target: Target, ctx: TargetCont
   if (!obj?.card) return false
   if (spec.kind === 'any') {
     if (board.zone(target.object) !== 'battlefield') return false
-    const types = typesOf(obj.card)
+    const types = board.chars(target.object)?.types ?? []
     return types.includes('creature') || types.includes('planeswalker')
   }
   if (spec.kind !== 'object') return false
   if (board.zone(target.object) !== (spec.zone ?? 'battlefield')) return false
-  return matchesFilter(null, obj, spec.filter, ctx)
+  return matchesFilter(board.state, obj, spec.filter, ctx)
 }
 
 function all(board: Board, spec: TargetSpec, ctx: TargetContext): Target[] {

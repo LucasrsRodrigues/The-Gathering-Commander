@@ -2,7 +2,7 @@
 // item resolves. Everything goes through the same zone and life helpers as manual play, so state-based actions,
 // the log and replays treat automated and manual play alike.
 
-import { hasKeyword } from '../cards'
+import { hasKeywordNow } from '../layers'
 import { addMana } from '../mana'
 import { dealDamageTo, isCreature, isPlaneswalker, PLUS_ONE } from '../stats'
 import type { Tx } from '../tx'
@@ -96,7 +96,7 @@ function changeLife(tx: Tx, player: PlayerId, delta: number) {
 function damage(tx: Tx, ctx: ValueContext, amount: number, players: PlayerId[], objects: GameObject[]) {
   if (amount <= 0) return
   const source = ctx.sourceId ? tx.s.objects[ctx.sourceId] : undefined
-  const deathtouch = !!source && hasKeyword(source.card, 'deathtouch')
+  const deathtouch = !!source && hasKeywordNow(tx.s, source, 'deathtouch')
   let dealt = 0
   const from = ctx.sourceId ? { sourceId: ctx.sourceId } : {}
   for (const p of players) {
@@ -105,12 +105,12 @@ function damage(tx: Tx, ctx: ValueContext, amount: number, players: PlayerId[], 
     dealt += amount
   }
   for (const obj of objects) {
-    if (obj.zone !== 'battlefield' || !(isCreature(obj) || isPlaneswalker(obj))) continue
+    if (obj.zone !== 'battlefield' || !(isCreature(tx.s, obj) || isPlaneswalker(tx.s, obj))) continue
     tx.emit({ type: 'effectDamage', ...from, to: { object: obj.id }, amount })
     dealDamageTo(tx, obj, amount, deathtouch)
     dealt += amount
   }
-  if (source && hasKeyword(source.card, 'lifelink')) changeLife(tx, ctx.controller, dealt)
+  if (source && hasKeywordNow(tx.s, source, 'lifelink')) changeLife(tx, ctx.controller, dealt)
 }
 
 // The objects an effect is about: its targets, the source, or every object a filter matches on the battlefield.
@@ -128,7 +128,7 @@ function tokenCard(def: TokenDef): CardRef {
   const typeLine = `Token ${def.types.map((t) => t[0]!.toUpperCase() + t.slice(1)).join(' ')}${def.subtypes.length ? ` — ${def.subtypes.join(' ')}` : ''}`
   const rules: CardRules = {
     types: def.types, supertypes: [], subtypes: def.subtypes, cost: null, power: def.power, toughness: def.toughness, loyalty: null,
-    keywords: def.keywords, manaAbilities: def.manaAbilities, colorIdentity: def.colors as ManaColor[], coverage: 'automated',
+    keywords: def.keywords, manaAbilities: def.manaAbilities, colorIdentity: def.colors as ManaColor[], colors: def.colors as ManaColor[], coverage: 'automated',
     ...(def.etb ? { etb: def.etb } : {}),
     ...(def.activated ? { activated: def.activated } : {}),
   }
@@ -181,7 +181,7 @@ export function applyEffect(tx: Tx, effect: Effect, ctx: ValueContext) {
       const to = effect.kind === 'destroy' ? 'graveyard' : effect.kind === 'exile' ? 'exile' : 'hand'
       for (const obj of subjects(tx, ctx, effect.what)) {
         if (obj.zone !== 'battlefield') continue
-        if (effect.kind === 'destroy' && hasKeyword(obj.card, 'indestructible')) continue // CR 702.12b
+        if (effect.kind === 'destroy' && hasKeywordNow(tx.s, obj, 'indestructible')) continue // CR 702.12b
         moveObject(tx, obj.id, to)
       }
       return
@@ -196,7 +196,7 @@ export function applyEffect(tx: Tx, effect: Effect, ctx: ValueContext) {
       const toughness = Math.max(-999, Math.min(999, evalValue(tx.s, ctx, effect.toughness)))
       if (!power && !toughness) return
       for (const obj of subjects(tx, ctx, effect.what)) {
-        if (obj.zone !== 'battlefield' || !isCreature(obj)) continue
+        if (obj.zone !== 'battlefield' || !isCreature(tx.s, obj)) continue
         tx.object(obj.id).ptMods = [...obj.ptMods, { power, toughness }]
         tx.emit({ type: 'ptAdjusted', objectId: obj.id, power, toughness })
       }

@@ -1,7 +1,7 @@
 // Values and filters of the effect model (épico 11): "equal to ~'s power", "for each Elf you control"… Pure reads of
 // the state. Counters use the names the table already uses (+1/+1, lealdade…), case-insensitive.
 
-import { typesOf } from '../cards'
+import { charsOf, printed } from '../layers'
 import { powerOf, toughnessOf } from '../stats'
 import type { CardRef, Filter, GameObject, GameState, ObjectId, PlayerId, Target, Value } from '../types'
 import type { PlayerView } from '../view'
@@ -24,20 +24,21 @@ export interface FilterSubject {
   isToken: boolean
 }
 
-export function matchesFilter(_state: GameState | null, obj: FilterSubject, filter: Filter, ctx: Pick<ValueContext, 'controller' | 'sourceId'>): boolean {
+// Épico 12: the object's characteristics now (layers.ts); a view's object (online table) is judged by its card.
+export function matchesFilter(state: GameState | null, obj: FilterSubject, filter: Filter, ctx: Pick<ValueContext, 'controller' | 'sourceId'>): boolean {
   if (!obj.card) return false
-  const rules = obj.card.rules
-  const types = typesOf(obj.card)
-  if (filter.types?.length && !filter.types.some((t) => types.includes(t))) return false
-  if (filter.notTypes?.some((t) => types.includes(t))) return false
+  const live = state && Object.hasOwn(state.objects, obj.id) ? state.objects[obj.id] : undefined
+  const c = state && live && live.card === obj.card ? charsOf(state, live) : printed(obj.card, obj.controller)
+  if (filter.types?.length && !filter.types.some((t) => c.types.includes(t))) return false
+  if (filter.notTypes?.some((t) => c.types.includes(t))) return false
   if (filter.subtypes?.length) {
-    const subs = lower(rules?.subtypes ?? [])
+    const subs = lower(c.subtypes)
     if (!lower(filter.subtypes).some((s) => subs.includes(s))) return false
   }
-  if (filter.supertypes?.length && !filter.supertypes.some((t) => rules?.supertypes.includes(t))) return false
-  if (filter.controller === 'you' && obj.controller !== ctx.controller) return false
-  if (filter.controller === 'opponent' && obj.controller === ctx.controller) return false
-  if (filter.colors?.length && !filter.colors.some((c) => rules?.colorIdentity.includes(c))) return false
+  if (filter.supertypes?.length && !filter.supertypes.some((t) => c.supertypes.includes(t))) return false
+  if (filter.controller === 'you' && c.controller !== ctx.controller) return false
+  if (filter.controller === 'opponent' && c.controller === ctx.controller) return false
+  if (filter.colors?.length && !filter.colors.some((col) => c.colors.includes(col))) return false
   if (filter.tapped !== undefined && obj.tapped !== filter.tapped) return false
   if (filter.other && obj.id === ctx.sourceId) return false
   if (filter.token !== undefined && obj.isToken !== filter.token) return false
@@ -80,7 +81,7 @@ export function evalValue(state: GameState, ctx: ValueContext, value: Value): nu
     case 'toughness': {
       const obj = value.of === 'self' ? (ctx.sourceId ? state.objects[ctx.sourceId] : undefined) : firstObjectTarget(state, ctx.targets)
       if (!obj) return 0
-      return Math.max(0, value.kind === 'power' ? powerOf(obj) : toughnessOf(obj))
+      return Math.max(0, value.kind === 'power' ? powerOf(state, obj) : toughnessOf(state, obj))
     }
     case 'counters': {
       const obj = ctx.sourceId ? state.objects[ctx.sourceId] : undefined

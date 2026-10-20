@@ -1,7 +1,7 @@
 // What the engine knows about a card: its structured rules when the catalog provided them, otherwise only what the
 // type line says. Never the card's name.
 
-import type { CardRef, CardType, Keyword } from './types'
+import type { CardRef, CardType } from './types'
 
 const CARD_TYPES: readonly CardType[] = ['land', 'creature', 'artifact', 'enchantment', 'planeswalker', 'instant', 'sorcery', 'battle']
 
@@ -11,11 +11,4 @@ export function typesOf(card: CardRef): CardType[] {
   return CARD_TYPES.filter((t) => front.includes(t))
 }
 
-export function hasKeyword(card: CardRef, keyword: Keyword): boolean {
-  return card.rules?.keywords.includes(keyword) ?? false
-}
-
-export const isLand = (card: CardRef) => typesOf(card).includes('land')
-
-// CR 307.1 / 702.8: instants and cards with Flash may be cast whenever their controller has priority.
-export const hasInstantSpeed = (card: CardRef) => typesOf(card).includes('instant') || hasKeyword(card, 'flash')
+// Since épico 12 the rules ask layers.ts (charsOf), which starts from this; nothing else reads the printed card.

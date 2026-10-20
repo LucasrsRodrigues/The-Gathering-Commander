@@ -5,6 +5,7 @@
 
 import { fail } from './errors'
 import { nextDamagePhase, proposeDamage } from './damage'
+import { controllerOf, hasKeywordNow } from './layers'
 import { isCreature, isPlaneswalker } from './stats'
 import { givePriority, goToStep } from './turn'
 import type { Tx } from './tx'
@@ -18,13 +19,13 @@ export const combatOn = (state: GameState) => state.ruleset.combatRules !== 'off
 export function defenderOf(state: GameState, attack: Attack): PlayerId | null {
   if (state.players[attack.target]) return attack.target
   const pw = state.objects[attack.target]
-  return pw && pw.zone === 'battlefield' && isPlaneswalker(pw) ? pw.controller : null
+  return pw && pw.zone === 'battlefield' && isPlaneswalker(state, pw) ? controllerOf(state, pw) : null
 }
 
 const untappedCreatures = (state: GameState, player: PlayerId) =>
   state.battlefield.filter((id) => {
     const o = state.objects[id]!
-    return o.controller === player && !o.tapped && isCreature(o)
+    return controllerOf(state, o) === player && !o.tapped && isCreature(state, o)
   })
 
 // Turn-based actions of the combat steps. Returns true when the step took over (no normal priority).
@@ -84,7 +85,7 @@ export function declareAttackers(tx: Tx, player: PlayerId, attacks: Attack[]) {
   const seen = new Set<string>()
   for (const a of attacks) {
     const obj = a && typeof a.attacker === 'string' ? s.objects[a.attacker] : undefined
-    if (!obj || obj.zone !== 'battlefield' || obj.controller !== player || !isCreature(obj)) fail('invalidAction', 'Só criaturas suas no campo atacam.')
+    if (!obj || obj.zone !== 'battlefield' || controllerOf(s, obj) !== player || !isCreature(s, obj)) fail('invalidAction', 'Só criaturas suas no campo atacam.')
     if (seen.has(obj.id)) fail('invalidAction', 'Cada criatura ataca uma vez.')
     seen.add(obj.id)
     const defender = typeof a.target === 'string' ? defenderOf(s, a) : null
@@ -94,7 +95,7 @@ export function declareAttackers(tx: Tx, player: PlayerId, attacks: Attack[]) {
   for (const a of attacks) {
     const obj = s.objects[a.attacker]!
     // CR 508.1f: attacking taps the creature, unless it has Vigilance.
-    if (!obj.tapped && !obj.card.rules?.keywords.includes('vigilance')) {
+    if (!obj.tapped && !hasKeywordNow(s, obj, 'vigilance')) {
       tx.object(obj.id).tapped = true
       tx.emit({ type: 'tapped', objectId: obj.id })
     }
@@ -119,7 +120,7 @@ export function declareBlockers(tx: Tx, player: PlayerId, blocks: Block[]) {
   const seen = new Set<string>()
   for (const b of blocks) {
     const blocker = b && typeof b.blocker === 'string' ? s.objects[b.blocker] : undefined
-    if (!blocker || blocker.zone !== 'battlefield' || blocker.controller !== player || !isCreature(blocker)) fail('invalidAction', 'Só criaturas suas no campo bloqueiam.')
+    if (!blocker || blocker.zone !== 'battlefield' || controllerOf(s, blocker) !== player || !isCreature(s, blocker)) fail('invalidAction', 'Só criaturas suas no campo bloqueiam.')
     if (seen.has(blocker.id)) fail('invalidAction', 'Cada criatura bloqueia um atacante.')
     seen.add(blocker.id)
     const attack = combat.attacks.find((a) => a.attacker === b.attacker)

@@ -1,7 +1,7 @@
 // House-rule policies (épico 09): which rules of turn structure an action breaks, per area. Pure: it only reads the
 // state. reduce() decides what to do with the findings from the area's level (block / warn / off).
 
-import { hasInstantSpeed, hasKeyword } from './cards'
+import { hasInstantSpeed, hasKeywordNow } from './layers'
 import { findPayment, formatCost, spellCost } from './cost'
 import { assignmentFinding } from './damage'
 import { isSummoningSick, poolTotal, simulatePool } from './mana'
@@ -54,7 +54,7 @@ const spellTiming: Policy = (state, action) => {
   const obj = state.objects[action.objectId]
   if (!obj) return null
   if (state.priority?.player !== action.player) return timing('noPriority', 'Você precisa ter prioridade para lançar.')
-  return hasInstantSpeed(obj.card) ? null : sorcerySpeed(state, action.player, 'Essa mágica (sem Flash) pode ser lançada')
+  return hasInstantSpeed(state, obj) ? null : sorcerySpeed(state, action.player, 'Essa mágica (sem Flash) pode ser lançada')
 }
 
 const mana = (code: string, message: string): RuleFinding => ({ area: 'mana', code, message })
@@ -104,7 +104,7 @@ const attackLegality: Policy = (state, action) => {
     const obj = state.objects[attacker]
     if (!obj || obj.zone !== 'battlefield' || obj.controller !== action.player) continue // impossible: fails on its own
     if (obj.tapped) return combat('tapped', `${obj.card.name} está virada e não pode atacar.`)
-    if (hasKeyword(obj.card, 'defender')) return combat('defender', `${obj.card.name} tem Defender e não ataca.`)
+    if (hasKeywordNow(state, obj, 'defender')) return combat('defender', `${obj.card.name} tem Defender e não ataca.`)
     if (isSummoningSick(state, obj)) return combat('summoningSick', `${obj.card.name} acabou de chegar e não pode atacar neste turno.`)
   }
   return null
@@ -120,13 +120,13 @@ const blockLegality: Policy = (state, action) => {
     // Impossible blocks (not attacking, not yours) fail on their own; rules only judge real ones.
     if (!b || !a || b.controller !== action.player || !state.turn.combat?.attacks.some((x) => x.attacker === attacker)) continue
     if (b.tapped) return combat('tapped', `${b.card.name} está virada e não pode bloquear.`)
-    if (hasKeyword(a.card, 'flying') && !hasKeyword(b.card, 'flying') && !hasKeyword(b.card, 'reach')) {
+    if (hasKeywordNow(state, a, 'flying') && !hasKeywordNow(state, b, 'flying') && !hasKeywordNow(state, b, 'reach')) {
       return combat('flying', `${a.card.name} voa: só criaturas com Flying ou Reach bloqueiam.`)
     }
     perAttacker.set(attacker, (perAttacker.get(attacker) ?? 0) + 1)
   }
   for (const [attacker, n] of perAttacker) {
-    if (n === 1 && hasKeyword(state.objects[attacker]!.card, 'menace')) {
+    if (n === 1 && hasKeywordNow(state, state.objects[attacker]!, 'menace')) {
       return combat('menace', `${nameOf(state, attacker)} tem Menace: precisa de dois ou mais bloqueadores.`)
     }
   }

@@ -86,6 +86,7 @@ export interface CardRules {
   entersTapped?: boolean
   spellMana?: ManaAmount // instants/sorceries whose whole text is "Add {B}{B}{B}."
   colorIdentity: ManaColor[]
+  colors?: ManaColor[] // épico 12, CR 105.2: when the cost does not say it (tokens); otherwise derived from the cost (layers.ts)
   // Épico 11: what the card does, as data the engine interprets. Absent = the card plays by hand, as before.
   spell?: Ability // instants and sorceries: the effect on resolution
   etb?: Ability[] // "When ~ enters, …"
@@ -114,7 +115,7 @@ export interface Filter {
   subtypes?: string[] // any of these (case-insensitive)
   supertypes?: Supertype[]
   controller?: 'you' | 'opponent' | 'any'
-  colors?: ManaColor[] // any of these, from the color identity of the card
+  colors?: ManaColor[] // any of these: the object's color (épico 12; it was the color identity before, never used)
   tapped?: boolean
   other?: boolean // not the source itself ("another")
   token?: boolean

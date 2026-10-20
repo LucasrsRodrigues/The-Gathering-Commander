@@ -3,7 +3,7 @@
 
 import { RuleViolation, fail } from './errors'
 import { bottomCards, keepHand, takeMulligan } from './mulligan'
-import { isLand } from './cards'
+import { isLand } from './layers'
 import { declareAttackers, declareBlockers } from './combat'
 import { applyCombatDamage, checkAssignmentShape } from './damage'
 import { findPayment, formatCost, spellCost } from './cost'
@@ -195,7 +195,7 @@ function applyGameAction(tx: Tx, action: Action) {
     // Épico 09: the regular ways to play cards. Timing is checked by the policies (timing area) before this.
     case 'playLand': {
       const obj = ownCard(tx, actor, action.objectId, ['hand'])
-      if (!isLand(obj.card)) fail('invalidAction', 'Isso não é um terreno: use "Lançar".')
+      if (!isLand(s, obj)) fail('invalidAction', 'Isso não é um terreno: use "Lançar".')
       moveObject(tx, obj.id, 'battlefield', { controller: actor })
       tx.player(actor).landsPlayed += 1
       if (obj.card.rules?.entersTapped) {
@@ -242,7 +242,7 @@ function applyGameAction(tx: Tx, action: Action) {
         if (!Array.isArray(action.payWith) || action.payWith.length > MAX_PAY_WITH) fail('invalidAction', 'Pagamento malformado.')
         for (const activation of action.payWith) activateManaAbility(tx, actor, activation)
       }
-      if (isLand(obj.card)) fail('invalidAction', 'Terrenos não são lançados: use "Jogar terreno".')
+      if (isLand(s, obj)) fail('invalidAction', 'Terrenos não são lançados: use "Jogar terreno".')
       if (action.x !== undefined && (!Number.isInteger(action.x) || action.x < 0 || action.x > MAX_X)) {
         fail('invalidAmount', `X precisa ser um número inteiro entre 0 e ${MAX_X}.`)
       }

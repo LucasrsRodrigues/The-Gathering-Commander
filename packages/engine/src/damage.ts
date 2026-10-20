@@ -2,20 +2,20 @@
 // 702.19 Trample, 903.10a commander damage). The engine proposes the damage, the active player confirms or adjusts
 // it within the rules, then it is dealt all at once.
 
-import { hasKeyword } from './cards'
+import { controllerOf, hasKeywordNow } from './layers'
 import { fail } from './errors'
 import { dealDamageTo, hasKnownStats, isPlaneswalker, powerOf, toughnessOf } from './stats'
 import type { Tx } from './tx'
 import type { CombatState, DamageAssignment, DamageProposal, GameObject, GameState, ObjectId, PlayerId, RuleFinding } from './types'
 
 const onBattlefield = (state: GameState, id: ObjectId) => state.objects[id]?.zone === 'battlefield'
-const strikesFirst = (obj: GameObject) => hasKeyword(obj.card, 'firstStrike') || hasKeyword(obj.card, 'doubleStrike')
+const strikesFirst = (state: GameState, obj: GameObject) => hasKeywordNow(state, obj, 'firstStrike') || hasKeywordNow(state, obj, 'doubleStrike')
 
 // Who deals damage in this step (CR 510.4): first strikers in the first step; then everyone who has not dealt damage
 // yet, plus double strikers again.
-function dealsDamage(obj: GameObject, phase: DamageProposal['phase'], combat: CombatState): boolean {
-  if (phase === 'first') return strikesFirst(obj)
-  return !combat.firstStrikeDealt || !hasKeyword(obj.card, 'firstStrike') || hasKeyword(obj.card, 'doubleStrike')
+function dealsDamage(state: GameState, obj: GameObject, phase: DamageProposal['phase'], combat: CombatState): boolean {
+  if (phase === 'first') return strikesFirst(state, obj)
+  return !combat.firstStrikeDealt || !hasKeywordNow(state, obj, 'firstStrike') || hasKeywordNow(state, obj, 'doubleStrike')
 }
 
 function combatants(state: GameState): ObjectId[] {
@@ -28,21 +28,21 @@ function combatants(state: GameState): ObjectId[] {
 export function nextDamagePhase(state: GameState): DamageProposal['phase'] | null {
   const combat = state.turn.combat
   if (!combat?.attacks.length || combat.regularDealt) return null
-  if (!combat.firstStrikeDealt && combatants(state).some((id) => strikesFirst(state.objects[id]!))) return 'first'
+  if (!combat.firstStrikeDealt && combatants(state).some((id) => strikesFirst(state, state.objects[id]!))) return 'first'
   return 'regular'
 }
 
 // Damage that destroys this creature (CR 702.19c), counting Deathtouch from the source (702.2c).
-function lethal(blocker: GameObject, source: GameObject): number {
-  if (hasKeyword(source.card, 'deathtouch')) return 1
+function lethal(state: GameState, blocker: GameObject, source: GameObject): number {
+  if (hasKeywordNow(state, source, 'deathtouch')) return 1
   if (!hasKnownStats(blocker)) return Number.POSITIVE_INFINITY // unknown toughness: the players decide
-  return Math.max(1, toughnessOf(blocker) - blocker.damage)
+  return Math.max(1, toughnessOf(state, blocker) - blocker.damage)
 }
 
 // The target of an attack, if it can still be dealt damage: the player, or a planeswalker still on the battlefield.
 function attackTarget(state: GameState, target: string): string | null {
   if (state.players[target]) return state.players[target].lost ? null : target
-  return onBattlefield(state, target) && isPlaneswalker(state.objects[target]!) ? target : null
+  return onBattlefield(state, target) && isPlaneswalker(state, state.objects[target]!) ? target : null
 }
 
 export function proposeDamage(state: GameState, phase: DamageProposal['phase']): DamageProposal {
@@ -50,20 +50,20 @@ export function proposeDamage(state: GameState, phase: DamageProposal['phase']):
   const assignments: DamageAssignment[] = []
   for (const attack of combat.attacks) {
     const attacker = state.objects[attack.attacker]
-    if (!attacker || !onBattlefield(state, attacker.id) || !dealsDamage(attacker, phase, combat)) continue
-    let left = Math.max(0, powerOf(attacker))
+    if (!attacker || !onBattlefield(state, attacker.id) || !dealsDamage(state, attacker, phase, combat)) continue
+    let left = Math.max(0, powerOf(state, attacker))
     if (!left) continue
     const wasBlocked = combat.blocks.some((b) => b.attacker === attacker.id) // CR 509.1h: stays blocked
     const blockers = (combat.damageOrder[attacker.id] ?? []).filter((id) => onBattlefield(state, id))
     const target = attackTarget(state, attack.target)
-    const trample = hasKeyword(attacker.card, 'trample')
+    const trample = hasKeywordNow(state, attacker, 'trample')
     if (!wasBlocked || (!blockers.length && trample)) {
       if (target) assignments.push({ source: attacker.id, to: target, amount: left })
       continue
     }
     blockers.forEach((id, i) => {
       const last = i === blockers.length - 1
-      const give = last && !trample ? left : Math.min(left, lethal(state.objects[id]!, attacker))
+      const give = last && !trample ? left : Math.min(left, lethal(state, state.objects[id]!, attacker))
       if (give > 0) assignments.push({ source: attacker.id, to: id, amount: give })
       left -= give
     })
@@ -71,8 +71,8 @@ export function proposeDamage(state: GameState, phase: DamageProposal['phase']):
   }
   for (const block of combat.blocks) {
     const blocker = state.objects[block.blocker]
-    if (!blocker || !onBattlefield(state, blocker.id) || !onBattlefield(state, block.attacker) || !dealsDamage(blocker, phase, combat)) continue
-    const power = Math.max(0, powerOf(blocker))
+    if (!blocker || !onBattlefield(state, blocker.id) || !onBattlefield(state, block.attacker) || !dealsDamage(state, blocker, phase, combat)) continue
+    const power = Math.max(0, powerOf(state, blocker))
     if (power) assignments.push({ source: blocker.id, to: block.attacker, amount: power })
   }
   return { phase, assignments }
@@ -120,11 +120,11 @@ export function assignmentFinding(state: GameState, assignments: DamageAssignmen
     const amountTo = (to: string) => by(source).find((a) => a.to === to)?.amount ?? 0
     for (let i = 0; i < order.length; i++) {
       const later = order.slice(i + 1).reduce((n, id) => n + amountTo(id), 0) + amountTo(attack.target)
-      if (later > 0 && amountTo(order[i]!) < lethal(state.objects[order[i]!]!, obj)) {
+      if (later > 0 && amountTo(order[i]!) < lethal(state, state.objects[order[i]!]!, obj)) {
         return finding(`${obj.card.name} precisa causar dano letal a cada bloqueador, na ordem, antes de passar ao próximo.`)
       }
     }
-    if (order.length && amountTo(attack.target) > 0 && !hasKeyword(obj.card, 'trample')) {
+    if (order.length && amountTo(attack.target) > 0 && !hasKeywordNow(state, obj, 'trample')) {
       return finding(`${obj.card.name} foi bloqueada e não tem Trample: o dano fica nos bloqueadores.`)
     }
   }
@@ -141,15 +141,16 @@ export function applyCombatDamage(tx: Tx, assignments: DamageAssignment[]) {
     const source = s.objects[a.source]!
     dealt.set(a.source, (dealt.get(a.source) ?? 0) + a.amount)
     if (s.players[a.to]) damagePlayer(tx, a.to, source, a.amount)
-    else if (onBattlefield(s, a.to)) dealDamageTo(tx, s.objects[a.to]!, a.amount, hasKeyword(source.card, 'deathtouch'))
+    else if (onBattlefield(s, a.to)) dealDamageTo(tx, s.objects[a.to]!, a.amount, hasKeywordNow(s, source, 'deathtouch'))
   }
   for (const [id, amount] of dealt) {
     const source = s.objects[id]!
-    if (!hasKeyword(source.card, 'lifelink')) continue
-    const p = tx.player(source.controller)
+    if (!hasKeywordNow(s, source, 'lifelink')) continue
+    const controller = controllerOf(s, source)
+    const p = tx.player(controller)
     const from = p.life
     p.life += amount
-    tx.emit({ type: 'lifeChanged', player: source.controller, from, to: p.life })
+    tx.emit({ type: 'lifeChanged', player: controller, from, to: p.life })
   }
   tx.emit({ type: 'combatDamage', phase: proposal.phase, assignments: real })
   const combat = s.turn.combat!

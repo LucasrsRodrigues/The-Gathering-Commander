@@ -6,7 +6,7 @@ Cinco ondas e um fechamento.
 - **Ondas B a E:** cada uma entrega cartas automáticas e entra no ar sozinha.
 
 ## Onda A — Características e camadas
-- [ ] **T12.1 — Características calculadas, sem efeitos ainda** _(req: 1, 6)_
+- [x] **T12.1 — Características calculadas, sem efeitos ainda** _(req: 1, 6)_
   - Escopo:
     - `layers.ts` com `characteristics(state)`, `charsOf` e o cache (`WeakMap` por estado; no `Tx`, descartado a
       cada escrita);
@@ -19,6 +19,37 @@ Cinco ondas e um fechamento.
     - todos os testes atuais passam sem mudar nenhuma expectativa;
     - propriedade: sem efeitos contínuos, `charsOf` é igual à carta impressa em estados aleatórios;
     - orçamento: 100 permanentes em menos de 2 ms.
+  - Feito:
+    - `layers.ts`:
+      - `Characteristics`: tipos, subtipos, supertipos, cores, palavras-chave, força, resistência e controlador;
+      - `printed(card, controlador)`, `charsOf(state, obj)` e os atalhos `isType`, `hasKeywordNow`,
+        `controllerOf`, `isLand` e `hasInstantSpeed`.
+      - Sem efeitos, `charsOf` é o impresso mais os marcadores e os ajustes "até o fim do turno", a mesma conta
+        que o `stats.ts` fazia.
+    - **Cor de verdade (CR 202.2):** vem dos símbolos do custo (híbridos e phyrexianos incluídos). As fichas trazem
+      a sua em `CardRules.colors`.
+      - **Mudança no plano:** o catálogo não guarda o `colors` do Scryfall, e acrescentar exigiria mudar o formato
+        e reimportar. Ficou para quando precisar.
+      - Cartas com indicador de cor e sem custo (Dryad Arbor, Ancestral Vision) ficam incolores por enquanto.
+      - O `Filter.colors` passa a olhar a cor (antes olhava a identidade). Nenhum padrão do leitor usava.
+    - As leituras foram trocadas em `stats`, `combat`, `damage`, `mana`, `policies`, `reduce`, `stateBased`,
+      `view`, `zones`, `effects/apply`, `effects/value` e `effects/targets`. Junto foi o controlador no combate,
+      no ganho de vida por vínculo e nos filtros.
+      - `powerOf`, `toughnessOf`, `isCreature` e `isPlaneswalker` recebem o estado.
+      - `cards.ts` ficou só com `typesOf`, usado só pelo `layers.ts`.
+    - Os alvos e filtros olham as características do motor. Na visão online, por enquanto, usam o impresso: a
+      visão com as calculadas é a T12.3.
+    - **Decisão para a T12.2:** sem efeitos, não há cache. O cálculo por tabuleiro entra com as camadas, e o cache
+      dentro do `Tx` precisa lidar com escritas feitas por referência (`tx.object(id)` guardado e escrito depois).
+  - Verificado:
+    - os 233 testes do motor de antes passam sem mudar nenhuma expectativa;
+    - testes novos (`test/layers.test.ts`):
+      - fitness: só `layers.ts`, `cards.ts`, `deriveRules.ts` e `oracle/` leem tipos, palavras-chave, P/R ou cor
+        da carta impressa, e só `layers.ts` importa `cards.ts`;
+      - propriedade, em 5 tabuleiros aleatórios de 100 permanentes com marcadores e ajustes: as características
+        são iguais à carta impressa mais marcadores e ajustes;
+      - orçamento: 100 permanentes em menos de 2 ms;
+      - a cor a partir do custo.
 - [ ] **T12.2 — Camadas 1 a 7, timestamps e dependências** _(req: 2–5)_ · depende de T12.1
   - Escopo:
     - `ContinuousEffect`, `Affected`, `Change` e `Duration` em `types.ts`;
