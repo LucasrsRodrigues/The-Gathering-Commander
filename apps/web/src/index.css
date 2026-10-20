@@ -430,9 +430,9 @@ button.deck-open:hover { background: var(--surface-hi); }
 /* Touch: on images only "⋯" (44 px); the rest is in the menu, which a long press also opens. */
 @media (hover: none) {
   .deck-card .row-actions { opacity: 1; }
-  .deck-card .row-actions > :not(.more-btn) { display: none; }
+  .deck-card .row-actions > :not(.more-btn):not(.to-deck) { display: none; }
 }
-.deck-card .btn.tiny { display: none; } /* "Comandante" / "Ao deck" on images: in the menu */
+.deck-card .btn.tiny:not(.to-deck) { display: none; } /* "Comandante" / "Talvez" on images: in the menu; "Ao deck" stays */
 .deck-card .step-btn, .deck-card .btn.tiny { background: rgb(12 17 15 / 0.85); }
 
 .view-grid .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
@@ -527,3 +527,7 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
 .suggestions { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
 .suggestion-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; align-items: center; font-size: 14px; }
 .name-form { display: grid; gap: 14px; }
+
+/* Épico 10, T10.7: adding to the Talvez list from the search. */
+.add-target { justify-self: start; }
+.result .maybe-badge { top: auto; bottom: 4px; background: var(--surface-solid); color: var(--text); border: 1px dashed var(--control-border); }

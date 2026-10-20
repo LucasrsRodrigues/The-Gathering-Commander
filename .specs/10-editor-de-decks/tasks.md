@@ -163,11 +163,20 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - criar "Wincon" e arrastar Impact Tremors para ela;
     - renomear para "Finalizadores";
     - excluir, com a carta ficando no deck, e desfazer.
-- [ ] **T10.7 — Lista "Talvez"** _(req: 9, 10)_ · depende de T10.5
+- [x] **T10.7 — Lista "Talvez"** _(req: 9, 10)_ · depende de T10.5
   - Verificação:
     - a busca adiciona ao Talvez;
     - um clique move entre deck e Talvez;
     - a validação, as estatísticas e o bracket ignoram o Talvez.
+  - Feito (a área do Talvez, o menu e o arrastar vieram na T10.5):
+    - a busca tem "Ao deck | Ao Talvez". Enter e o clique adicionam ao escolhido, e com Shift vão ao outro;
+    - os resultados mostram quantas cópias há no deck e no Talvez ("T");
+    - um clique move a carta: "Talvez" na linha do deck e "Ao deck" no Talvez, na lista e nas imagens, também no
+      toque;
+    - a validação, as estatísticas, o bracket, o tamanho do deck e a partida ignoram o Talvez (fitness da T10.1).
+  - Verificado no navegador:
+    - "Goblin Guide" com "Ao Talvez" e Enter entra no Talvez (3 → 4), e o total do deck fica em 53;
+    - "Ao deck" leva a carta ao deck em um clique (53 → 54).
 - [ ] **T10.8 — Painel de estatísticas** _(req: 11, 12)_ · depende de T10.4
   - Escopo: curva com e sem terrenos, MV médio, cores do custo, fontes por cor, tipos, categorias e terrenos; clicar
     num valor destaca as cartas.

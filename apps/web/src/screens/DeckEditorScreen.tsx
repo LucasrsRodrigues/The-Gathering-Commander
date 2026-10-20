@@ -57,6 +57,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   type Target = { zone: DeckZone; oracleId: string }
   const [naming, setNaming] = useState<{ kind: 'new'; targets: Target[] } | { kind: 'rename'; from: string } | null>(null)
   const [shownCategory, setShownCategory] = useState<string | null>(null) // highlights its cards
+  const [searchToMaybe, setSearchToMaybe] = useState(false)
 
   useEffect(() => {
     services.decks.get(deckId).then(async (d) => {
@@ -125,12 +126,13 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       .filter((c) => c.tags?.some((t) => t.toLowerCase() === shownCategory.toLowerCase())).map((c) => c.name) : []),
   ])
 
-  function addFromSearch(card: CatalogCard) {
+  function addFromSearch(card: CatalogCard, maybe: boolean) {
     const oracleId = card.facts?.oracleId
     if (!oracleId) return
     setData((d) => withCards(d, [card]))
-    update((d, now) => addCard(d, { oracleId, name: card.ref.name }, commanderMode ? 'commanders' : 'cards', now))
-    toast(commanderMode ? `${card.ref.name} é o comandante.` : `+1 ${card.ref.name}`)
+    const zone: DeckZone = commanderMode ? 'commanders' : maybe ? 'maybe' : 'cards'
+    update((d, now) => addCard(d, { oracleId, name: card.ref.name }, zone, now))
+    toast(commanderMode ? `${card.ref.name} é o comandante.` : maybe ? `+1 ${card.ref.name} no Talvez` : `+1 ${card.ref.name}`)
   }
 
   // The cards an action applies to: the selection when the card is part of it, otherwise just the card.
@@ -193,6 +195,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       return next
     }),
     menu: (card, zone, x, y) => setMenu({ card, zone, x, y }),
+    moveTo: (card, from, to) => moveAll([{ zone: from, oracleId: card.oracleId }], to),
     drop,
   }
 
@@ -282,7 +285,8 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       </div>
 
       <SearchPanel catalog={services.catalog} commanderMode={commanderMode} identity={derived.identity}
-        countOf={countOf} onAdd={addFromSearch} />
+        countOf={countOf} maybeCountOf={(id) => deck.maybe.find((c) => c.oracleId === id)?.count ?? 0}
+        toMaybe={searchToMaybe} onToMaybe={setSearchToMaybe} onAdd={addFromSearch} />
       <div className="deck-main">
         {selected.size > 0 && (
           <div className="selection-bar" role="region" aria-label="Seleção">

@@ -21,6 +21,7 @@ export interface DeckCardActions {
   pickArt: (card: DeckCard) => void
   select: (card: DeckCard, zone: DeckZone) => void // toggles
   menu: (card: DeckCard, zone: DeckZone, x: number, y: number) => void
+  moveTo: (card: DeckCard, from: DeckZone, to: DeckZone) => void // every copy
   drop: (card: DeckCard, zone: DeckZone, target: string) => void
 }
 
@@ -83,6 +84,12 @@ function Controls({ card, zone, props }: { card: DeckCard; zone: DeckZone; props
         }}>⋯</button>
       {canLead && (
         <button className="btn ghost tiny" onClick={() => actions.move(card, zone)}>{zone === 'commanders' ? 'Ao deck' : 'Comandante'}</button>
+      )}
+      {zone === 'cards' && (
+        <button className="btn ghost tiny" aria-label={`Mover ${card.name} para o Talvez`} onClick={() => actions.moveTo(card, 'cards', 'maybe')}>Talvez</button>
+      )}
+      {zone === 'maybe' && (
+        <button className="btn ghost tiny to-deck" aria-label={`Mover ${card.name} para o deck`} onClick={() => actions.moveTo(card, 'maybe', 'cards')}>Ao deck</button>
       )}
       {zone !== 'commanders' && <button className="step-btn" aria-label={`Mais uma cópia de ${card.name}`} onClick={() => actions.add(card, zone)}>+</button>}
       <button className="step-btn" aria-label={`Remover uma cópia de ${card.name}`} onClick={() => actions.remove(card, zone)}>−</button>
