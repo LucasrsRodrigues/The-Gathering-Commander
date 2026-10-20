@@ -13,6 +13,10 @@ export const GROUP_BY_LABELS: Record<GroupBy, string> = { type: 'Tipo', mv: 'Val
 export const SORT_BY_LABELS: Record<SortBy, string> = { name: 'Nome', mv: 'Valor de mana' }
 export const UNCATEGORIZED = 'Sem categoria'
 
+// Selection keys, and the drop targets of drags: a category group ("tag:" = no category), the deck or the Talvez list.
+export const cardKey = (zone: string, oracleId: string) => `${zone}:${oracleId}`
+export const dropForCategory = (label: string) => (label === UNCATEGORIZED ? 'tag:' : `tag:${label}`)
+
 export interface CardGroup {
   key: string
   label: string

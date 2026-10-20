@@ -8,10 +8,11 @@ export interface EditorPrefs {
   view: DeckViewMode
   groupBy: GroupBy
   sortBy: SortBy
+  maybeOpen: boolean
 }
 
 const KEY = 'gh-editor-view-v1'
-export const DEFAULT_PREFS: EditorPrefs = { view: 'stacks', groupBy: 'type', sortBy: 'mv' }
+export const DEFAULT_PREFS: EditorPrefs = { view: 'stacks', groupBy: 'type', sortBy: 'mv', maybeOpen: true }
 const VIEWS: DeckViewMode[] = ['list', 'stacks', 'grid']
 const GROUPS: GroupBy[] = ['type', 'mv', 'color', 'category']
 const SORTS: SortBy[] = ['name', 'mv']
@@ -23,6 +24,7 @@ export function readPrefs(storage: Pick<Storage, 'getItem'> | null): EditorPrefs
       view: VIEWS.includes(raw?.view as DeckViewMode) ? raw!.view! : DEFAULT_PREFS.view,
       groupBy: GROUPS.includes(raw?.groupBy as GroupBy) ? raw!.groupBy! : DEFAULT_PREFS.groupBy,
       sortBy: SORTS.includes(raw?.sortBy as SortBy) ? raw!.sortBy! : DEFAULT_PREFS.sortBy,
+      maybeOpen: typeof raw?.maybeOpen === 'boolean' ? raw.maybeOpen : DEFAULT_PREFS.maybeOpen,
     }
   } catch {
     return DEFAULT_PREFS

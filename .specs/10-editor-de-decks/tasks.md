@@ -89,12 +89,49 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
   - Medido no navegador (57 entradas, 86 cartas): trocar de visualização leva cerca de 20 ms.
   - Pendente para a T10.5: nas pilhas, no toque, os botões +/− ficam escondidos. Até o menu da carta chegar, a
     edição por toque é pela lista.
-- [ ] **T10.5 — Menu da carta, seleção múltipla e arrastar** _(req: 7, 10)_ · depende de T10.4
+- [x] **T10.5 — Menu da carta, seleção múltipla e arrastar** _(req: 7, 10)_ · depende de T10.4
   - Verificação:
     - toda ação de arrastar também existe no menu;
     - arrastar funciona por toque (tablet);
     - Shift/Ctrl seleciona vários;
     - o menu é operável por teclado.
+  - Feito:
+    - `decks/views/gestures.ts`: um só conjunto de handlers de ponteiro.
+      - **Mouse:** botão direito abre o menu, e segurar e mover arrasta.
+      - **Toque:** segurar 450 ms abre o menu, e segurar e mover arrasta. Mover antes disso é rolagem.
+      - O clique depois de arrastar ou segurar é ignorado.
+    - `CardMenu` com:
+      - +1 / −1;
+      - mover para o Talvez ou para o deck;
+      - tornar comandante ou voltar ao deck;
+      - trocar arte;
+      - selecionar;
+      - remover;
+      - ações para todas as selecionadas.
+
+      Ele é operável por teclado (setas, Home/End, Esc, Tab preso) e devolve o foco ao botão "⋯".
+    - Seleção por Shift/Ctrl/⌘+clique ou pelo modo "Selecionar" (toque), com uma barra para mover para o Talvez,
+      mover para o deck, remover e limpar. Esc limpa a seleção.
+    - Alvos de arrastar (`data-drop`):
+      - os grupos de categoria trocam a categoria principal (`setMainCategory`), e "Sem categoria" tira a
+        principal;
+      - qualquer grupo do deck recebe cartas do Talvez;
+      - a área do Talvez recebe cartas do deck.
+
+      Nos agrupamentos automáticos, arrastar entre grupos não muda nada. Arrastar uma carta selecionada leva todas.
+    - `moveEntry` e `removeEntry` (todas as cópias) no modelo.
+    - A área do Talvez já aparece no editor (recolhível e lembrada neste navegador), porque o menu e o arrastar
+      precisavam dela. A T10.7 fica com a busca que adiciona ao Talvez e com os ajustes.
+  - Verificado no navegador, com eventos de ponteiro reais:
+    - arrastar com o mouse para o Talvez;
+    - no toque, mover cedo não faz nada, e segurar e mover leva a carta de volta ao deck;
+    - segurar sem mover abre o menu sem abrir a arte;
+    - Shift+clique em 3 cartas e "Mover para o Talvez" leva o deck de 56 a 53;
+    - o menu abre pelo "⋯" e navega por setas.
+  - Ajuste de design: nas pilhas, a carta sob o mouse não sobe mais, porque cobria as de baixo. A prévia grande
+    mostra a carta inteira, e a faixa do nome guarda só o "⋯".
+  - Para a T10.14: nas pilhas, no toque, a faixa de cada carta tem cerca de 32 px de altura. O caminho de 44 px é a
+    lista.
 - [ ] **T10.6 — Categorias e sugestões pelo Oracle** _(req: 6–8)_ · depende de T10.5
   - Escopo: criar, renomear e excluir categorias; definir a principal; agrupar por categoria; `tags.ts` com o painel
     de sugestões.

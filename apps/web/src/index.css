@@ -400,10 +400,12 @@ button.deck-open:hover { background: var(--surface-hi); }
 .pane-tabs { display: none; }
 .inline-field { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
 .inline-field select { min-height: 36px; }
-.deck-view { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.deck-main { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+.deck-area { display: flex; flex-direction: column; gap: 18px; }
+.deck-view { display: flex; flex-direction: column; gap: 14px; }
 .deck-group { content-visibility: auto; contain-intrinsic-size: auto 240px; }
 .deck-group h2 { margin: 0 0 6px; font-size: 18px; }
-.deck-view ul { list-style: none; margin: 0; padding: 0; }
+.deck-view ul, .maybe-board ul { list-style: none; margin: 0; padding: 0; }
 .view-list { display: block; columns: 300px; column-gap: 20px; }
 .view-list .deck-group { break-inside: avoid; margin-bottom: 14px; content-visibility: visible; }
 .group-rows { display: grid; gap: 2px; }
@@ -425,7 +427,12 @@ button.deck-open:hover { background: var(--surface-hi); }
 .deck-card.flagged .deck-card-face { outline: 3px solid var(--danger); outline-offset: -3px; }
 .deck-card .row-actions { position: absolute; right: 4px; bottom: 4px; opacity: 0; transition: opacity 120ms; }
 .deck-card:hover .row-actions, .deck-card:focus-within .row-actions { opacity: 1; }
-@media (hover: none) { .view-grid .deck-card .row-actions { opacity: 1; } } /* stacks on touch: the list view (and T10.5's menu) edit */
+/* Touch: on images only "⋯" (44 px); the rest is in the menu, which a long press also opens. */
+@media (hover: none) {
+  .deck-card .row-actions { opacity: 1; }
+  .deck-card .row-actions > :not(.more-btn) { display: none; }
+}
+.deck-card .btn.tiny { display: none; } /* "Comandante" / "Ao deck" on images: in the menu */
 .deck-card .step-btn, .deck-card .btn.tiny { background: rgb(12 17 15 / 0.85); }
 
 .view-grid .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
@@ -436,17 +443,44 @@ button.deck-open:hover { background: var(--surface-hi); }
 .view-stacks .deck-group h2 { font-size: 16px; overflow-wrap: anywhere; }
 .group-stack { display: grid; }
 .group-stack .deck-card + .deck-card { margin-top: -118%; }
-.group-stack .deck-card:hover, .group-stack .deck-card:focus-within { z-index: 2; }
-.group-stack .deck-card:hover .deck-card-face, .group-stack .deck-card:focus-within .deck-card-face { box-shadow: 0 10px 28px rgb(0 0 0 / 0.6); }
-.group-stack .deck-card .row-actions { top: 6px; bottom: auto; left: 4px; right: auto; }
+/* No lifting on hover: it would cover the cards below. The big preview shows the whole card; the strip keeps "⋯". */
+.group-stack .deck-card:hover .deck-card-face { outline: 2px solid var(--gold); outline-offset: -2px; }
+.group-stack .deck-card .row-actions { top: 3px; bottom: auto; right: 3px; }
+.group-stack .deck-card .row-actions > :not(.more-btn) { display: none; }
+.group-stack .deck-card .more-btn { width: 30px; height: 22px; min-width: 0; min-height: 0; font-size: 13px; }
+.group-stack .deck-card:not(:last-child) .deck-card-count { right: 38px; }
 .group-stack .deck-card:not(:last-child) .deck-card-count { top: 4px; }
+
+/* Épico 10, T10.5: selection, menu, drag and the Talvez list. */
+.deck-row.selected, .deck-card.selected .deck-card-face { outline: 3px solid var(--gold); outline-offset: -1px; }
+.deck-row.selected { background: rgb(217 178 90 / 0.1); }
+.deck-card-face, .deck-row .card-name { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.more-btn { font-weight: 700; letter-spacing: 0.05em; }
+.danger-text { color: var(--danger); }
+.selection-bar {
+  position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px;
+  background: var(--surface-solid); border: 1px solid var(--gold); border-radius: var(--radius);
+}
+.maybe-board { padding: 12px; border: 1px dashed var(--control-border); border-radius: 12px; display: grid; gap: 10px; }
+.maybe-board h2 { margin: 0; font-size: 18px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.maybe-toggle { font: inherit; color: var(--text); text-decoration: none; }
+.maybe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.drop-over { outline: 2px dashed var(--gold); outline-offset: 4px; border-radius: 10px; background: rgb(217 178 90 / 0.06); }
+.drag-ghost {
+  position: fixed; z-index: 40; width: 110px; pointer-events: none; translate: -50% -70%; rotate: -4deg;
+  filter: drop-shadow(0 14px 24px rgb(0 0 0 / 0.6)); opacity: 0.92;
+}
+.drag-ghost img { width: 100%; border-radius: 7px; display: block; }
+.drag-ghost > span:first-child { display: block; padding: 10px; background: var(--surface-solid); border: 1px solid var(--gold); border-radius: 8px; }
+.drag-ghost .deck-card-count { position: absolute; top: -8px; right: -8px; }
+body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-select: none; }
 
 @media (max-width: 1099px) {
   .editor { grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); height: auto; }
   .pane-tabs { display: inline-flex; }
   .editor[data-pane='deck'] .deck-side { display: none; }
-  .editor[data-pane='stats'] .deck-view { display: none; }
-  .deck-view, .search-panel, .deck-side { overflow: visible; min-height: auto; } /* the editor scrolls, not each pane */
+  .editor[data-pane='stats'] .deck-main { display: none; }
+  .deck-main, .search-panel, .deck-side { overflow: visible; min-height: auto; } /* the editor scrolls, not each pane */
   .editor { grid-template-rows: none; align-content: start; }
   .deck-side { grid-column: 2; }
   .view-stacks .deck-group { width: 132px; }

@@ -44,6 +44,33 @@ export function moveCard(deck: Deck, oracleId: string, from: DeckZone, now: numb
   return addCard(removeCard(deck, oracleId, from, now), ref, to, now)
 }
 
+// Moves every copy of an entry to another list (menu, drag, selection), with its printing and categories.
+export function moveEntry(deck: Deck, oracleId: string, from: DeckZone, to: DeckZone, now: number): Deck {
+  const card = deck[from].find((c) => c.oracleId === oracleId)
+  if (!card || from === to) return deck
+  const { count, ...ref } = card
+  return addCard(removeCard(deck, oracleId, from, now, count), ref, to, now, count)
+}
+
+export function removeEntry(deck: Deck, oracleId: string, zone: DeckZone, now: number): Deck {
+  const card = deck[zone].find((c) => c.oracleId === oracleId)
+  return card ? removeCard(deck, oracleId, zone, now, card.count) : deck
+}
+
+// Makes `tag` the main category of these cards (keeping their other ones); null takes the main one off.
+// Categories are not card changes, so nothing goes into the history.
+export function setMainCategory(deck: Deck, zone: DeckZone, oracleIds: readonly string[], tag: string | null, now: number): Deck {
+  const ids = new Set(oracleIds)
+  const next = deck[zone].map((c) => {
+    if (!ids.has(c.oracleId)) return c
+    const rest = (c.tags ?? []).filter((t) => !tag || t.toLowerCase() !== tag.toLowerCase())
+    const tags = tag ? [tag, ...rest] : rest.slice(1)
+    const { tags: _old, ...base } = c
+    return tags.length ? { ...base, tags } : base
+  })
+  return touch(deck, { [zone]: next }, now)
+}
+
 export function setPrinting(deck: Deck, oracleId: string, scryfallId: string, now: number): Deck {
   const swap = (list: DeckCard[]) => list.map((c) => (c.oracleId === oracleId ? { ...c, scryfallId } : c))
   return touch(deck, { commanders: swap(deck.commanders), cards: swap(deck.cards), maybe: swap(deck.maybe) }, now)

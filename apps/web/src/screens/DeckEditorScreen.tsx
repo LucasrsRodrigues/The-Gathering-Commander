@@ -5,9 +5,17 @@ import type { CatalogCard } from '../catalog/catalog'
 import { factsForDate, type DatedFacts } from '../catalog/legality'
 import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../decks/cardData'
 import { exportDecklist } from '../decks/importExport'
-import { addCard, deckStats, moveCard, removeCard, renameDeck, setPrinting, toValidation, type Deck, type DeckCard } from '../decks/model'
+import { isEligibleAlone } from '@gathering-hall/formats'
+import {
+  addCard, deckStats, moveCard, moveEntry, removeCard, removeEntry, renameDeck, setMainCategory, setPrinting, toValidation,
+  type Deck, type DeckCard, type DeckZone,
+} from '../decks/model'
+import { CardMenu, type MenuSection } from '../decks/views/CardMenu'
 import { DeckView, type DeckCardActions } from '../decks/views/DeckView'
-import { GROUP_BY_LABELS, groupCards, SORT_BY_LABELS, VIEW_LABELS, type DeckViewMode, type GroupBy, type SortBy } from '../decks/views/grouping'
+import { DragGhost } from '../decks/views/DragGhost'
+import {
+  cardKey, GROUP_BY_LABELS, groupCards, SORT_BY_LABELS, VIEW_LABELS, type DeckViewMode, type GroupBy, type SortBy,
+} from '../decks/views/grouping'
 import { useEditorPrefs, useMediaQuery } from '../decks/views/prefs'
 import { DeckSidebar } from '../decks/ui/DeckSidebar'
 import { SearchPanel } from '../decks/ui/SearchPanel'
@@ -40,6 +48,9 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const phone = useMediaQuery('(max-width: 699px)')
   const [pane, setPane] = useState<'deck' | 'stats'>('deck') // tablet and phone: one of the two at a time
   const view: DeckViewMode = phone ? 'list' : prefs.view
+  const [selected, setSelected] = useState<Set<string>>(() => new Set())
+  const [selecting, setSelecting] = useState(false) // "Selecionar" mode (touch): taps select
+  const [menu, setMenu] = useState<{ card: DeckCard; zone: DeckZone; x: number; y: number } | null>(null)
 
   useEffect(() => {
     services.decks.get(deckId).then(async (d) => {
@@ -108,15 +119,89 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
     toast(commanderMode ? `${card.ref.name} é o comandante.` : `+1 ${card.ref.name}`)
   }
 
+  // The cards an action applies to: the selection when the card is part of it, otherwise just the card.
+  const selectedTargets = () => [...selected].map((k) => {
+    const i = k.indexOf(':')
+    return { zone: k.slice(0, i) as DeckZone, oracleId: k.slice(i + 1) }
+  })
+  const targetsOf = (card: DeckCard, zone: DeckZone): { zone: DeckZone; oracleId: string }[] =>
+    selected.has(cardKey(zone, card.oracleId)) ? selectedTargets() : [{ zone, oracleId: card.oracleId }]
+  const clearSelection = () => setSelected(new Set())
+  const moveAll = (targets: { zone: DeckZone; oracleId: string }[], to: DeckZone) => {
+    update((d, now) => targets.reduce((acc, t) => moveEntry(acc, t.oracleId, t.zone, to, now), d))
+    clearSelection()
+  }
+  const removeAll = (targets: { zone: DeckZone; oracleId: string }[]) => {
+    update((d, now) => targets.reduce((acc, t) => removeEntry(acc, t.oracleId, t.zone, now), d))
+    clearSelection()
+  }
+
+  // Drop on a category group (main category), "no category", the deck or the Talvez list.
+  function drop(card: DeckCard, zone: DeckZone, target: string) {
+    const targets = targetsOf(card, zone)
+    if (target === 'zone:maybe') return moveAll(targets.filter((t) => t.zone !== 'maybe'), 'maybe')
+    if (target === 'zone:cards') return moveAll(targets.filter((t) => t.zone !== 'cards'), 'cards')
+    if (target.startsWith('tag:')) {
+      const tag = target.slice(4) || null
+      update((d, now) => {
+        const moved = targets.reduce((acc, t) => (t.zone === 'cards' ? acc : moveEntry(acc, t.oracleId, t.zone, 'cards', now)), d)
+        return setMainCategory(moved, 'cards', targets.map((t) => t.oracleId), tag, now)
+      })
+      clearSelection()
+    }
+  }
+
   const actions: DeckCardActions = {
     add: (c, zone) => update((d, now) => addCard(d, c, zone, now)),
     remove: (c, zone) => update((d, now) => removeCard(d, c.oracleId, zone, now)),
     move: (c, from) => update((d, now) => moveCard(d, c.oracleId, from, now)),
     pickArt: (c) => setArtFor(c),
+    select: (c, zone) => setSelected((s) => {
+      const next = new Set(s)
+      const key = cardKey(zone, c.oracleId)
+      if (!next.delete(key)) next.add(key)
+      return next
+    }),
+    menu: (card, zone, x, y) => setMenu({ card, zone, x, y }),
+    drop,
+  }
+
+  function menuSections(card: DeckCard, zone: DeckZone): MenuSection[] {
+    const facts = data.facts.get(card.oracleId)
+    const one = [{ zone, oracleId: card.oracleId }]
+    const isSelected = selected.has(cardKey(zone, card.oracleId))
+    const sections: MenuSection[] = [{
+      items: [
+        ...(zone !== 'commanders' ? [{ label: '+1 cópia', run: () => actions.add(card, zone) }] : []),
+        { label: '−1 cópia', run: () => actions.remove(card, zone) },
+        ...(zone === 'cards' ? [{ label: 'Mover para o Talvez', run: () => moveAll(one, 'maybe') }] : []),
+        ...(zone === 'maybe' ? [{ label: 'Mover para o deck', run: () => moveAll(one, 'cards') }] : []),
+        ...(zone === 'commanders' ? [{ label: 'Voltar ao deck', run: () => actions.move(card, zone) }] : []),
+        ...(zone === 'cards' && facts && isEligibleAlone(facts) ? [{ label: 'Tornar comandante', run: () => actions.move(card, zone) }] : []),
+        { label: 'Trocar arte', run: () => setArtFor(card) },
+        { label: isSelected ? 'Tirar da seleção' : 'Selecionar', run: () => actions.select(card, zone) },
+        { label: zone === 'maybe' ? 'Tirar do Talvez' : 'Remover do deck', run: () => removeAll(one), danger: true },
+      ],
+    }]
+    if (isSelected && selected.size > 1) {
+      const all = targetsOf(card, zone)
+      sections.push({
+        title: `${selected.size} selecionadas`,
+        items: [
+          { label: 'Mover todas para o Talvez', run: () => moveAll(all.filter((t) => t.zone !== 'maybe'), 'maybe') },
+          { label: 'Mover todas para o deck', run: () => moveAll(all.filter((t) => t.zone !== 'cards'), 'cards') },
+          { label: 'Remover todas', run: () => removeAll(all), danger: true },
+          { label: 'Limpar seleção', run: clearSelection },
+        ],
+      })
+    }
+    return sections
   }
 
   return (
-    <main className="editor" data-pane={pane}>
+    <main className="editor" data-pane={pane} onKeyDown={(e) => {
+      if (e.key === 'Escape' && selected.size && !menu) clearSelection()
+    }}>
       <header className="editor-head">
         <button className="btn ghost" onClick={onBack}>← Decks</button>
         <input className="deck-name" aria-label="Nome do deck" value={deck.name} maxLength={60}
@@ -143,6 +228,8 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
             {(Object.keys(GROUP_BY_LABELS) as GroupBy[]).map((g) => <option key={g} value={g}>{GROUP_BY_LABELS[g]}</option>)}
           </select>
         </label>
+        <button className={`btn small${selecting ? ' primary' : ''}`} aria-pressed={selecting}
+          onClick={() => setSelecting((v) => !v)}>Selecionar</button>
         <label className="inline-field">Ordenar
           <select value={prefs.sortBy} onChange={(e) => setPrefs({ sortBy: e.target.value as SortBy })}>
             {(Object.keys(SORT_BY_LABELS) as SortBy[]).map((o) => <option key={o} value={o}>{SORT_BY_LABELS[o]}</option>)}
@@ -152,7 +239,22 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
 
       <SearchPanel catalog={services.catalog} commanderMode={commanderMode} identity={derived.identity}
         countOf={countOf} onAdd={addFromSearch} />
-      <DeckView mode={view} commanders={deck.commanders} groups={groups} data={data} actions={actions} highlight={highlight} />
+      <div className="deck-main">
+        {selected.size > 0 && (
+          <div className="selection-bar" role="region" aria-label="Seleção">
+            <b>{selected.size} selecionada{selected.size > 1 ? 's' : ''}</b>
+            <button className="btn small" onClick={() => moveAll(selectedTargets().filter((t) => t.zone !== 'maybe'), 'maybe')}>Mover para o Talvez</button>
+            <button className="btn small" onClick={() => moveAll(selectedTargets().filter((t) => t.zone !== 'cards'), 'cards')}>Mover para o deck</button>
+            <button className="btn small danger" onClick={() => removeAll(selectedTargets())}>Remover</button>
+            <button className="btn ghost small" onClick={clearSelection}>Limpar</button>
+          </div>
+        )}
+        <DeckView mode={view} groupBy={prefs.groupBy} commanders={deck.commanders} groups={groups} maybe={deck.maybe} data={data}
+          actions={actions} highlight={highlight} selected={selected} selecting={selecting}
+          maybeOpen={prefs.maybeOpen} onToggleMaybe={() => setPrefs({ maybeOpen: !prefs.maybeOpen })} />
+      </div>
+      <DragGhost />
+      {menu && <CardMenu title={menu.card.name} x={menu.x} y={menu.y} sections={menuSections(menu.card, menu.zone)} onClose={() => setMenu(null)} />}
       <DeckSidebar stats={derived.stats} deckSizeTarget={deckRules.deckSize} violations={derived.violations}
         bracket={derived.bracket} presets={presets} presetId={preset.id}
         onPreset={(id) => update((d, now) => ({ ...d, presetId: id === OFFICIAL_PRESET_ID ? undefined : id, updatedAt: now }))}

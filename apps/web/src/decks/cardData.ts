@@ -2,7 +2,7 @@
 
 import type { CardRef, DeckInput } from '@gathering-hall/engine'
 import type { CardFacts } from '@gathering-hall/formats'
-import { normalizeName, type CatalogCard, type CatalogPort } from '../catalog/catalog'
+import { normalizeName, type CardImages, type CatalogCard, type CatalogPort } from '../catalog/catalog'
 import type { CardInfo, Deck, DeckCard } from './model'
 
 export interface DeckCardData {
@@ -29,7 +29,12 @@ export function indexCards(cards: Iterable<CatalogCard>, into: DeckCardData = em
   return into
 }
 
-const allCards = (deck: Deck) => [...deck.commanders, ...deck.cards]
+// Everything shown in the editor, the Talvez list included (images and stats data); the game and validation use
+// only the deck (toGameDeck, toValidation).
+const allCards = (deck: Deck) => [...deck.commanders, ...deck.cards, ...deck.maybe]
+
+export const imagesOf = (c: DeckCard, data: DeckCardData): CardImages | null =>
+  (c.scryfallId && data.printings.get(c.scryfallId)?.images) || data.byOracle.get(c.oracleId)?.images || null
 
 export async function loadDeckCards(deck: Deck, catalog: CatalogPort): Promise<DeckCardData> {
   const { found } = await catalog.resolve(allCards(deck).map((c) => c.name))

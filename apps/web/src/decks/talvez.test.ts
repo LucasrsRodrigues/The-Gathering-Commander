@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { emptyCardData, toGameDeck } from './cardData'
-import { addCard, deckSize, deckStats, moveCard, newDeck, removeCard, setPrinting, toValidation } from './model'
+import { addCard, deckSize, deckStats, moveCard, moveEntry, newDeck, removeCard, removeEntry, setMainCategory, setPrinting, toValidation } from './model'
 
 // Fitness (épico 10, req. 9): the "Talvez" list never reaches validation, stats, the deck size or the game.
 describe('the Talvez list stays out of the deck', () => {
@@ -49,5 +49,27 @@ describe('editing records the history (épico 10, T10.3)', () => {
   it('choosing art is not a change in the history', () => {
     const deck = addCard(newDeck('d', 'D', 0), { oracleId: 'o1', name: 'Sol Ring' }, 'cards', 0)
     expect(setPrinting(deck, 'o1', 'art', 60 * 60_000).history).toEqual(deck.history)
+  })
+})
+
+describe('menu and drag operations (épico 10, T10.5)', () => {
+  const start = addCard(addCard(newDeck('d', 'D', 0), { oracleId: 'o1', name: 'Sol Ring', tags: ['Mana'] }, 'cards', 0, 1),
+    { oracleId: 'o2', name: 'Forest', scryfallId: 'art' }, 'cards', 0, 30)
+
+  it('moveEntry moves every copy with art and categories; removeEntry removes all copies', () => {
+    const moved = moveEntry(start, 'o2', 'cards', 'maybe', 1)
+    expect(moved.maybe).toEqual([{ oracleId: 'o2', name: 'Forest', scryfallId: 'art', count: 30 }])
+    expect(moved.cards.map((c) => c.oracleId)).toEqual(['o1'])
+    expect(removeEntry(moved, 'o2', 'maybe', 2).maybe).toEqual([])
+    expect(moveEntry(start, 'nope', 'cards', 'maybe', 1)).toBe(start)
+  })
+
+  it('setMainCategory puts the category first, keeps the others, and can take the main one off', () => {
+    const ramp = setMainCategory(start, 'cards', ['o1', 'o2'], 'Ramp', 1)
+    expect(ramp.cards.map((c) => c.tags)).toEqual([['Ramp', 'Mana'], ['Ramp']])
+    expect(setMainCategory(ramp, 'cards', ['o1'], 'mana', 2).cards[0]!.tags).toEqual(['mana', 'Ramp']) // case-insensitive, no duplicate
+    const off = setMainCategory(ramp, 'cards', ['o1', 'o2'], null, 3)
+    expect(off.cards.map((c) => c.tags)).toEqual([['Mana'], undefined])
+    expect(off.history).toEqual(start.history) // categories are not card changes
   })
 })
