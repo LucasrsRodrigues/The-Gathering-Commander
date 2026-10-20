@@ -467,6 +467,7 @@ export type GameEvent =
   | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
   | { type: 'resolvedManually'; player: PlayerId; item: StackItem } // "Resolver à mão": the players apply it by hand
   | { type: 'triggerSkipped'; sourceId: ObjectId; text: string } // CR 603.3d: no legal target, the trigger is removed
+  | { type: 'effectDamage'; sourceId?: ObjectId; to: Target; amount: number } // épico 11: damage from a spell or ability
   | { type: 'abilityResolving'; item: StackItem; text: string } // épico 11: an automated ability applies its effects
   | { type: 'manualStep'; text: string; objectId?: ObjectId } // épico 11: a part the players do by hand
   | { type: 'commanderMayReturn'; objectId: ObjectId; owner: PlayerId }

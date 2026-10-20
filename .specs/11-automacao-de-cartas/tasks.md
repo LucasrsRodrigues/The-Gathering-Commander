@@ -280,7 +280,7 @@ Quatro ondas e um fechamento:
     - erros para item fora do topo, item já manual e jogador sem prioridade.
   - Não verificado no navegador: os decks de exemplo não abrem com um item automático na pilha, e uma lista de teste
     com cartas repetidas é barrada pelas regras.
-- [ ] **T11.9 — Interface: alvos na mesa, registro e selo** _(req: 7, 15)_ · depende de T11.5
+- [x] **T11.9 — Interface: alvos na mesa, registro e selo** _(req: 7, 15)_ · depende de T11.5
   - Escopo:
     - destaque dos alvos válidos na mesa 3D e nos painéis;
     - a faixa "Escolha N alvos · Confirmar · Cancelar", com a lista acessível;
@@ -294,6 +294,52 @@ Quatro ondas e um fechamento:
     - o resumo do editor bate com o leitor.
   - Critério de aceite da onda: no top 1.000, as automáticas passam da linha de base de 9,3% (T11.3) para pelo menos
     20%. O resultado fica registrado aqui.
+  - Feito:
+    - **Modo alvo** (`hud/targeting.ts`, `hud/TargetBar.tsx`):
+      - lançar uma mágica com alvo abre a faixa "Escolha 1 alvo para Lightning Bolt · Lançar à mão · Cancelar ·
+        Confirmar", e os alvos vão dentro do `castSpell`. Cancelar não manda nada, então a carta fica na mão sem
+        pagar. Esc também cancela;
+      - o gatilho com `chooseTargets` usa a mesma faixa, com "Resolver à mão" no lugar de "Cancelar". O painel
+        provisório da T11.7 saiu;
+      - os alvos válidos vêm do `legalTargetsInView` do motor:
+        - na mesa 3D, a carta válida ganha um brilho azul, e a escolhida um brilho branco. O clique escolhe, sem
+          virar a carta nem mudar o foco da câmera;
+        - nos painéis, o jogador válido ganha contorno e o botão "Alvo";
+        - na faixa, os mesmos alvos aparecem como botões, com o foco no primeiro (teclado e leitor de tela).
+      - com um alvo só, o segundo clique troca o alvo. Com "até N", para no máximo.
+      - depois de confirmar, segue o pagamento automático como antes.
+    - **Registro:**
+      - motor: evento novo `effectDamage` (origem, alvo, quantidade);
+      - frases novas:
+        - "⚙ Automático: Lightning Bolt."
+        - "Lightning Bolt causou 3 de dano a Fyndhorn Elves."
+        - "✋ À mão (carta): …", com descartar, buscar, vidência e vigiar em português
+        - "… foi anulado: os alvos ficaram inválidos."
+        - "…: sem alvo válido, a habilidade saiu sem efeito."
+    - **Prévia:** selo "automática / parcial / manual" ao lado do tipo e, se parcial, "Manual:" com as frases.
+    - **Editor:**
+      - selo por carta na lista;
+      - no painel de estatísticas, "96 de 100 automáticas · 1 parcial · 3 manuais", com cada número destacando as
+        cartas, como os outros filtros.
+    - **Pilha:** "automático" ou "à mão" nos itens automatizados, e "Resolver à mão" no topo (T11.8).
+  - Verificado no navegador:
+    - Lightning Bolt num Fyndhorn Elves clicado na mesa 3D: faixa, brilho, pagamento, "automático" na pilha, o elfo
+      morre, e o registro diz o que aconteceu;
+    - na largura de tablet, a faixa fica acima da mão sem cobrir o campo do oponente;
+    - pelo teclado: Enter na carta da mão abre a faixa, o foco vai para o primeiro alvo, e Tab e Enter escolhem;
+    - o resumo do editor bate com o leitor: Mind Stone parcial; Krenko, Chaos Warp e Skullclamp manuais.
+  - **Critério da onda: não atingido.** No top 1.000 (bulk de 2026-10-19), as automáticas estão em 12,0% (linha de
+    base 9,3%, meta 20%). Automáticas ou parciais estão em 42,0%.
+    - As frases manuais mais comuns do top 1.000 são de outras ondas:
+      - Equip (24);
+      - Cycling (17);
+      - terrenos que entram virados conforme uma condição (cerca de 37);
+      - vidência e vigiar ao entrar (20);
+      - modais "Choose N —" (10);
+      - contramágicas e "can't be countered" (15);
+      - buscas no grimório.
+    - Decidir com o usuário entre duas saídas: estender a onda 1 com essas frases, ou seguir para a onda 2, que já
+      cobre Equip, buscas e vidência, e medir de novo no fim dela.
 
 ## Onda 2 — Habilidades ativadas, contagens e buscas
 - [ ] **T11.10 — Habilidades ativadas** _(req: 12)_ · depende de T11.6

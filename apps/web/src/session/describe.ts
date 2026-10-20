@@ -95,6 +95,23 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
       case 'judgeAction':
         lines.push(`⚖ Ação de juiz: ${name(e.player)} fez uma jogada fora das regras${e.reason ? ` (“${e.reason}”)` : ''}${e.approvedBy.length ? `, aprovada por ${e.approvedBy.map(name).join(', ')}` : ''}.`)
         break
+      case 'abilityResolving': {
+        const source = e.item.objectId ?? e.item.sourceId
+        lines.push(`⚙ Automático: ${source ? cardName(source) : e.item.description ?? 'habilidade'}.`)
+        break
+      }
+      case 'effectDamage': {
+        const to = 'player' in e.to ? name(e.to.player) : cardName(e.to.object)
+        lines.push(`${e.sourceId ? cardName(e.sourceId) : 'Um efeito'} causou ${e.amount} de dano a ${to}.`)
+        break
+      }
+      case 'manualStep': lines.push(`✋ À mão${e.objectId ? ` (${cardName(e.objectId)})` : ''}: ${e.text}`); break
+      case 'stackItemFizzled': {
+        const source = e.item.objectId ?? e.item.sourceId
+        lines.push(`${source ? cardName(source) : 'O item'} foi anulado: os alvos ficaram inválidos.`)
+        break
+      }
+      case 'triggerSkipped': lines.push(`${cardName(e.sourceId)}: sem alvo válido, a habilidade saiu sem efeito.`); break
       case 'resolvedManually': {
         const source = e.item.objectId ?? e.item.sourceId
         lines.push(`${name(e.player)} pediu para resolver ${source ? cardName(source) : 'o item do topo'} à mão: o efeito fica com os jogadores.`)

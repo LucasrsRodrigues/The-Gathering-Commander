@@ -4,7 +4,8 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import type { CardRef, ObjectView, PlayerId, PlayerView } from '@gathering-hall/engine'
+import type { CardRef, ObjectView, PlayerId, PlayerView, Target } from '@gathering-hall/engine'
+import { legalOptions, targetingStore } from '../hud/targeting'
 import { focusStore, menuStore, previewStore, showPreview, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { layoutTable, TABLE, type Area, type Piles, type TableLayout } from './layout'
@@ -19,7 +20,11 @@ const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 export interface TableIntents {
   tap: (objectId: string, x: number, y: number) => void // x, y: where to open a menu if one is needed
   arrange: (objectId: string, x: number, z: number) => void
+  target: (target: Target) => void // épico 11: target mode, a click picks the card as a target
 }
+
+type TargetState = 'legal' | 'chosen' | undefined
+const TARGET_GLOW = { legal: { color: '#6fd3ff', opacity: 0.75 }, chosen: { color: '#e6f8ff', opacity: 1 } } as const
 
 interface SceneProps {
   view: PlayerView
@@ -29,6 +34,14 @@ interface SceneProps {
 
 export function TableScene({ view, viewer, intents }: SceneProps) {
   const layout = useMemo(() => layoutTable(view, viewer), [view, viewer])
+  const targeting = useStore(targetingStore)
+  const targets = useMemo(() => {
+    const out = new Map<string, TargetState>()
+    if (!targeting) return out
+    for (const t of legalOptions(view, viewer, targeting)) if ('object' in t) out.set(t.object, 'legal')
+    for (const t of targeting.chosen) if ('object' in t) out.set(t.object, 'chosen')
+    return out
+  }, [targeting, view, viewer])
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ fov: 36 }} className="table-canvas"
       onPointerMissed={() => menuStore.set(null)}>
@@ -50,7 +63,7 @@ export function TableScene({ view, viewer, intents }: SceneProps) {
         if (!obj) return null
         return (
           <CardMesh key={id} obj={obj} x={at.x} z={at.z} scale={at.scale} layer={at.layer}
-            floating={!!at.floating} intents={intents} />
+            floating={!!at.floating} intents={intents} target={targets.get(id)} />
         )
       })}
     </Canvas>
@@ -163,9 +176,10 @@ interface CardMeshProps {
   layer: number
   floating: boolean
   intents: TableIntents
+  target: TargetState
 }
 
-const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, intents }: CardMeshProps) {
+const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, intents, target }: CardMeshProps) {
   const group = useRef<THREE.Group>(null)
   const hovered = useRef(false)
   const gesture = useRef({ active: false, moved: false, long: false, sx: 0, sy: 0, timer: 0 })
@@ -244,7 +258,8 @@ const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, int
       intents.arrange(obj.id, group.current.position.x, group.current.position.z)
       g.moved = false
     } else if (!g.long) {
-      if (onBattlefield) intents.tap(obj.id, e.clientX, e.clientY)
+      if (target) intents.target({ object: obj.id })
+      else if (onBattlefield) intents.tap(obj.id, e.clientX, e.clientY)
       else openMenu(e.clientX, e.clientY)
     }
   }
@@ -257,8 +272,15 @@ const CardMesh = memo(function CardMesh({ obj, x, z, scale, layer, floating, int
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onClick={(e) => { if (target) e.stopPropagation() }} // picking a target must not also focus the seat under it
       onContextMenu={(e) => { e.stopPropagation(); e.nativeEvent.preventDefault(); openMenu(e.nativeEvent.clientX, e.nativeEvent.clientY) }}>
       <mesh geometry={cardGeometry} material={material} castShadow />
+      {target && (
+        <mesh rotation-x={-Math.PI / 2} position-y={-THICKNESS / 2 - 0.002}>
+          <planeGeometry args={[TABLE.CW * 1.34, TABLE.CH * 1.24]} />
+          <meshBasicMaterial color={TARGET_GLOW[target].color} transparent opacity={TARGET_GLOW[target].opacity} depthWrite={false} />
+        </mesh>
+      )}
       {obj.isCommander && !floating && (
         <mesh rotation-x={-Math.PI / 2} position-y={-THICKNESS / 2 - 0.001}>
           <planeGeometry args={[TABLE.CW * 1.12, TABLE.CH * 1.08]} />

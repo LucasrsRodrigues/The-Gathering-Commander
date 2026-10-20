@@ -229,14 +229,14 @@ describe('"Resolver à mão" (épico 11, T11.8)', () => {
   it('with the rules on it is an exception: locally at once, logged as a judge action', () => {
     let [r, item] = withTrigger('block')
     expectError(r.state, { type: 'resolveManually', player: 'p1', stackItemId: item }, 'ruleBlocked')
-    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: 'Resolver à mão' })
+    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', stackItemId: item }, reason: 'Resolver à mão' })
     expect(r.state.stack[0]!.manual).toBe(true)
     expect(r.events).toContainEqual({ type: 'judgeAction', player: 'p1', actionType: 'resolveManually', reason: 'Resolver à mão', approvedBy: [] })
   })
 
   it('online, the others approve first', () => {
     let [r, item] = withTrigger('block', 'vote')
-    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: 'Resolver à mão' })
+    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', stackItemId: item }, reason: 'Resolver à mão' })
     expect(r.state.pending?.kind).toBe('exception')
     expect(r.state.stack[0]!.manual).toBeUndefined()
     r = step(r, { type: 'answerException', player: 'p2', approve: true })
@@ -250,7 +250,7 @@ describe('"Resolver à mão" (épico 11, T11.8)', () => {
     const manual = act(r.state, { type: 'resolveManually', player: 'p1', stackItemId: item }).state
     expectError(manual, { type: 'resolveManually', player: 'p1', stackItemId: item }, 'invalidAction')
     const [blocked] = withTrigger('block')
-    const request: Action = { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: '' }
+    const request: Action = { type: 'requestException', player: 'p1', action: { type: 'resolveManually', stackItemId: item }, reason: '' }
     expectError({ ...blocked.state, priority: { player: 'p2', passed: [] } }, request, 'strictPriority') // the exception does not skip priority
   })
 })

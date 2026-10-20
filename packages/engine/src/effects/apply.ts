@@ -15,6 +15,7 @@ import { evalValue, matchesFilter, type ValueContext } from './value'
 
 const MAX_TOKENS = 50 // per effect: "create X tokens" with a huge X stays bounded (state size, T7.8 limits)
 const MAX_COUNT = 100
+const CHOICES = { discard: 'Descartar', search: 'Buscar no grimório', scry: 'Vidência', surveil: 'Vigiar' } as const
 
 export function applyAbility(tx: Tx, item: StackItem, ability: Ability) {
   const ctx: ValueContext = {
@@ -60,12 +61,15 @@ function damage(tx: Tx, ctx: ValueContext, amount: number, players: PlayerId[], 
   const source = ctx.sourceId ? tx.s.objects[ctx.sourceId] : undefined
   const deathtouch = !!source && hasKeyword(source.card, 'deathtouch')
   let dealt = 0
+  const from = ctx.sourceId ? { sourceId: ctx.sourceId } : {}
   for (const p of players) {
+    tx.emit({ type: 'effectDamage', ...from, to: { player: p }, amount })
     changeLife(tx, p, -amount)
     dealt += amount
   }
   for (const obj of objects) {
     if (obj.zone !== 'battlefield' || !(isCreature(obj) || isPlaneswalker(obj))) continue
+    tx.emit({ type: 'effectDamage', ...from, to: { object: obj.id }, amount })
     dealDamageTo(tx, obj, amount, deathtouch)
     dealt += amount
   }
@@ -179,7 +183,7 @@ export function applyEffect(tx: Tx, effect: Effect, ctx: ValueContext) {
     case 'scry':
     case 'surveil':
       // Choices the player makes (wave 2): the reader does not produce these yet; an exception that does leaves a note.
-      tx.emit({ type: 'manualStep', text: `${effect.kind}: faça à mão` })
+      tx.emit({ type: 'manualStep', text: `${CHOICES[effect.kind]}: faça à mão.`, ...(ctx.sourceId ? { objectId: ctx.sourceId } : {}) })
       return
   }
 }

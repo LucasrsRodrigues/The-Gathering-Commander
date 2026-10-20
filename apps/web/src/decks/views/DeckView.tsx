@@ -9,6 +9,8 @@ import type { CardRef } from '@gathering-hall/engine'
 import { isEligibleAlone } from '@gathering-hall/formats'
 import type { MouseEvent } from 'react'
 import { previewStore } from '../../ui/stores'
+import { CoverageBadge } from '../../ui/CoverageBadge'
+import { COVERAGE_LABELS } from '../../ui/coverage'
 import { imagesOf, type DeckCardData } from '../cardData'
 import type { DeckCard, DeckZone } from '../model'
 import { useCardGestures } from './gestures'
@@ -108,12 +110,14 @@ function classes(card: DeckCard, zone: DeckZone, props: ViewProps, base: string)
 function ListRow({ card, zone, props }: { card: DeckCard; zone: DeckZone; props: ViewProps }) {
   const handlers = useCardHandlers(card, zone, props)
   const isSelected = props.selected.has(cardKey(zone, card.oracleId))
+  const coverage = props.data.info.get(card.oracleId)?.coverage
+  const covered = coverage ? ` (${COVERAGE_LABELS[coverage]})` : ''
   return (
     <li className={classes(card, zone, props, 'deck-row')}>
       <span className="qty">{card.count}</span>
       <button className="link card-name" {...handlers} {...previewProps(card, props.data)} aria-pressed={props.selecting ? isSelected : undefined}
-        aria-label={props.selecting ? `${card.name}: selecionar` : `${card.name}: escolher arte`} aria-keyshortcuts="Shift+F10">
-        {card.name}
+        aria-label={props.selecting ? `${card.name}${covered}: selecionar` : `${card.name}${covered}: escolher arte`} aria-keyshortcuts="Shift+F10">
+        {card.name} <CoverageBadge coverage={coverage} />
       </button>
       <span className="mv muted" aria-label="Valor de mana">{props.data.info.get(card.oracleId)?.manaValue ?? ''}</span>
       <Controls card={card} zone={zone} props={props} />

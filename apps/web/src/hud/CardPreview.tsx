@@ -7,6 +7,7 @@ import { useCardText } from '../catalog/cardText'
 import { useStore } from '../ui/store'
 import { previewObjectStore, previewStore } from '../ui/stores'
 import { ManaText } from '../ui/ManaText'
+import { CoverageBadge } from '../ui/CoverageBadge'
 import { keywordHelp } from './keywordHelp'
 
 function costText(cost: ManaCost | null | undefined): string {
@@ -69,7 +70,7 @@ export function CardPreview({ view }: { view?: PlayerView }) {
             {cost && <span className="preview-cost"><ManaText text={cost} /></span>}
           </div>
           {pt && pt.name !== card.name && <div className="muted small">{card.name}</div>}
-          <div className="muted small">{pt?.typeLine || text?.typeLine || card.typeLine}</div>
+          <div className="muted small">{pt?.typeLine || text?.typeLine || card.typeLine} <CoverageBadge coverage={card.rules?.coverage} /></div>
           {body && <p className="preview-body"><ManaText text={body} /></p>}
           {!pt && !loadingPt && text && <p className="muted small">Sem tradução em português; texto Oracle em inglês.</p>}
           {keywords.length > 0 && (
@@ -77,6 +78,9 @@ export function CardPreview({ view }: { view?: PlayerView }) {
               {keywords.map((k) => <li key={k.name}><b>{k.name}:</b> <ManaText text={k.help} /></li>)}
             </ul>
           )}
+          {card.rules?.coverage === 'partial' && card.rules.manualText?.length ? (
+            <div className="preview-manual small"><b>Manual:</b> {card.rules.manualText.map((l) => <span key={l}><ManaText text={l} /> </span>)}</div>
+          ) : null}
           {state.length > 0 && (
             <ul className="preview-state">
               {state.map((l) => <li key={l}><ManaText text={l} /></li>)}

@@ -27,6 +27,7 @@ export function indexCards(cards: Iterable<CatalogCard>, into: DeckCardData = em
       into.info.set(oracleId, {
         typeLine: card.facts.typeLine, manaValue: card.manaValue, colorIdentity: card.facts.colorIdentity,
         mana: manaInfoOf(card.ref.rules, card.facts.oracleText, card.facts.typeLine),
+        ...(card.ref.rules?.coverage ? { coverage: card.ref.rules.coverage } : {}),
       })
     }
   }

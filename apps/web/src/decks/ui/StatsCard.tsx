@@ -87,7 +87,22 @@ export function StatsCard({ stats, deckSizeTarget, filter, onFilter }: {
           ))}
         </ul>
       )}
+      <CoverageSummary stats={stats} filter={filter} pick={pick} />
       {filter && <button className="btn ghost tiny" onClick={() => onFilter(null)}>Tirar o destaque</button>}
     </section>
+  )
+}
+
+// Épico 11: "82 de 100 automáticas", each number highlighting its cards.
+function CoverageSummary({ stats, filter, pick }: { stats: DeckStats; filter: StatFilter | null; pick: (f: StatFilter) => void }) {
+  const { automated, partial, manual } = stats.coverage
+  const known = automated + partial + manual
+  if (!known) return null
+  return (
+    <p className="small coverage-summary" aria-label="Automação das cartas">
+      <Stat active={filter} onPick={pick} f={{ kind: 'coverage', level: 'automated' }} className="inline">{automated} de {known} automática{automated === 1 ? '' : 's'}</Stat>
+      {' · '}<Stat active={filter} onPick={pick} f={{ kind: 'coverage', level: 'partial' }} className="inline">{partial} parcia{partial === 1 ? 'l' : 'is'}</Stat>
+      {' · '}<Stat active={filter} onPick={pick} f={{ kind: 'coverage', level: 'manual' }} className="inline">{manual} manua{manual === 1 ? 'l' : 'is'}</Stat>
+    </p>
   )
 }

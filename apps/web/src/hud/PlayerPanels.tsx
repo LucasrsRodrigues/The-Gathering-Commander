@@ -5,6 +5,7 @@ import { focusStore, menuStore, zoneViewerStore } from '../ui/stores'
 import { useStore } from '../ui/store'
 import { menuAnchor } from './a11y'
 import { formatMana } from './mana'
+import { legalOptions, targetingStore, toggleTarget } from './targeting'
 
 export type Dispatch = (action: ActionIntent) => void
 
@@ -36,11 +37,15 @@ function Stepper({ label, onChange }: { label: string; onChange: (delta: number)
   return <>{button(-1)}{button(1)}</>
 }
 
-function PlayerPanel({ view, seat, dispatch, local }: {
-  view: PlayerView; seat: PlayerId; dispatch: Dispatch; local: boolean
+function PlayerPanel({ view, viewer, seat, dispatch, local }: {
+  view: PlayerView; viewer: PlayerId; seat: PlayerId; dispatch: Dispatch; local: boolean
 }) {
   const p = view.players[seat]!
   const focus = useStore(focusStore)
+  // Épico 11: in target mode, a legal player glows and gets an "Alvo" button.
+  const targeting = useStore(targetingStore)
+  const targetable = !!targeting && legalOptions(view, viewer, targeting).some((t) => 'player' in t && t.player === seat)
+  const targeted = !!targeting?.chosen.some((t) => 'player' in t && t.player === seat)
   const [expanded, setExpanded] = useState(local)
   const active = view.turn.active === seat
   const priority = view.priority?.player === seat
@@ -51,13 +56,18 @@ function PlayerPanel({ view, seat, dispatch, local }: {
   const battlefieldCount = view.battlefield.filter((id) => view.objects[id]?.controller === seat).length
 
   return (
-    <section className={`player${local ? ' local' : ''}${active ? ' active' : ''}${priority ? ' priority' : ''}${p.lost ? ' lost' : ''}`}
+    <section className={`player${local ? ' local' : ''}${active ? ' active' : ''}${priority ? ' priority' : ''}${p.lost ? ' lost' : ''}${targeted ? ' targeted' : targetable ? ' targetable' : ''}`}
       aria-label={`Jogador ${p.name}`}>
       <header>
         <strong className="player-name">{p.name}</strong>
         {active && <span className="badge">turno</span>}
         {priority && <span className="badge gold">prioridade</span>}
         <span className="header-actions">
+          {targetable && (
+            <button className={`chip-btn${targeted ? ' on' : ''}`} aria-pressed={targeted} onClick={() => toggleTarget({ player: seat })}>
+              {targeted ? 'Alvo ✓' : 'Alvo'}
+            </button>
+          )}
           {!local && (
             <button className="link" onClick={() => focusStore.set(focus === seat ? null : seat)}>
               {focus === seat ? 'Visão geral' : 'Focar'}
@@ -118,9 +128,9 @@ export function PlayerPanels({ view, viewer, dispatch }: { view: PlayerView; vie
   return (
     <>
       <div className="opponents">
-        {others.map((seat) => <PlayerPanel key={seat} view={view} seat={seat} dispatch={dispatch} local={false} />)}
+        {others.map((seat) => <PlayerPanel key={seat} view={view} viewer={viewer} seat={seat} dispatch={dispatch} local={false} />)}
       </div>
-      {me && <div className="me"><PlayerPanel view={view} seat={me} dispatch={dispatch} local /></div>}
+      {me && <div className="me"><PlayerPanel view={view} viewer={viewer} seat={me} dispatch={dispatch} local /></div>}
     </>
   )
 }

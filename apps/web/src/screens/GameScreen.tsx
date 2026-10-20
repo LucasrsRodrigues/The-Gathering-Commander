@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PaymentDialog } from '../hud/Payment'
 import { CardMenu, CardPreview, Curtain, GameLog, Toasts, ZoneViewer } from '../hud/Overlays'
 import { CombatPanel } from '../hud/Combat'
-import { ChooseTargetsPanel } from '../hud/ChooseTargets'
+import { TargetBar } from '../hud/TargetBar'
+import { castTargeting, targetingStore, toggleTarget, triggerTargeting } from '../hud/targeting'
 import { AwayNotice, type AwayControls } from '../hud/AwayNotice'
 import { BlockedDialog, ExceptionPrompt } from '../hud/Exceptions'
 import { HandArea } from '../hud/HandArea'
@@ -30,7 +31,17 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
   const curtain = session.needsCurtain()
 
   const [payment, setPayment] = useState<PendingPayment | null>(null)
+  // Sends an action as is; dispatch below asks for targets and payment first.
+  const send: Dispatch = useCallback((action) => {
+    const pending = paymentFor(session.view(), session.seat(), action)
+    if (pending) return setPayment(pending)
+    const error = session.dispatch(action)
+    if (error) toast(error.message)
+  }, [session, setPayment])
   const dispatch: Dispatch = useCallback((action) => {
+    // Épico 11: a spell with targets asks for them on the table first.
+    const targeting = castTargeting(session.view(), action)
+    if (targeting) return targetingStore.set(targeting)
     // Casting that needs sources tapped asks first (automatic payment).
     const pending = paymentFor(session.view(), session.seat(), action)
     if (pending) return setPayment(pending)
@@ -48,8 +59,19 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
       else if (mana.length > 1) menuStore.set({ target: { kind: 'object', objectId }, x, y })
       else dispatch({ type: obj?.tapped ? 'untap' : 'tap', objectId })
     },
+    target: (target) => toggleTarget(target),
     arrange: (objectId, x, z) => dispatch({ type: 'setArrangement', objectId, arrangement: { x, z } }),
   }), [dispatch, session])
+
+  // A trigger waiting on this seat opens the target band; it closes when the engine has the answer. A cast in target
+  // mode ends if the card left the hand meanwhile (online, another player's action can't do that, but undo can).
+  const trigger = curtain ? null : triggerTargeting(view, seat)
+  useEffect(() => {
+    const current = targetingStore.get()
+    if (trigger && current?.id !== trigger.id) targetingStore.set(trigger)
+    else if (!trigger && current?.kind === 'trigger') targetingStore.set(null)
+    else if (current?.kind === 'cast' && (curtain || !view.objects[current.sourceId] || view.objects[current.sourceId]!.zone === 'stack')) targetingStore.set(null)
+  }, [trigger?.id, curtain, view, trigger])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -60,7 +82,8 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
         e.preventDefault()
         if (!session.undo()) toast('Nada para desfazer.')
       } else if (e.key === 'Escape') {
-        closeTopmost()
+        if (targetingStore.get()?.kind === 'cast' && !menuStore.get()) targetingStore.set(null)
+        else closeTopmost()
       } else if (e.key === ' ' && !isInteractiveTarget(e.target)) {
         e.preventDefault()
         primaryAction(session.view(), session.seat(), dispatch).run?.()
@@ -112,7 +135,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
             dispatch={(a) => { const error = session.dispatch(a); if (error) toast(error.message) }} />
         )}
         {!curtain && view.status === 'playing' && <CombatPanel view={view} seat={seat} dispatch={dispatch} />}
-        {!curtain && view.status === 'playing' && <ChooseTargetsPanel view={view} seat={seat} dispatch={dispatch} />}
+        {!curtain && view.status === 'playing' && <TargetBar view={view} seat={seat} dispatch={dispatch} send={send} />}
         {!curtain && <ExceptionPrompt view={view} viewer={seat} dispatch={dispatch} />}
         {blocked && !curtain && (
           <BlockedDialog blocked={blocked} view={view} online={connection !== 'local'} dispatch={dispatch}

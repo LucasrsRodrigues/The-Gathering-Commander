@@ -35,6 +35,7 @@ export function describeIntent(action: ActionIntent, card: CardRef | null | unde
     case 'declareBlockers': return action.blocks.length ? `bloquear com ${action.blocks.length} criatura(s)` : 'não bloquear'
     case 'assignDamage': return 'distribuir o dano de combate assim'
     case 'discard': return `descartar só ${action.objectIds.length} carta(s)`
+    case 'resolveManually': return 'resolver o item do topo da pilha à mão, sem o efeito automático'
     default: return 'fazer essa ação'
   }
 }

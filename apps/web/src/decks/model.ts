@@ -3,6 +3,7 @@
 
 import { DECK_LIMITS, withChange, type Color, type DeckForValidation } from '@gathering-hall/formats'
 import { COLORS, type ManaInfo } from './manaInfo'
+import type { Coverage } from '@gathering-hall/engine'
 
 // The document shape (and its validator) lives in @gathering-hall/formats: the server validates cloud decks with it.
 export type { Deck, DeckCard, DeckZone } from '@gathering-hall/formats'
@@ -187,6 +188,7 @@ export interface CardInfo {
   manaValue: number
   colorIdentity: Color[]
   mana?: ManaInfo // cost symbols and colors it produces (stats)
+  coverage?: Coverage // épico 11: how much of the card the engine does by itself
 }
 
 export const TYPE_GROUPS = [
@@ -211,6 +213,7 @@ export interface DeckStats {
   sources: Record<Color | 'C', number> // cards that can add each color (lands and the rest)
   types: Partial<Record<TypeGroup, number>>
   categories: { name: string; count: number }[] // main category, in the deck's order
+  coverage: Record<Coverage, number> // épico 11: copies the engine automates fully, in part, or not at all
 }
 
 // The deck proper only (commanders + cards): the Talvez list never counts. `identity` lets "any color" sources
@@ -219,7 +222,7 @@ export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>, ident
   const stats: DeckStats = {
     total: 0, lands: 0, curve: Array(8).fill(0), averageManaValue: 0, averageWithLands: 0,
     colors: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, pips: { W: 0, U: 0, B: 0, R: 0, G: 0 },
-    sources: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, types: {}, categories: [],
+    sources: { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 }, types: {}, categories: [], coverage: { automated: 0, partial: 0, manual: 0 },
   }
   let mvSum = 0
   let nonLands = 0
@@ -227,6 +230,7 @@ export function deckStats(deck: Deck, info: ReadonlyMap<string, CardInfo>, ident
     stats.total += c.count
     const card = info.get(c.oracleId)
     if (!card) continue
+    if (card.coverage) stats.coverage[card.coverage] += c.count
     const group = typeGroup(card.typeLine)
     stats.types[group] = (stats.types[group] ?? 0) + c.count
     if (card.mana) {
@@ -259,6 +263,7 @@ export type StatFilter =
   | { kind: 'pip'; color: Color }
   | { kind: 'source'; color: Color | 'C' }
   | { kind: 'category'; name: string }
+  | { kind: 'coverage'; level: Coverage }
 
 export function cardsMatching(deck: Deck, info: ReadonlyMap<string, CardInfo>, filter: StatFilter, identity: readonly Color[] = COLORS): string[] {
   return [...deck.commanders, ...deck.cards].filter((c) => {
@@ -271,6 +276,7 @@ export function cardsMatching(deck: Deck, info: ReadonlyMap<string, CardInfo>, f
       case 'type': return typeGroup(card.typeLine) === filter.group
       case 'color': return !land && (filter.color === 'C' ? card.colorIdentity.length === 0 : card.colorIdentity.includes(filter.color))
       case 'pip': return (card.mana?.pips[filter.color] ?? 0) > 0
+      case 'coverage': return card.coverage === filter.level
       case 'source': return !!card.mana && (card.mana.sources.includes(filter.color) || (card.mana.anyColor && identity.includes(filter.color as Color)))
     }
   }).map((c) => c.name)
