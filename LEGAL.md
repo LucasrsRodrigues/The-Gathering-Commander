@@ -9,7 +9,8 @@ Este projeto segue a [Wizards of the Coast Fan Content Policy](https://company.w
 - O código é aberto (licença MIT) e livre para qualquer pessoa, inclusive a Wizards, usar sem pedir permissão
   nem dar crédito.
 - O aviso acima aparece no app (tela inicial e tela Sobre) e neste repositório.
-- Dados e imagens de cartas vêm da API pública do [Scryfall](https://scryfall.com) **em tempo de execução**.
+- Dados e imagens de cartas, e os símbolos de mana, vêm da API pública do [Scryfall](https://scryfall.com) **em tempo de
+  execução**.
   As imagens aparecem inteiras, sem remover crédito de artista nem avisos de copyright.
 
 ## O que não fazemos

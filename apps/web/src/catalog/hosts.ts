@@ -1,10 +1,11 @@
-// Outbound host allowlist. The app only talks to Scryfall: its API and its image CDN.
+// Outbound host allowlist. The app only talks to Scryfall: its API, its image CDN and its mana symbols.
 // Any URL that comes from a response or from the local cache is checked here before use,
 // so a tampered cache or response cannot point an <img> or texture at another origin.
 // Keep in sync with the Content-Security-Policy in index.html.
 
 export const API_HOST = 'api.scryfall.com'
 export const IMAGE_HOST = 'cards.scryfall.io'
+export const SYMBOL_HOST = 'svgs.scryfall.io'
 
 function parse(value: unknown): URL | null {
   if (typeof value !== 'string' || value.length > 2048) return null

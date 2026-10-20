@@ -6,6 +6,7 @@ import { imagesFor } from '../catalog/catalog'
 import { useCardText } from '../catalog/cardText'
 import { useStore } from '../ui/store'
 import { previewObjectStore, previewStore } from '../ui/stores'
+import { ManaText } from '../ui/ManaText'
 import { keywordHelp } from './keywordHelp'
 
 function costText(cost: ManaCost | null | undefined): string {
@@ -65,20 +66,20 @@ export function CardPreview({ view }: { view?: PlayerView }) {
         <div className="preview-text">
           <div className="preview-title">
             <b>{pt?.name ?? card.name}</b>
-            {cost && <span className="preview-cost">{cost}</span>}
+            {cost && <span className="preview-cost"><ManaText text={cost} /></span>}
           </div>
           {pt && pt.name !== card.name && <div className="muted small">{card.name}</div>}
           <div className="muted small">{pt?.typeLine || text?.typeLine || card.typeLine}</div>
-          {body && <p className="preview-body">{body}</p>}
+          {body && <p className="preview-body"><ManaText text={body} /></p>}
           {!pt && !loadingPt && text && <p className="muted small">Sem tradução em português; texto Oracle em inglês.</p>}
           {keywords.length > 0 && (
             <ul className="preview-keywords">
-              {keywords.map((k) => <li key={k.name}><b>{k.name}:</b> {k.help}</li>)}
+              {keywords.map((k) => <li key={k.name}><b>{k.name}:</b> <ManaText text={k.help} /></li>)}
             </ul>
           )}
           {state.length > 0 && (
             <ul className="preview-state">
-              {state.map((l) => <li key={l}>{l}</li>)}
+              {state.map((l) => <li key={l}><ManaText text={l} /></li>)}
             </ul>
           )}
         </div>

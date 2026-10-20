@@ -7,7 +7,7 @@
          src/account/client.ts.
          Dev server strips it (vite.config.ts) because Vite's HMR needs inline scripts and websockets.
          frame-ancestors is ignored in <meta>: the host must send it as an HTTP header. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://cards.scryfall.io https://cdn.discordapp.com https://lh3.googleusercontent.com; connect-src 'self' https://api.scryfall.com %VITE_SERVER_URL% %VITE_SERVER_WS%; object-src 'none'; base-uri 'self'; form-action 'none'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https://cards.scryfall.io https://svgs.scryfall.io https://cdn.discordapp.com https://lh3.googleusercontent.com; connect-src 'self' https://api.scryfall.com %VITE_SERVER_URL% %VITE_SERVER_WS%; object-src 'none'; base-uri 'self'; form-action 'none'" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="description" content="Fan game gratuito e open source de Commander com mesa interativa." />
