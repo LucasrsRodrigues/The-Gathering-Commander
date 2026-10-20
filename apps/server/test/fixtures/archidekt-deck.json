@@ -1,0 +1,139 @@
+{
+ "_note": "Recorte da resposta real de https://archidekt.com/api/decks/1/ (2026-10-20), com categorias adicionadas para o teste.",
+ "id": 1,
+ "name": "Fun With Fungus",
+ "private": false,
+ "categories": [
+  {
+   "name": "Commander",
+   "isPremier": true,
+   "includedInDeck": true
+  },
+  {
+   "name": "Maybeboard",
+   "isPremier": false,
+   "includedInDeck": false
+  },
+  {
+   "name": "Ramp",
+   "isPremier": false,
+   "includedInDeck": true
+  },
+  {
+   "name": "Removal",
+   "isPremier": false,
+   "includedInDeck": true
+  }
+ ],
+ "cards": [
+  {
+   "quantity": 1,
+   "categories": [
+    "Commander"
+   ],
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "227",
+    "edition": {
+     "editioncode": "tsp"
+    },
+    "oracleCard": {
+     "name": "Thelon of Havenwood"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": [
+    "Ramp"
+   ],
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "16",
+    "edition": {
+     "editioncode": "mps"
+    },
+    "oracleCard": {
+     "name": "Mana Crypt"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": [
+    "Removal",
+    "Fungus"
+   ],
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "56",
+    "edition": {
+     "editioncode": "mbs"
+    },
+    "oracleCard": {
+     "name": "Spread the Sickness"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": [
+    "Maybeboard"
+   ],
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "87",
+    "edition": {
+     "editioncode": "mbs"
+    },
+    "oracleCard": {
+     "name": "Plaguemaw Beast"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": null,
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "145",
+    "edition": {
+     "editioncode": "som"
+    },
+    "oracleCard": {
+     "name": "Contagion Engine"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": null,
+   "deletedAt": null,
+   "card": {
+    "collectorNumber": "144",
+    "edition": {
+     "editioncode": "som"
+    },
+    "oracleCard": {
+     "name": "Contagion Clasp"
+    }
+   }
+  },
+  {
+   "quantity": 1,
+   "categories": [
+    "Ramp"
+   ],
+   "deletedAt": "2024-01-01T00:00:00Z",
+   "card": {
+    "collectorNumber": "158",
+    "edition": {
+     "editioncode": "rav"
+    },
+    "oracleCard": {
+     "name": "Doubling Season"
+    }
+   }
+  }
+ ]
+}

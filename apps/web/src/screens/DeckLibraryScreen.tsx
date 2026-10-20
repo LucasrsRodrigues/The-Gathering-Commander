@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import type { Services } from '../app/services'
 import { AppFooter } from '../app/AppNav'
 import { importDecklist } from '../decks/importExport'
+import { importFromLink } from '../decks/importLink'
+import { SERVER_HTTP } from '../net/config'
 import { DECK_LIMITS, type Color } from '@gathering-hall/formats'
 import {
   cleanFolder, foldersOf, inFolder, LIBRARY_SORT_LABELS, matchesQuery, setFolder, sortDecks, type FolderFilter, type LibrarySort,
@@ -255,38 +257,80 @@ function DeckTile({ deck, summary, folders, onOpen, onTest, onDuplicate, onRemov
 }
 
 function ImportDialog({ services, onClose, onImported }: { services: Services; onClose: () => void; onImported: (id: string) => void }) {
+  const [mode, setMode] = useState<'text' | 'link'>('text')
   const [text, setText] = useState('')
+  const [link, setLink] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ message: string; offerText: boolean } | null>(null)
 
-  async function run() {
+  async function runText() {
     setBusy(true)
     setError(null)
     try {
       const result = await importDecklist(text, services.catalog, crypto.randomUUID(), Date.now())
       if (!result.deck.cards.length && !result.deck.commanders.length) {
-        setError(result.errors[0] ?? 'Nenhuma carta reconhecida na lista.')
+        setError({ message: result.errors[0] ?? 'Nenhuma carta reconhecida na lista.', offerText: false })
         return
       }
       await services.decks.save(result.deck)
       if (result.missing.length) toast(`Não encontradas: ${result.missing.slice(0, 6).join(', ')}${result.missing.length > 6 ? '…' : ''}`)
       onImported(result.deck.id)
     } catch {
-      setError('Não foi possível falar com o Scryfall. Verifique a conexão.')
+      setError({ message: 'Não foi possível falar com o Scryfall. Verifique a conexão.', offerText: false })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function runLink() {
+    setBusy(true)
+    setError(null)
+    try {
+      const out = await importFromLink(link, SERVER_HTTP, services.catalog, crypto.randomUUID(), Date.now())
+      if (!out.ok) return setError(out)
+      await services.decks.save(out.result.deck)
+      const missing = out.result.missing
+      toast(`Deck importado do ${out.source}.${missing.length ? ` Não encontradas: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}` : ''}`)
+      onImported(out.result.deck.id)
+    } catch {
+      setError({ message: 'Não foi possível falar com o Scryfall para conferir as cartas. Verifique a conexão.', offerText: false })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Dialog title="Importar lista" onClose={onClose}>
-      <label className="field">Cole a lista (Moxfield, Archidekt ou "1 Nome" por linha)
-        <textarea rows={12} value={text} maxLength={12000} spellCheck={false} onChange={(e) => setText(e.target.value)}
-          placeholder={'Commander\n1 Krenko, Mob Boss\n\nDeck\n1 Sol Ring\n35 Mountain'} />
-      </label>
-      {error && <p className="error" role="alert">{error}</p>}
+    <Dialog title="Importar deck" onClose={onClose}>
+      <div className="seg" role="tablist" aria-label="Como importar">
+        <button role="tab" aria-selected={mode === 'text'} onClick={() => { setMode('text'); setError(null) }}>Colar texto</button>
+        <button role="tab" aria-selected={mode === 'link'} onClick={() => { setMode('link'); setError(null) }}>Colar link</button>
+      </div>
+      {mode === 'text' ? (
+        <label className="field">Cole a lista (Moxfield, Archidekt ou "1 Nome" por linha)
+          <textarea rows={12} value={text} maxLength={12000} spellCheck={false} onChange={(e) => setText(e.target.value)}
+            placeholder={'Commander\n1 Krenko, Mob Boss\n\nDeck\n1 Sol Ring\n35 Mountain'} />
+        </label>
+      ) : (
+        <>
+          <label className="field">Link do deck no Archidekt ou no Moxfield
+            <input type="url" value={link} maxLength={300} spellCheck={false} placeholder="https://archidekt.com/decks/…"
+              onChange={(e) => setLink(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && link.trim() && !busy) void runLink() }} />
+          </label>
+          <p className="muted small">O deck precisa ser público. Vêm comandante, cartas, categorias e o Talvez (maybeboard). O Moxfield
+            às vezes não deixa ler; aí, use "Exportar → Texto" lá e cole na outra aba.</p>
+        </>
+      )}
+      {error && (
+        <div className="error" role="alert">
+          <p>{error.message}</p>
+          {error.offerText && mode === 'link' && <button className="btn small" onClick={() => { setMode('text'); setError(null) }}>Colar o texto</button>}
+        </div>
+      )}
       <div className="row end">
-        <button className="btn primary" disabled={busy || !text.trim()} onClick={run}>{busy ? 'Importando…' : 'Importar'}</button>
+        {mode === 'text'
+          ? <button className="btn primary" disabled={busy || !text.trim()} onClick={runText}>{busy ? 'Importando…' : 'Importar'}</button>
+          : <button className="btn primary" disabled={busy || !link.trim()} onClick={runLink}>{busy ? 'Buscando…' : 'Importar do link'}</button>}
       </div>
     </Dialog>
   )

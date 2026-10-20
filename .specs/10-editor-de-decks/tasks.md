@@ -285,7 +285,7 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - os cards mostram a arte, as cores e "✗ 2 problema(s) em Commander oficial".
   - Observação: a validade na biblioteca usa o mesmo caminho do setup (`factsForDate`), então a primeira visita
     com muitos decks busca as cartas que ainda não estão no cache.
-- [ ] **T10.12 — Importar por link do Archidekt e do Moxfield** _(req: 22–24)_ · depende de T10.1
+- [x] **T10.12 — Importar por link do Archidekt e do Moxfield** _(req: 22–24)_ · depende de T10.1
   - Escopo: `POST /api/import/deck` (allowlist, URL montada pelo id, timeout, limite de tamanho, rate limit),
     normalização dos dois formatos e o campo "Colar link" no app.
   - Verificação:
@@ -293,6 +293,32 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - URL de outro host, IP ou porta é recusada;
     - um bloqueio do Moxfield leva ao colar texto;
     - categorias e Talvez chegam certos.
+  - Feito:
+    - `apps/server/src/import/decks.ts`:
+      - `parseDeckLink` aceita só `archidekt.com/decks/<número>` e `moxfield.com/decks/<id>`, sem porta, usuário
+        ou outro host;
+      - `apiUrl` monta o endereço da API, e o servidor nunca busca o link recebido;
+      - a busca usa `redirect: 'error'`, timeout de 10 s, até 2 MB lidos em stream e User-Agent identificado, e
+        nada é guardado;
+    - normalização:
+      - **Archidekt:** a categoria "Commander" (premier) vira comandante, as categorias fora do deck (Maybeboard,
+        Sideboard) vão para o Talvez, as outras viram tags, as cartas apagadas saem e a impressão
+        (`editioncode` + `collectorNumber`) fica;
+      - **Moxfield:** formatos v3 (`boards.*.cards`) e v2, com `authorTags` como tags;
+    - erros com mensagem: link, não encontrado, privado, bloqueado (403, 429 ou página de desafio no Moxfield),
+      fora do ar e formato;
+    - `POST /api/import/deck` exige a mesma origem e aceita 10 por minuto por IP;
+    - no app, o diálogo "Importar deck" tem "Colar texto | Colar link". O link vira um deck novo pelo mesmo caminho
+      do modo texto (`applyBulk`). Num erro, aparece "Colar o texto";
+    - nomes "Frente // Verso" (como o Archidekt escreve as cartas de duas faces) são procurados pela frente, no modo
+      texto também.
+  - Verificado:
+    - testes com a resposta real do Archidekt recortada (`test/fixtures/archidekt-deck.json`) e com o formato v3
+      do Moxfield montado à mão; nenhuma chamada real roda no CI;
+    - no navegador, com o servidor local: o deck público 1 do Archidekt entra inteiro (17 cartas, depois da
+      correção das duas faces); um link do Moxfield mostra o bloqueio e oferece colar o texto.
+  - Medido: hoje a API do Moxfield responde 403 (Cloudflare) para leitura por servidor. Na prática, o caminho do
+    Moxfield é exportar como texto e colar, como estava previsto.
 
 ## Onda 3 — Compartilhar
 - [ ] **T10.13 — Link público do deck** _(req: 25–28)_ · depende de T10.2

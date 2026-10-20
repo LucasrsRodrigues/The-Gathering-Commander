@@ -113,3 +113,11 @@ describe('deck text: saving', () => {
     expect(chosen.deck.cards[0]!.scryfallId).toBe('id-sol-c21')
   })
 })
+
+describe('deck text: double-faced names', () => {
+  it('"Front // Back" is found by its front face', async () => {
+    const out = await applyBulk(newDeck('d', 'D', 0), parseBulk('1 Sol Ring // Back Face'), fakeCatalog(), 1) // the full name is unknown
+    expect(out.missing).toEqual([])
+    expect(out.deck.cards.map((c) => c.name)).toEqual(['Sol Ring'])
+  })
+})

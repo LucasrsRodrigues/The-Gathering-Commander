@@ -19,7 +19,16 @@ const ZONES: DeckZone[] = ['commanders', 'cards', 'maybe']
 export async function applyBulk(deck: Deck, parsed: ParsedBulk, catalog: CatalogPort, now: number): Promise<BulkResult> {
   const entries = ZONES.flatMap((zone) => parsed[zone].map((e) => ({ zone, e })))
   const names = [...new Set(entries.map(({ e }) => e.name))]
-  const { found, missing } = names.length ? await catalog.resolve(names) : { found: new Map<string, CatalogCard>(), missing: [] }
+  const first = names.length ? await catalog.resolve(names) : { found: new Map<string, CatalogCard>(), missing: [] }
+  const found = first.found
+  // Double-faced cards written in full ("Front // Back", as Archidekt does) are found by their front face.
+  const twoFaced = first.missing.filter((n) => n.includes(' // '))
+  const retry = twoFaced.length ? await catalog.resolve(twoFaced.map((n) => n.split(' // ')[0]!)) : null
+  for (const n of twoFaced) {
+    const hit = retry?.found.get(normalizeName(n.split(' // ')[0]!))
+    if (hit) found.set(normalizeName(n), hit)
+  }
+  const missing = first.missing.filter((n) => !found.has(normalizeName(n)))
   const wantedPrints = entries.flatMap(({ e }) => (e.set && e.number ? [{ set: e.set, number: e.number }] : []))
   const prints = wantedPrints.length && catalog.resolveSetNumbers ? await catalog.resolveSetNumbers(wantedPrints).catch(() => new Map()) : new Map<string, CatalogCard>()
 

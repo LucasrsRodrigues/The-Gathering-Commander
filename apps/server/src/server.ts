@@ -23,6 +23,7 @@ import { handleCloud } from './cloud/routes'
 import type { CloudStore } from './cloud/store'
 import type { CatalogStore } from './catalog/store'
 import { handleGames } from './games/routes'
+import { handleImport } from './import/routes'
 import type { GameStore } from './games/store'
 
 export interface ServerCatalog {
@@ -71,6 +72,7 @@ export interface RunningServer {
 export function startServer(
   config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null, auth: AuthService | null = null,
   cloud: CloudStore | null = null, games: GameStore | null = null,
+  importFetch: (url: string, init: RequestInit) => Promise<Response> = (url, init) => fetch(url, init),
 ): Promise<RunningServer> {
   const deps: RoomDeps = catalog
     ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
@@ -82,6 +84,7 @@ export function startServer(
   const catalogLimit = new WindowLimiter(config.catalogRequestsPerMinute, 60 * 1000)
   const loginLimit = new WindowLimiter(20, 60 * 1000) // login starts and callbacks per IP per minute
   const accountLimit = new WindowLimiter(120, 60 * 1000) // any account route per IP per minute (me, export, delete)
+  const importLimit = new WindowLimiter(10, 60 * 1000) // deck imports by link per IP per minute (each fetches another site)
   const cloudLimit = new WindowLimiter(120, 60 * 1000) // cloud requests per account per minute
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
@@ -184,6 +187,11 @@ export function startServer(
       if (!auth || !games) return json(res, 404, { error: 'contas desligadas neste servidor' })
       handleGames(auth, games, req, res, { allow: (id) => cloudLimit.allow(id, deps.now()), json })
         .catch(() => json(res, 500, { error: 'erro no histórico' }))
+      return
+    }
+    if (req.url === '/api/import/deck') {
+      handleImport(req, res, { sameOrigin: originAllowed(origin, req), allow: () => importLimit.allow(clientIp(req), deps.now()), fetchFn: importFetch, json })
+        .catch(() => json(res, 500, { error: 'erro', message: 'erro ao importar' }))
       return
     }
     if (req.url?.startsWith('/api/catalog/')) {
@@ -294,6 +302,7 @@ export function startServer(
     catalogLimit.sweep(now)
     loginLimit.sweep(now)
     accountLimit.sweep(now)
+    importLimit.sweep(now)
     await auth?.sweep().catch(() => {})
     cloudLimit.sweep(now)
     for (const id of await store.expired(now - config.roomTtlMs)) {

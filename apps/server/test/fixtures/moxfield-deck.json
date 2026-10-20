@@ -1,0 +1,14 @@
+{
+  "_note": "Formato v3 da API do Moxfield (api2.moxfield.com/v3/decks/all/<id>), montado à mão: a API bloqueia leitura por servidor.",
+  "name": "Krenko Goblins",
+  "boards": {
+    "commanders": { "count": 1, "cards": { "a1": { "quantity": 1, "card": { "name": "Krenko, Mob Boss", "set": "ddt", "cn": "52" } } } },
+    "mainboard": { "count": 31, "cards": {
+      "b1": { "quantity": 1, "card": { "name": "Sol Ring", "set": "c21", "cn": "263" } },
+      "b2": { "quantity": 30, "card": { "name": "Mountain", "set": "unf", "cn": "238" } }
+    } },
+    "maybeboard": { "count": 1, "cards": { "c1": { "quantity": 1, "card": { "name": "Goblin Guide", "set": "zen", "cn": "126" } } } },
+    "sideboard": { "count": 0, "cards": {} }
+  },
+  "authorTags": { "Sol Ring": ["Ramp", "Mana"], "Goblin Guide": ["Agressão"] }
+}
