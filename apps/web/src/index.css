@@ -597,3 +597,9 @@ body.dragging-card, body.dragging-card * { cursor: grabbing !important; user-sel
   .folder-list li:has(.folder-btn[aria-pressed='true']) .row-actions { display: flex; } /* the open folder keeps rename/delete */
 }
 .deck-open .tag-chip { justify-self: start; }
+
+/* Épico 10, T10.13: the public deck page. */
+.public-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.public-deck .deck-view { min-width: 0; }
+.deck-description { margin: 0; white-space: pre-line; max-width: 80ch; }
+@media (max-width: 899px) { .public-layout { grid-template-columns: 1fr; } }

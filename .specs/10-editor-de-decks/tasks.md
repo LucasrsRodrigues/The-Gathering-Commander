@@ -321,7 +321,7 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     Moxfield é exportar como texto e colar, como estava previsto.
 
 ## Onda 3 — Compartilhar
-- [ ] **T10.13 — Link público do deck** _(req: 25–28)_ · depende de T10.2
+- [x] **T10.13 — Link público do deck** _(req: 25–28)_ · depende de T10.2
   - Escopo:
     - migração `0005-deck-share.sql`;
     - rotas para ligar, desligar e ler o público;
@@ -334,6 +334,34 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - desligar dá `404` na hora;
     - ligar de novo gera outro slug;
     - excluir a conta derruba os links.
+  - Feito:
+    - migração `0005-deck-share.sql`:
+      - `deck_share` liga o slug à conta e ao deck, um link por deck;
+      - `deck_share_used` registra todo slug já usado, para um link desligado nunca apontar para outro deck;
+    - `ShareStore`:
+      - o slug tem 10 caracteres base62 aleatórios;
+      - só compartilha deck que está na nuvem;
+      - `read` lê a versão viva do `cloud_doc` e devolve só nome, descrição, comandantes, cartas, Talvez,
+        categorias, a ordem delas, o nome de exibição do dono e a data;
+      - uma parte da conta exporta e apaga os links;
+    - rotas:
+      - `PUT`/`DELETE /api/decks/:id/share` exigem conta e a mesma origem;
+      - `GET /api/shares` exige conta;
+      - `GET /api/public/decks/:slug` é aberto, com limite de 120 por minuto por IP;
+    - no app:
+      - "Compartilhar" no editor: sem conta explica e leva ao login; com conta sincroniza o deck antes de criar o
+        link, e depois mostra copiar, abrir e desligar;
+      - página `#/d/<slug>` só de leitura, com as três visualizações, o agrupamento (por categoria quando há),
+        estatísticas e descrição, mais "Copiar para meus decks" (um deck novo, sem histórico) e "Exportar texto";
+      - o `DeckView` ganhou o modo `readOnly`, e o `ExportDialog` virou um componente compartilhado.
+  - Verificado:
+    - testes no PGlite e num Postgres 16 real (120 testes do servidor), entre eles a fitness "sem `user_id`,
+      histórico nem pasta" na resposta pública;
+    - no navegador, com o login falso e a nuvem locais:
+      - criar o link do deck Krenko;
+      - abrir `#/d/<slug>`, com categorias, estatísticas e "Compartilhado por Lucas (teste)";
+      - copiar para os meus decks;
+      - desligar, depois do que a página diz "Deck não encontrado" e a API responde 404.
 
 ## Fechamento
 - [ ] **T10.14 — Revisão de tablet, acessibilidade e desempenho**

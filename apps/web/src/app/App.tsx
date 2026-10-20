@@ -14,6 +14,8 @@ import { LocalPresetRepository } from '../presets/repository'
 import { AboutScreen } from '../screens/AboutScreen'
 import { AccountScreen } from '../screens/AccountScreen'
 import { MatchHistoryScreen } from '../screens/MatchHistoryScreen'
+import { PublicDeckScreen } from '../screens/PublicDeckScreen'
+import { ShareClient } from '../decks/shareClient'
 import { DeckEditorScreen } from '../screens/DeckEditorScreen'
 import { DeckLibraryScreen } from '../screens/DeckLibraryScreen'
 import { OnlineScreen } from '../screens/OnlineScreen'
@@ -40,6 +42,7 @@ type Screen =
   | { kind: 'room'; roomId: string }
   | { kind: 'account'; error: string | null }
   | { kind: 'games' }
+  | { kind: 'publicDeck'; slug: string }
   | { kind: 'game'; session: GameSession; back: NavTarget }
 
 // An invite link (#/sala/<id>) opens the room directly.
@@ -50,6 +53,8 @@ function screenFromHash(): Screen | null {
   const account = /^#\/conta(?:\?erro=([a-z-]{1,40}))?$/.exec(location.hash)
   if (account) return { kind: 'account', error: account[1] ?? null }
   if (location.hash === '#/partidas') return { kind: 'games' }
+  const shared = /^#\/d\/([0-9A-Za-z]{10})$/.exec(location.hash)
+  if (shared) return { kind: 'publicDeck', slug: shared[1]! }
   return null
 }
 
@@ -57,6 +62,7 @@ export default function App() {
   const catalog = useMemo(() => new GatheringHallCatalog(SERVER_HTTP, new ScryfallCatalog()), [])
   const localPresets = useMemo(() => new LocalPresetRepository(), [])
   const account = useMemo(() => new AccountClient(SERVER_HTTP), [])
+  const shares = useMemo(() => new ShareClient(SERVER_HTTP), [])
   useEffect(() => {
     void account.refresh()
   }, [account])
@@ -158,13 +164,20 @@ export default function App() {
         end={accountNav} />
       {screen.kind === 'account' && <AccountScreen client={account} error={screen.error} onSignOut={() => setSigningOut(true)} />}
       {screen.kind === 'games' && <MatchHistoryScreen client={account} />}
+      {screen.kind === 'publicDeck' && (
+        <PublicDeckScreen slug={screen.slug} services={services} shares={shares} onCopied={(deckId) => {
+          history.replaceState(null, '', location.pathname + location.search)
+          setScreen({ kind: 'editor', deckId })
+        }} />
+      )}
       {signOutDialog}
       {screen.kind === 'about' && <AboutScreen />}
       {screen.kind === 'decks' && (
         <DeckLibraryScreen services={services} onOpen={(deckId) => setScreen({ kind: 'editor', deckId })} onTest={testDeck} />
       )}
       {screen.kind === 'editor' && (
-        <DeckEditorScreen services={services} deckId={screen.deckId} onBack={() => go('decks')} onTest={testDeck} />
+        <DeckEditorScreen services={services} deckId={screen.deckId} onBack={() => go('decks')} onTest={testDeck}
+          account={account} shares={shares} onOpenAccount={() => go('account')} />
       )}
       {screen.kind === 'presets' && <PresetsScreen presets={presets} cloudVersion={cloudVersion} />}
       {screen.kind === 'online' && <OnlineScreen onEnter={(roomId) => { location.hash = `#/sala/${roomId}` }} />}

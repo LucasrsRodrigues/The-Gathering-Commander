@@ -15,7 +15,11 @@ import { applyBulk } from '../decks/bulkApply'
 import { parseBulk, serializeBulk } from '../decks/bulkText'
 import { suggestionsFor } from '../decks/tags'
 import { BulkTextDialog } from '../decks/ui/BulkTextDialog'
+import { ExportDialog } from '../decks/ui/ExportDialog'
 import { HistoryDialog } from '../decks/ui/HistoryDialog'
+import { ShareDialog } from '../decks/ui/ShareDialog'
+import type { ShareClient } from '../decks/shareClient'
+import type { AccountClient } from '../account/client'
 import { CategoryPanel } from '../decks/ui/CategoryPanel'
 import { NameDialog } from '../decks/ui/NameDialog'
 import { CardMenu, type MenuSection } from '../decks/views/CardMenu'
@@ -39,11 +43,14 @@ function withCards(data: DeckCardData, cards: CatalogCard[]): DeckCardData {
   return indexCards(cards, copy)
 }
 
-export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
+export function DeckEditorScreen({ services, deckId, onBack, onTest, account, shares, onOpenAccount }: {
   services: Services
   deckId: string
   onBack: () => void
   onTest: (deck: Deck) => void
+  account: AccountClient
+  shares: ShareClient
+  onOpenAccount: () => void
 }) {
   const [deck, setDeck] = useState<Deck | null>(null)
   const [data, setData] = useState<DeckCardData>(emptyCardData)
@@ -65,6 +72,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [searchToMaybe, setSearchToMaybe] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [statFilter, setStatFilter] = useState<StatFilter | null>(null) // a clicked number of the stats panel
 
   useEffect(() => {
@@ -265,6 +273,7 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
         <div className="row">
           <button className="btn" onClick={() => setBulkOpen(true)}>Texto</button>
           <button className="btn" onClick={() => setHistoryOpen(true)}>Histórico</button>
+          <button className="btn" onClick={() => setSharing(true)}>Compartilhar</button>
           <button className="btn" onClick={() => setExporting(true)}>Exportar lista</button>
           <button className="btn primary" onClick={() => onTest(deck)}>Testar (goldfish)</button>
         </div>
@@ -341,6 +350,9 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
           }}
           onShow={(name) => setShownCategory((c) => (c === name ? null : name))} />
       </DeckSidebar>
+      {sharing && (
+        <ShareDialog deckId={deck.id} account={account} cloud={services.cloud} shares={shares} onOpenAccount={onOpenAccount} onClose={() => setSharing(false)} />
+      )}
       {historyOpen && (
         <HistoryDialog deck={deck} data={data} onClose={() => setHistoryOpen(false)}
           onRestore={(index) => {
@@ -417,20 +429,6 @@ function ArtPicker({ services, card, onClose, onPick }: {
           ))}
         </ul>
       )}
-    </Dialog>
-  )
-}
-
-function ExportDialog({ text, onClose }: { text: string; onClose: () => void }) {
-  return (
-    <Dialog title="Exportar lista" onClose={onClose}>
-      <p className="muted small">Texto no formato aceito por Moxfield, Archidekt e Arena. Só a lista: nada de imagens para impressão.</p>
-      <textarea className="export" rows={14} readOnly value={text} onFocus={(e) => e.currentTarget.select()} />
-      <div className="row end">
-        <button className="btn primary" onClick={() => navigator.clipboard.writeText(text).then(() => toast('Lista copiada.'), () => toast('Não deu para copiar; selecione o texto.'))}>
-          Copiar
-        </button>
-      </div>
     </Dialog>
   )
 }

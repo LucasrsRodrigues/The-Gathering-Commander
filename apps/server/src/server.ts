@@ -24,6 +24,8 @@ import type { CloudStore } from './cloud/store'
 import type { CatalogStore } from './catalog/store'
 import { handleGames } from './games/routes'
 import { handleImport } from './import/routes'
+import { handleShare, isShareRoute } from './share/routes'
+import type { ShareStore } from './share/store'
 import type { GameStore } from './games/store'
 
 export interface ServerCatalog {
@@ -73,6 +75,7 @@ export function startServer(
   config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null, auth: AuthService | null = null,
   cloud: CloudStore | null = null, games: GameStore | null = null,
   importFetch: (url: string, init: RequestInit) => Promise<Response> = (url, init) => fetch(url, init),
+  shares: ShareStore | null = null,
 ): Promise<RunningServer> {
   const deps: RoomDeps = catalog
     ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
@@ -85,6 +88,7 @@ export function startServer(
   const loginLimit = new WindowLimiter(20, 60 * 1000) // login starts and callbacks per IP per minute
   const accountLimit = new WindowLimiter(120, 60 * 1000) // any account route per IP per minute (me, export, delete)
   const importLimit = new WindowLimiter(10, 60 * 1000) // deck imports by link per IP per minute (each fetches another site)
+  const publicLimit = new WindowLimiter(120, 60 * 1000) // public deck pages per IP per minute
   const cloudLimit = new WindowLimiter(120, 60 * 1000) // cloud requests per account per minute
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
@@ -174,6 +178,14 @@ export function startServer(
       auth.handle(req, res, { sameOrigin: originAllowed(origin, req), json })
         .then((handled) => handled || json(res, 404, { error: 'não encontrado' }))
         .catch(() => json(res, 500, { error: 'erro no login' }))
+      return
+    }
+    if (req.url && isShareRoute(req.url.split('?')[0]!)) {
+      if (!auth || !shares) return json(res, 404, { error: 'contas desligadas neste servidor' })
+      handleShare(auth, shares, req, res, {
+        sameOrigin: originAllowed(origin, req), now: deps.now(), json,
+        allowAccount: (id) => cloudLimit.allow(id, deps.now()), allowPublic: () => publicLimit.allow(clientIp(req), deps.now()),
+      }).catch(() => json(res, 500, { error: 'erro no link do deck' }))
       return
     }
     if (req.url?.startsWith('/api/sync') || req.url?.startsWith('/api/decks/') || req.url?.startsWith('/api/presets/')) {
@@ -303,6 +315,7 @@ export function startServer(
     loginLimit.sweep(now)
     accountLimit.sweep(now)
     importLimit.sweep(now)
+    publicLimit.sweep(now)
     await auth?.sweep().catch(() => {})
     cloudLimit.sweep(now)
     for (const id of await store.expired(now - config.roomTtlMs)) {

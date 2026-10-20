@@ -39,6 +39,7 @@ interface ViewProps {
   selecting: boolean // "Selecionar" mode: taps select
   maybeOpen: boolean
   onToggleMaybe: () => void
+  readOnly?: boolean // the public page: no controls, no editing
 }
 
 const refOf = (c: DeckCard, data: DeckCardData): CardRef =>
@@ -72,6 +73,7 @@ function useCardHandlers(card: DeckCard, zone: DeckZone, props: ViewProps) {
 
 // "⋯", +1 / −1 and "commander ⇄ deck", shared by the three views.
 function Controls({ card, zone, props }: { card: DeckCard; zone: DeckZone; props: ViewProps }) {
+  if (props.readOnly) return null
   const { data, actions } = props
   const facts = data.facts.get(card.oracleId)
   const canLead = zone === 'commanders' || (zone === 'cards' && facts ? isEligibleAlone(facts) : false)
@@ -173,7 +175,7 @@ export function DeckView(props: ViewProps) {
           <button className="link maybe-toggle" aria-expanded={props.maybeOpen} onClick={props.onToggleMaybe}>
             {props.maybeOpen ? '▾' : '▸'} Talvez <span className="count">{maybeCount}</span>
           </button>
-          <span className="muted small">fora da validação e da partida</span>
+          <span className="muted small">{props.readOnly ? 'cartas que o dono está considerando' : 'fora da validação e da partida'}</span>
         </h2>
         {props.maybeOpen && (maybe.length
           ? <ul className={mode === 'list' ? 'group-rows' : 'group-grid maybe-grid'}>
@@ -181,7 +183,7 @@ export function DeckView(props: ViewProps) {
               ? <ListRow key={c.oracleId} card={c} zone="maybe" props={props} />
               : <CardImage key={c.oracleId} card={c} zone="maybe" props={props} />))}
           </ul>
-          : <p className="muted small">Arraste cartas para cá, ou use o menu da carta (⋯) → "Mover para o Talvez".</p>)}
+          : <p className="muted small">{props.readOnly ? 'Vazio.' : 'Arraste cartas para cá, ou use o menu da carta (⋯) → "Mover para o Talvez".'}</p>)}
       </section>
     </div>
   )

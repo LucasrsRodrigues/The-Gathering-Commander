@@ -13,6 +13,7 @@ import { providersFromEnv } from './auth/providers'
 import { AuthService } from './auth/routes'
 import { CloudStore } from './cloud/store'
 import { GameStore } from './games/store'
+import { ShareStore } from './share/store'
 import { importLegacyRooms } from './legacy'
 import { DbRoomStore } from './store'
 
@@ -70,6 +71,7 @@ if (catalogOn) {
 const providers = providersFromEnv(env)
 let auth: AuthService | null = null
 let cloud: CloudStore | null = null
+let shares: ShareStore | null = null
 const games = new GameStore(db) // games are recorded with or without accounts (anyone can be in a room)
 if (providers.length) {
   if (!env.PUBLIC_URL || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
@@ -79,11 +81,13 @@ if (providers.length) {
     cloud = new CloudStore(db)
     accounts.register(cloud.accountPart()) // cloud decks and presets go with an exported or deleted account
     accounts.register(games.accountPart()) // the history is exported, and anonymized on deletion
+    shares = new ShareStore(db)
+    accounts.register(shares.accountPart()) // public deck links go with the account
     auth = new AuthService(accounts, { publicUrl: env.PUBLIC_URL, appUrl: env.APP_URL, sessionSecret: env.SESSION_SECRET, providers })
     console.log(`contas: login com ${providers.map((p) => p.id).join(' e ')}`)
   }
 }
-const server = await startServer(config, store, undefined, catalog, auth, cloud, games)
+const server = await startServer(config, store, undefined, catalog, auth, cloud, games, undefined, shares)
 console.log(`The Gathering Hall server on :${server.port} (${db.kind}; origens: ${config.allowedOrigins.join(', ')}${config.staticDir ? ' + mesma origem' : ''})`)
 
 // Catalog: import Scryfall's bulk on start if the last import is old, then check every 6 hours
