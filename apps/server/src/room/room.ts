@@ -33,6 +33,7 @@ export interface Member {
   tokenHash: string
   host: boolean
   seat: number | null
+  userId?: string // opaque account id (épico 08): the same account finds this member again from another device
 }
 
 export interface SeatState {
@@ -84,12 +85,12 @@ export class Room {
     this.loadedAt = deps.now()
   }
 
-  static create(id: string, deps: RoomDeps): { room: Room; hostToken: string } {
+  static create(id: string, deps: RoomDeps, hostUserId: string | null = null): { room: Room; hostToken: string } {
     const hostToken = deps.newToken()
     const now = deps.now()
     const room = new Room({
       schema: 1, id, createdAt: now, lastActive: now, preset: officialPreset(),
-      members: [{ tokenHash: deps.hash(hostToken), host: true, seat: null }],
+      members: [{ tokenHash: deps.hash(hostToken), host: true, seat: null, ...(hostUserId ? { userId: hostUserId } : {}) }],
       seats: Array(MAX_SEATS).fill(null), status: 'lobby', initial: null, game: null, actions: [], version: 0,
     }, deps)
     return { room, hostToken }
@@ -110,9 +111,10 @@ export class Room {
     return this.broadcast(() => this.presence())
   }
 
-  receive(connId: string, msg: ClientMessage): Outgoing[] {
+  // userId: the connection's account, when it has one (only used by hello).
+  receive(connId: string, msg: ClientMessage, userId: string | null = null): Outgoing[] {
     this.s = { ...this.s, lastActive: this.deps.now() }
-    if (msg.t === 'hello') return this.hello(connId, msg.token, msg.spectator ?? false)
+    if (msg.t === 'hello') return this.hello(connId, msg.token, msg.spectator ?? false, userId)
     if (msg.t === 'ping') return [{ to: connId, msg: { v: 1, t: 'pong' } }]
 
     const conn = this.conns.get(connId)
@@ -145,15 +147,21 @@ export class Room {
 
   // ---- handlers -------------------------------------------------------------
 
-  private hello(connId: string, token: string | undefined, spectator: boolean): Outgoing[] {
-    const known = token ? this.s.members.find((m) => m.tokenHash === this.deps.hash(token)) : undefined
+  private hello(connId: string, token: string | undefined, spectator: boolean, userId: string | null): Outgoing[] {
+    const byToken = token ? this.s.members.find((m) => m.tokenHash === this.deps.hash(token)) : undefined
+    const byAccount = userId ? this.s.members.find((m) => m.userId === userId) : undefined
+    // The token wins, unless it only holds an idle member (no seat, not host) and the account has a place here.
+    let member = byToken && (!byAccount || byToken.seat !== null || byToken.host) ? byToken : byAccount
     let issued: string | undefined
-    let member = known
+    if (member && userId && !member.userId && !byAccount) {
+      this.updateMember(member, { userId }) // first time this account is seen here: the member is now its place
+      member = { ...member, userId }
+    }
     if (!member && !spectator) {
       if (this.s.members.length >= MAX_MEMBERS) this.pruneMembers()
       if (this.s.members.length >= MAX_MEMBERS) return [this.err(connId, 'roomFull', 'A sala está cheia.')]
       issued = this.deps.newToken()
-      member = { tokenHash: this.deps.hash(issued), host: false, seat: null }
+      member = { tokenHash: this.deps.hash(issued), host: false, seat: null, ...(userId ? { userId } : {}) }
       this.s = { ...this.s, members: [...this.s.members, member] }
     }
     this.conns.set(connId, { member: member?.tokenHash ?? null })

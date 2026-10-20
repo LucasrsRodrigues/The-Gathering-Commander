@@ -262,7 +262,8 @@ export class OnlineRoom implements GameSessionPort {
 }
 
 export async function createRoom(serverHttp: string): Promise<{ room: string; token: string }> {
-  const res = await fetch(`${serverHttp}/api/rooms`, { method: 'POST', credentials: 'omit', referrerPolicy: 'no-referrer' })
+  // With an account, the session cookie links the host's place to it (épico 08).
+  const res = await fetch(`${serverHttp}/api/rooms`, { method: 'POST', credentials: 'include', referrerPolicy: 'no-referrer' })
   const body = (await res.json().catch(() => ({}))) as { room?: string; token?: string; error?: string }
   if (!res.ok || !body.room || !body.token) throw new Error(body.error ?? `O servidor respondeu ${res.status}.`)
   return { room: body.room, token: body.token }

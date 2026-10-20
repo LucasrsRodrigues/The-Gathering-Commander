@@ -142,11 +142,21 @@ chaves de login configuradas.
     aparelho, edição offline que perde e que ganha, exclusão, sair mantendo ou limpando).
 
 ## Onda 3 — Salas e histórico
-- [ ] **T8.9 — Conta ligada ao lugar nas salas** _(req: 17)_ · depende de T8.4
+- [x] **T8.9 — Conta ligada ao lugar nas salas** _(req: 17)_ · depende de T8.4
   - Verificação:
     - com a mesma conta, outro aparelho volta ao mesmo lugar;
     - sem conta, nada muda;
     - o RoomCore recebe só o `userId` opaco.
+  - Feito:
+    - o servidor lê a sessão no `upgrade` do WebSocket e no `POST /api/rooms` e passa ao RoomCore só o id da conta;
+    - o `Member` guarda o `userId`, que nunca sai no lobby;
+    - no `hello`, o token da sala vale primeiro; a conta encontra o lugar quando o aparelho não tem token, ou quando
+      o token dele é de um membro parado (sem lugar e sem ser o anfitrião);
+    - um membro que entrou por token fica ligado à primeira conta com que volta;
+    - quem cria a sala logado é anfitrião em qualquer aparelho com a mesma conta;
+    - o app manda o cookie ao criar a sala; o WebSocket já manda sozinho.
+  - Decisão: o servidor guarda só o hash do token, então não dá para "devolver o mesmo token". A conta passa a ser
+    a credencial da sala para aquele lugar, sem emitir um token novo.
 - [ ] **T8.10 — Histórico de partidas e "Minhas partidas"** _(req: 18, 19)_ · depende de T8.2, T8.9
   - Verificação:
     - uma partida online entre duas contas aparece para as duas, com o resultado certo;

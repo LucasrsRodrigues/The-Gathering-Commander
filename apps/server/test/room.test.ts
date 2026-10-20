@@ -114,3 +114,46 @@ describe('Room game', () => {
     expect(room.snapshot().game).toBeNull()
   })
 })
+
+describe('Room seats and accounts (épico 08)', () => {
+  it('the same account finds its seat again from another device, without the token', () => {
+    const { room } = Room.create('r', testDeps())
+    room.receive('pc', msg({ t: 'hello', room: 'r' }), 'user-1')
+    room.receive('pc', msg({ t: 'sit', seat: 1, name: 'Bia', deck }))
+    room.disconnect('pc')
+    const tablet = room.receive('tab', msg({ t: 'hello', room: 'r' }), 'user-1')
+    const welcome = to(tablet, 'tab', 'welcome')[0]
+    expect(welcome).toMatchObject({ seat: 1, player: 'p2' })
+    expect(welcome).not.toHaveProperty('token') // the account is the credential; no new member was made
+    expect(room.snapshot().members).toHaveLength(2)
+  })
+
+  it('an idle token from this device gives way to the account place; a seated one keeps winning', () => {
+    const { room } = Room.create('r', testDeps())
+    room.receive('pc', msg({ t: 'hello', room: 'r' }), 'user-1')
+    room.receive('pc', msg({ t: 'sit', seat: 2, name: 'Bia', deck }))
+    const anon = room.receive('tab', msg({ t: 'hello', room: 'r' }))
+    const anonToken = (to(anon, 'tab', 'welcome')[0] as { token: string }).token
+    room.disconnect('tab')
+    const back = room.receive('tab2', msg({ t: 'hello', room: 'r', token: anonToken }), 'user-1')
+    expect(to(back, 'tab2', 'welcome')[0]).toMatchObject({ seat: 2 })
+  })
+
+  it('the host created with an account is host on any device; without an account nothing changes', () => {
+    const { room } = Room.create('r', testDeps(), 'host-user')
+    expect(to(room.receive('x', msg({ t: 'hello', room: 'r' }), 'host-user'), 'x', 'welcome')[0]).toMatchObject({ host: true })
+    expect(to(room.receive('y', msg({ t: 'hello', room: 'r' })), 'y', 'welcome')[0]).toMatchObject({ host: false })
+    expect(to(room.receive('z', msg({ t: 'hello', room: 'r' }), 'other'), 'z', 'welcome')[0]).toMatchObject({ host: false, seat: null })
+  })
+
+  it('a member joined by token is linked to the account it first comes back with', () => {
+    const { room } = Room.create('r', testDeps())
+    const first = room.receive('a', msg({ t: 'hello', room: 'r' }))
+    const token = (to(first, 'a', 'welcome')[0] as { token: string }).token
+    room.receive('a', msg({ t: 'sit', seat: 0, name: 'Ana', deck }))
+    room.receive('a2', msg({ t: 'hello', room: 'r', token }), 'user-a')
+    expect(to(room.receive('a3', msg({ t: 'hello', room: 'r' }), 'user-a'), 'a3', 'welcome')[0]).toMatchObject({ seat: 0 })
+    // the lobby never shows the account id
+    expect(JSON.stringify(to(room.receive('s', msg({ t: 'hello', room: 'r', spectator: true })), 's', 'lobby'))).not.toContain('user-a')
+  })
+})

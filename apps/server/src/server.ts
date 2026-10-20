@@ -186,7 +186,8 @@ export function startServer(
       void (async () => {
         if ((await store.count()) >= config.maxRooms) return json(res, 503, { error: 'O servidor está cheio; tente mais tarde.' })
         const id = randomBytes(16).toString('base64url')
-        const { room, hostToken } = Room.create(id, deps)
+        const host = auth ? await auth.accountFor(req).catch(() => null) : null
+        const { room, hostToken } = Room.create(id, deps, host?.id ?? null)
         rooms.set(id, room)
         await store.save(room.snapshot())
         json(res, 201, { room: id, token: hostToken })
@@ -220,15 +221,17 @@ export function startServer(
         if (n > 0) connectionsByIp.set(ip, n)
         else connectionsByIp.delete(ip)
       })
-      onConnection(ws, roomId)
+      onConnection(ws, roomId, req)
     })
   })
 
-  function onConnection(ws: WebSocket, roomId: string) {
+  function onConnection(ws: WebSocket, roomId: string, req: IncomingMessage) {
     const connId = `c${++nextConn}`
     let room: Room | undefined
+    let userId: string | null = null // the session cookie's account, if any: the room only sees this opaque id
     // Listeners go on at once (messages may arrive while the room loads); the room queue keeps the order.
     void enqueue(roomId, async () => {
+      userId = auth ? ((await auth.accountFor(req).catch(() => null))?.id ?? null) : null
       room = await getRoom(roomId)
       if (room) return
       send(ws, serverError('noRoom', 'Essa sala não existe ou expirou.'))
@@ -254,7 +257,7 @@ export function startServer(
       void enqueue(roomId, async () => {
         if (!room || closing) return
         await prepare(room, msg)
-        await deliver(room, room.receive(connId, msg))
+        await deliver(room, room.receive(connId, msg, userId))
       })
     })
     ws.on('close', () => {
