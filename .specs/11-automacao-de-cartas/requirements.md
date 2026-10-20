@@ -129,5 +129,7 @@ Nessas cartas, a parte não coberta continua manual, como hoje.
   - Llanowar Elves continua como hoje.
 - Lightning Bolt num alvo clicado causa 3 de dano. Se o alvo sai antes de resolver, a mágica é anulada.
 - Uma criatura com "quando entra no campo, compre uma carta" compra sozinha, pela pilha.
-- A medição mostra a cobertura das 1.000 mais jogadas. A meta da onda 1 é pelo menos 35% automáticas ou parciais.
+- A medição mostra a cobertura das 1.000 mais jogadas. A meta da onda 1 são as **automáticas** saírem da linha de
+  base de 9,3% para pelo menos 20%. "Automáticas ou parciais" não serve de meta: já está em 37% só com as palavras-chave
+  e a mana do épico 09.
 - "Resolver à mão" desliga a automação de um item e a partida segue manual.

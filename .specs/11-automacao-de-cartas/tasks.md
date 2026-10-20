@@ -68,7 +68,7 @@ Quatro ondas e um fechamento:
     - Evolving Wilds sai manual;
     - "Flying + Ward {2}" sai parcial;
     - fitness: uma frase desconhecida acrescentada a cada carta do fixture nunca a deixa automática.
-- [ ] **T11.3 — `edhrec_rank` no catálogo e o comando de cobertura** _(req: 16)_ · depende de T11.2
+- [x] **T11.3 — `edhrec_rank` no catálogo e o comando de cobertura** _(req: 16)_ · depende de T11.2
   - Escopo:
     - migração 0006 (coluna `edhrec_rank`) e o import lendo o campo;
     - `npm run coverage -w @gathering-hall/server`: top 1.000 e 5.000, mais as 30 frases não reconhecidas mais
@@ -76,6 +76,37 @@ Quatro ondas e um fechamento:
   - Verificação:
     - roda no Postgres local com o bulk real e grava a linha de base;
     - testes com um catálogo pequeno.
+  - Feito:
+    - migração `0006-edhrec-rank.sql`: coluna `edhrec_rank` em `card_current`, com índice parcial;
+    - o import grava o ranking a cada execução (todas as cartas são regravadas), e o `CARD_FORMAT` 3 força um
+      reimport no próximo start;
+    - `CatalogStore.mostPlayed(limit)`;
+    - `catalog/coverage.ts` (puro):
+      - conta automáticas, parciais e manuais por top;
+      - lista as frases manuais mais comuns, normalizadas: nome vira `~`, números e `{2}` viram `N` e `{N}`;
+    - `npm run coverage -w @gathering-hall/server` usa a `DATABASE_URL` ou o PGlite local.
+  - **Linha de base (catálogo de 2026-10-19, Postgres 16, 0,5 s para 5.000 cartas):**
+
+    | Top | Automáticas | Parciais | Manuais | Automáticas ou parciais |
+    |---|---|---|---|---|
+    | 1.000 | 93 (9,3%) | 278 (27,8%) | 629 (62,9%) | 37,1% |
+    | 5.000 | 182 (3,6%) | 1.378 (27,6%) | 3.440 (68,8%) | 31,2% |
+
+    As frases manuais mais comuns no top 5.000:
+    - Equip {N} (112), Enchant creature (69), Choose N — (59), Draw a card. (34), Cycling {N} (32), Crew N (28);
+    - "This spell can't be countered." (23);
+    - "This creature enters with X +N/+N counters on it." (18), Draw N cards. (17);
+    - "When this land enters, you gain N life." (17), "Equipped creature gets +N/+N." (16);
+    - "• Destroy target artifact." (15), Ward {N} (13), "When this land enters, scry N." (13);
+    - "You may play an additional land on each of your turns." (13).
+  - **Achados para a onda 1:**
+    - o Oracle atual escreve "this creature", "this land" e "this spell", e não o nome. Os padrões precisam aceitar
+      esses marcadores, além do nome;
+    - "automáticas ou parciais" já está em 37% só com o épico 09 (uma palavra-chave basta para "parcial"), então a
+      meta passa a ser a das **automáticas**: de 9,3% para pelo menos 20% no top 1.000 (ajustado nos requirements);
+    - Equip, Enchant e os modais ("Choose N —") estão no topo, mas cabem nas ondas 2 e 3 (habilidade ativada,
+      Aura, modos). A onda 1 fica com "Draw N cards.", dano, destruir e os "entra no campo" de terreno (vida,
+      vidência).
 
 ## Onda 1 — Mana variável, mágicas e "entra no campo"
 - [ ] **T11.4 — Mana variável** _(req: 11)_ · depende de T11.1
@@ -127,8 +158,8 @@ Quatro ondas e um fechamento:
     - Lightning Bolt num alvo clicado, no computador e na largura de tablet;
     - por teclado, escolher o alvo pela faixa;
     - o resumo do editor bate com o leitor.
-  - Critério de aceite da onda: a medição das top 1.000 com a meta de 35% automáticas ou parciais. A linha de base e
-    o resultado ficam registrados aqui.
+  - Critério de aceite da onda: no top 1.000, as automáticas passam da linha de base de 9,3% (T11.3) para pelo menos
+    20%. O resultado fica registrado aqui.
 
 ## Onda 2 — Habilidades ativadas, contagens e buscas
 - [ ] **T11.10 — Habilidades ativadas** _(req: 12)_ · depende de T11.6

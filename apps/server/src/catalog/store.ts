@@ -52,6 +52,13 @@ export class CatalogStore {
     return row ? Number(row.value) : 1
   }
 
+  // The most played cards first (Commander, by edhrec_rank), for the coverage command (épico 11).
+  async mostPlayed(limit: number): Promise<{ rank: number; card: ClientCard }[]> {
+    const rows = await this.db.query<{ edhrec_rank: number; data: ClientCard }>(
+      'SELECT edhrec_rank, data FROM card_current WHERE edhrec_rank IS NOT NULL ORDER BY edhrec_rank LIMIT $1', [limit])
+    return rows.map((r) => ({ rank: Number(r.edhrec_rank), card: r.data }))
+  }
+
   async setCardFormat(format: number) {
     await this.db.query(
       "INSERT INTO catalog_meta (key, value) VALUES ('cardFormat', $1) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
@@ -106,16 +113,18 @@ export class CatalogStore {
 
       await inBatches(records, async (rs) => {
         await tx.query(
-          `INSERT INTO card_current (oracle_id, name, name_norm, front_norm, hash, legal, game_changer, data)
-           SELECT id, name, name_norm, front_norm, hash, legal, gc::boolean, data::jsonb
-           FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[])
-             AS t(id, name, name_norm, front_norm, hash, legal, gc, data)
+          `INSERT INTO card_current (oracle_id, name, name_norm, front_norm, hash, legal, game_changer, data, edhrec_rank)
+           SELECT id, name, name_norm, front_norm, hash, legal, gc::boolean, data::jsonb, rank::integer
+           FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[])
+             AS t(id, name, name_norm, front_norm, hash, legal, gc, data, rank)
            ON CONFLICT (oracle_id) DO UPDATE SET name = excluded.name, name_norm = excluded.name_norm, front_norm = excluded.front_norm,
-             hash = excluded.hash, legal = excluded.legal, game_changer = excluded.game_changer, data = excluded.data`,
+             hash = excluded.hash, legal = excluded.legal, game_changer = excluded.game_changer, data = excluded.data,
+             edhrec_rank = excluded.edhrec_rank`,
           [
             rs.map((r) => r.oracleId), rs.map((r) => r.name), rs.map((r) => normalizeName(r.name)),
             rs.map((r) => (r.frontName ? normalizeName(r.frontName) : null)), rs.map((r) => r.hash), rs.map((r) => r.legal),
             rs.map((r) => String(r.gameChanger)), rs.map((r) => JSON.stringify(r.card)),
+            rs.map((r) => (r.edhrecRank === null ? null : String(r.edhrecRank))),
           ],
         )
       })

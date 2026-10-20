@@ -34,10 +34,11 @@ export interface BulkCard extends BulkFace {
   legalities?: { commander?: string }
   game_changer?: boolean
   card_faces?: BulkFace[]
+  edhrec_rank?: number
 }
 
 // Bump when ClientCard gains fields: the next start re-imports so every stored card has them.
-export const CARD_FORMAT = 2
+export const CARD_FORMAT = 3 // 3: edhrec_rank stored (épico 11)
 
 // The shape served to the web app: the same fields its Scryfall adapter already validates.
 export interface ClientCard {
@@ -66,6 +67,7 @@ export interface CatalogRecord {
   hash: string // of the rules fields only
   legal: Legality
   gameChanger: boolean
+  edhrecRank: number | null // 1 = most played in Commander
   card: ClientCard
 }
 
@@ -109,7 +111,8 @@ export function normalizeCard(raw: BulkCard): CatalogRecord | null {
     ...(raw.image_uris ? { image_uris: raw.image_uris } : {}),
     ...(faces.length ? { card_faces: faces.map(face) } : {}),
   }
-  return { oracleId, name, frontName: text(faces[0]?.name) ?? null, hash, legal, gameChanger: raw.game_changer === true, card }
+  const rank = typeof raw.edhrec_rank === 'number' && Number.isInteger(raw.edhrec_rank) && raw.edhrec_rank > 0 && raw.edhrec_rank < 1e7 ? raw.edhrec_rank : null
+  return { oracleId, name, frontName: text(faces[0]?.name) ?? null, hash, legal, gameChanger: raw.game_changer === true, edhrecRank: rank, card }
 }
 
 export function normalizeName(name: string): string {
