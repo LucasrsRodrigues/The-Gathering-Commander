@@ -57,7 +57,7 @@ function device(cloud: ReturnType<typeof fakeCloud>) {
   }
 }
 
-const deck = (id: string, name: string, updatedAt: number): Deck => ({ schemaVersion: 1, id, name, commanders: [], cards: [{ oracleId: 'o1', name: 'Sol Ring', count: 1 }], createdAt: 1, updatedAt })
+const deck = (id: string, name: string, updatedAt: number): Deck => ({ schemaVersion: 2, id, name, commanders: [], cards: [{ oracleId: 'o1', name: 'Sol Ring', count: 1 }], maybe: [], history: [], createdAt: 1, updatedAt })
 
 describe('cloud sync on the device', () => {
   it('without an account nothing goes to the server', async () => {

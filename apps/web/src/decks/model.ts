@@ -4,16 +4,17 @@
 import type { Color, DeckForValidation } from '@gathering-hall/formats'
 
 // The document shape (and its validator) lives in @gathering-hall/formats: the server validates cloud decks with it.
-export type { Deck, DeckCard } from '@gathering-hall/formats'
-import type { Deck, DeckCard } from '@gathering-hall/formats'
-
-export type DeckZone = 'commanders' | 'cards'
+export type { Deck, DeckCard, DeckZone } from '@gathering-hall/formats'
+import type { Deck, DeckCard, DeckZone } from '@gathering-hall/formats'
 
 export { MAX_DECK_NAME } from '@gathering-hall/formats'
 import { MAX_DECK_NAME } from '@gathering-hall/formats'
 
 export function newDeck(id: string, name: string, now: number): Deck {
-  return { schemaVersion: 1, id, name: name.trim().slice(0, MAX_DECK_NAME) || 'Deck sem nome', commanders: [], cards: [], createdAt: now, updatedAt: now }
+  return {
+    schemaVersion: 2, id, name: name.trim().slice(0, MAX_DECK_NAME) || 'Deck sem nome',
+    commanders: [], cards: [], maybe: [], history: [], createdAt: now, updatedAt: now,
+  }
 }
 
 function touch(deck: Deck, patch: Partial<Deck>, now: number): Deck {
@@ -34,24 +35,25 @@ export function removeCard(deck: Deck, oracleId: string, zone: DeckZone, now: nu
   return touch(deck, { [zone]: next }, now)
 }
 
-// Moving a card between the deck and the command zone keeps its chosen printing.
-export function moveCard(deck: Deck, oracleId: string, from: DeckZone, now: number): Deck {
+// Moves one copy between lists, keeping its chosen printing and its categories. Without `to`, it switches between
+// the deck and the command zone (and the "Talvez" list sends cards to the deck).
+export function moveCard(deck: Deck, oracleId: string, from: DeckZone, now: number, to: DeckZone = from === 'cards' ? 'commanders' : 'cards'): Deck {
   const card = deck[from].find((c) => c.oracleId === oracleId)
-  if (!card) return deck
-  const to: DeckZone = from === 'cards' ? 'commanders' : 'cards'
-  const removed = removeCard(deck, oracleId, from, now)
-  return addCard(removed, { oracleId: card.oracleId, name: card.name, ...(card.scryfallId ? { scryfallId: card.scryfallId } : {}) }, to, now)
+  if (!card || from === to) return deck
+  const { count: _count, ...ref } = card
+  return addCard(removeCard(deck, oracleId, from, now), ref, to, now)
 }
 
 export function setPrinting(deck: Deck, oracleId: string, scryfallId: string, now: number): Deck {
   const swap = (list: DeckCard[]) => list.map((c) => (c.oracleId === oracleId ? { ...c, scryfallId } : c))
-  return touch(deck, { commanders: swap(deck.commanders), cards: swap(deck.cards) }, now)
+  return touch(deck, { commanders: swap(deck.commanders), cards: swap(deck.cards), maybe: swap(deck.maybe) }, now)
 }
 
 export function renameDeck(deck: Deck, name: string, now: number): Deck {
   return touch(deck, { name: name.slice(0, MAX_DECK_NAME) }, now)
 }
 
+// The deck proper: the "Talvez" list never counts, validates or plays.
 export function deckSize(deck: Deck): number {
   return [...deck.commanders, ...deck.cards].reduce((n, c) => n + c.count, 0)
 }

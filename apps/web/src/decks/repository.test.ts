@@ -51,7 +51,7 @@ describe('sanitizeDeck', () => {
   })
 
   it('rejects unknown schema versions', () => {
-    expect(sanitizeDeck({ ...sample('x', 1), schemaVersion: 2 })).toBeNull()
+    expect(sanitizeDeck({ ...sample('x', 1), schemaVersion: 3 })).toBeNull()
     expect(sanitizeDeck(null)).toBeNull()
   })
 })

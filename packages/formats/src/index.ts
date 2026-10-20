@@ -9,4 +9,7 @@ export { copiesAllowed, commanderIdentity } from './rules/basic'
 export { isBanned } from './rules/banned'
 export { normalizeName } from './text'
 export { factsAsOf, type LegalitySnapshot } from './asOf'
-export { MAX_DECK_ENTRIES, MAX_DECK_NAME, sanitizeDeck, type Deck, type DeckCard } from './deckDocument'
+export {
+  DECK_LIMITS, DECK_ZONES, isLegacyDeck, MAX_DECK_DOC_BYTES, MAX_DECK_ENTRIES, MAX_DECK_NAME, sanitizeDeck,
+  type ChangeLine, type Deck, type DeckCard, type DeckChange, type DeckZone,
+} from './deckDocument'

@@ -3,7 +3,7 @@
 Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda seguinte entra no ar sozinha.
 
 ## Onda 0 — Formato v2
-- [ ] **T10.1 — Deck v2 no `formats`, com migração e validação** _(req: 1–3)_
+- [x] **T10.1 — Deck v2 no `formats`, com migração e validação** _(req: 1–3)_
   - Escopo:
     - `Deck` v2 (tags, `maybe`, `folder`, `description`, `tagOrder`, `history`);
     - `migrateDeck` e `sanitizeDeck` aceitando v1 e v2;
@@ -14,6 +14,18 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     - fitness "v1 → v2 sem perda";
     - o Talvez nunca chega à validação nem à partida;
     - os limites recusam tags e descrições grandes demais.
+  - Feito:
+    - `Deck` v2 com `tags` por carta, `maybe`, `folder`, `description`, `tagOrder` e `history` (`DeckChange` e
+      `ChangeLine` já com o formato do histórico);
+    - o `sanitizeDeck` lê v1 e v2 e sempre devolve v2. A migração é a própria leitura (sem `migrateDeck` à parte),
+      então vale para o IndexedDB, a nuvem e o servidor;
+    - `DECK_LIMITS` e `MAX_DECK_DOC_BYTES` (128 KB) no `formats`;
+    - tags e pastas sem caracteres de controle e sem repetição (ignorando maiúsculas);
+    - no máximo 60 categorias no deck: as excedentes saem, e as cartas ficam;
+    - `isLegacyDeck` fica pronto para a T10.2;
+    - no app, `newDeck` grava v2, e o `moveCard` move entre quaisquer listas levando a arte e as categorias;
+    - `deckSize`, estatísticas, validação e `toGameDeck` ignoram o Talvez (fitness).
+  - Verificado no navegador: um deck v1 posto no IndexedDB abre no editor e é gravado de volta como v2, sem perda.
 - [ ] **T10.2 — Nuvem com v2: limite de 128 KB e recusa de regressão de versão** _(req: 3)_ · depende de T10.1
   - Verificação:
     - um `PUT` v1 sobre um v2 recebe `409` com o v2;
