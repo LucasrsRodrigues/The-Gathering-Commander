@@ -68,6 +68,13 @@ export function groupCards(
     g.cards.push(card)
     groups.set(slot.key, g)
   }
+  // Categories with no card yet still show (empty), so cards can be dragged into them.
+  if (by === 'category') {
+    for (const tag of tagOrder) {
+      const key = `tag:${tag.toLowerCase()}`
+      if (!groups.has(key)) groups.set(key, { key, label: tag, rank: categoryRank(tag), cards: [] })
+    }
+  }
   const mv = (c: DeckCard) => info.get(c.oracleId)?.manaValue ?? Number.MAX_SAFE_INTEGER
   const byName = (a: DeckCard, b: DeckCard) => a.name.localeCompare(b.name)
   const compare = sort === 'mv' ? (a: DeckCard, b: DeckCard) => mv(a) - mv(b) || byName(a, b) : byName

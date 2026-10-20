@@ -1,9 +1,10 @@
+import type { ReactNode } from 'react'
 import type { BracketSuggestion, Preset, Violation } from '@gathering-hall/formats'
 import type { DeckStats } from '../model'
 
 const COLOR_LABELS = { W: 'Branco', U: 'Azul', B: 'Preto', R: 'Vermelho', G: 'Verde', C: 'Incolor' } as const
 
-export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, presets, presetId, onPreset, selected, onSelectViolation }: {
+export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, presets, presetId, onPreset, selected, onSelectViolation, children }: {
   stats: DeckStats
   deckSizeTarget: number
   violations: Violation[]
@@ -13,6 +14,7 @@ export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, preset
   onPreset: (id: string) => void
   selected: number | null
   onSelectViolation: (i: number | null) => void
+  children?: ReactNode // more cards at the end (categories)
 }) {
   const peak = Math.max(1, ...stats.curve)
   const blocking = violations.filter((v) => v.level === 'block').length
@@ -72,6 +74,7 @@ export function DeckSidebar({ stats, deckSizeTarget, violations, bracket, preset
         <h2>Bracket sugerido <span className="bracket">{bracket.bracket}</span></h2>
         <ul className="reasons">{bracket.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
       </section>
+      {children}
     </aside>
   )
 }

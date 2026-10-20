@@ -7,9 +7,12 @@ import { emptyCardData, indexCards, loadDeckCards, type DeckCardData } from '../
 import { exportDecklist } from '../decks/importExport'
 import { isEligibleAlone } from '@gathering-hall/formats'
 import {
-  addCard, deckStats, moveCard, moveEntry, removeCard, removeEntry, renameDeck, setMainCategory, setPrinting, toValidation,
-  type Deck, type DeckCard, type DeckZone,
+  addCard, addCategory, categoriesOf, deckStats, deleteCategory, moveCard, moveCategory, moveEntry, removeCard, removeEntry,
+  renameCategory, renameDeck, setMainCategory, setPrinting, toggleCategory, toValidation, type Deck, type DeckCard, type DeckZone,
 } from '../decks/model'
+import { suggestionsFor } from '../decks/tags'
+import { CategoryPanel } from '../decks/ui/CategoryPanel'
+import { NameDialog } from '../decks/ui/NameDialog'
 import { CardMenu, type MenuSection } from '../decks/views/CardMenu'
 import { DeckView, type DeckCardActions } from '../decks/views/DeckView'
 import { DragGhost } from '../decks/views/DragGhost'
@@ -51,6 +54,9 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const [selected, setSelected] = useState<Set<string>>(() => new Set())
   const [selecting, setSelecting] = useState(false) // "Selecionar" mode (touch): taps select
   const [menu, setMenu] = useState<{ card: DeckCard; zone: DeckZone; x: number; y: number } | null>(null)
+  type Target = { zone: DeckZone; oracleId: string }
+  const [naming, setNaming] = useState<{ kind: 'new'; targets: Target[] } | { kind: 'rename'; from: string } | null>(null)
+  const [shownCategory, setShownCategory] = useState<string | null>(null) // highlights its cards
 
   useEffect(() => {
     services.decks.get(deckId).then(async (d) => {
@@ -109,7 +115,15 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const update = (fn: (d: Deck, now: number) => Deck) => setDeck((d) => (d ? fn(d, Date.now()) : d))
   const commanderMode = deck.commanders.length === 0
   const countOf = (oracleId: string) => [...deck.commanders, ...deck.cards].filter((c) => c.oracleId === oracleId).reduce((n, c) => n + c.count, 0)
-  const highlight = new Set(selectedViolation !== null ? (derived.violations[selectedViolation]?.cards ?? []) : [])
+  const categories = categoriesOf(deck)
+  const suggestions = suggestionsFor(
+    (['commanders', 'cards', 'maybe'] as const).flatMap((zone) => deck[zone].map((card) => ({ zone, card }))), data.facts,
+  )
+  const highlight = new Set([
+    ...(selectedViolation !== null ? (derived.violations[selectedViolation]?.cards ?? []) : []),
+    ...(shownCategory ? (['commanders', 'cards', 'maybe'] as const).flatMap((z) => deck[z])
+      .filter((c) => c.tags?.some((t) => t.toLowerCase() === shownCategory.toLowerCase())).map((c) => c.name) : []),
+  ])
 
   function addFromSearch(card: CatalogCard) {
     const oracleId = card.facts?.oracleId
@@ -134,6 +148,22 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
   const removeAll = (targets: { zone: DeckZone; oracleId: string }[]) => {
     update((d, now) => targets.reduce((acc, t) => removeEntry(acc, t.oracleId, t.zone, now), d))
     clearSelection()
+  }
+
+  // Categories on several cards at once (they may be in different lists).
+  const tagAll = (targets: Target[], tag: string, on: boolean) => update((d, now) => {
+    const zones = [...new Set(targets.map((t) => t.zone))]
+    return zones.reduce((acc, z) => toggleCategory(acc, z, targets.filter((t) => t.zone === z).map((t) => t.oracleId), tag, on, now), d)
+  })
+  const mainAll = (targets: Target[], tag: string) => update((d, now) => {
+    const zones = [...new Set(targets.map((t) => t.zone))]
+    return zones.reduce((acc, z) => setMainCategory(acc, z, targets.filter((t) => t.zone === z).map((t) => t.oracleId), tag, now), d)
+  })
+  function removeCategory(name: string) {
+    const before = deck!
+    update((d, now) => deleteCategory(d, name, now))
+    if (shownCategory === name) setShownCategory(null)
+    toast(`Categoria "${name}" excluída. As cartas continuam no deck.`, { label: 'Desfazer', run: () => setDeck({ ...before, updatedAt: Date.now() }) })
   }
 
   // Drop on a category group (main category), "no category", the deck or the Talvez list.
@@ -183,6 +213,20 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
         { label: zone === 'maybe' ? 'Tirar do Talvez' : 'Remover do deck', run: () => removeAll(one), danger: true },
       ],
     }]
+    const targets = targetsOf(card, zone)
+    const plural = targets.length > 1 ? ` (${targets.length} cartas)` : ''
+    const has = (name: string) => !!card.tags?.some((t) => t.toLowerCase() === name.toLowerCase())
+    sections.push({
+      title: `Categorias${plural}`,
+      items: [
+        ...categories.map((c) => ({
+          label: `${has(c.name) ? '✓' : '○'} ${c.name}${card.tags?.[0]?.toLowerCase() === c.name.toLowerCase() ? ' (principal)' : ''}`,
+          run: () => tagAll(targets, c.name, !has(c.name)),
+        })),
+        ...(card.tags ?? []).slice(1).map((t) => ({ label: `Tornar principal: ${t}`, run: () => mainAll(targets, t) })),
+        { label: 'Nova categoria…', run: () => setNaming({ kind: 'new', targets }) },
+      ],
+    })
     if (isSelected && selected.size > 1) {
       const all = targetsOf(card, zone)
       sections.push({
@@ -245,6 +289,17 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
             <b>{selected.size} selecionada{selected.size > 1 ? 's' : ''}</b>
             <button className="btn small" onClick={() => moveAll(selectedTargets().filter((t) => t.zone !== 'maybe'), 'maybe')}>Mover para o Talvez</button>
             <button className="btn small" onClick={() => moveAll(selectedTargets().filter((t) => t.zone !== 'cards'), 'cards')}>Mover para o deck</button>
+            <label className="inline-field">Categoria
+              <select value="" onChange={(e) => {
+                const v = e.target.value
+                if (v === '__new') setNaming({ kind: 'new', targets: selectedTargets() })
+                else if (v) tagAll(selectedTargets(), v, true)
+              }}>
+                <option value="">aplicar…</option>
+                {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+                <option value="__new">Nova categoria…</option>
+              </select>
+            </label>
             <button className="btn small danger" onClick={() => removeAll(selectedTargets())}>Remover</button>
             <button className="btn ghost small" onClick={clearSelection}>Limpar</button>
           </div>
@@ -258,7 +313,31 @@ export function DeckEditorScreen({ services, deckId, onBack, onTest }: {
       <DeckSidebar stats={derived.stats} deckSizeTarget={deckRules.deckSize} violations={derived.violations}
         bracket={derived.bracket} presets={presets} presetId={preset.id}
         onPreset={(id) => update((d, now) => ({ ...d, presetId: id === OFFICIAL_PRESET_ID ? undefined : id, updatedAt: now }))}
-        selected={selectedViolation} onSelectViolation={setSelectedViolation} />
+        selected={selectedViolation} onSelectViolation={setSelectedViolation}>
+        <CategoryPanel categories={categories} suggestions={suggestions}
+          onNew={() => setNaming({ kind: 'new', targets: [] })}
+          onRename={(from) => setNaming({ kind: 'rename', from })}
+          onDelete={removeCategory}
+          onMove={(name, delta) => update((d, now) => moveCategory(d, name, delta, now))}
+          onAccept={(sg, tag) => update((d, now) => toggleCategory(d, sg.zone, [sg.oracleId], tag, true, now))}
+          onAcceptAll={() => {
+            update((d, now) => suggestions.reduce((acc, sg) => sg.tags.reduce((a, t) => toggleCategory(a, sg.zone, [sg.oracleId], t, true, now), acc), d))
+            toast('Sugestões aceitas. Agrupe por "Categoria" para ver o deck por função.')
+          }}
+          onShow={(name) => setShownCategory((c) => (c === name ? null : name))} />
+      </DeckSidebar>
+      {naming && (
+        <NameDialog title={naming.kind === 'new' ? 'Nova categoria' : `Renomear "${naming.from}"`} label="Nome"
+          initial={naming.kind === 'rename' ? naming.from : ''} confirm={naming.kind === 'new' ? 'Criar' : 'Renomear'}
+          onClose={() => setNaming(null)}
+          onSubmit={(name) => {
+            if (naming.kind === 'rename') return update((d, now) => renameCategory(d, naming.from, name, now))
+            if (naming.targets.length) {
+              tagAll(naming.targets, name, true)
+              clearSelection()
+            } else update((d, now) => addCategory(d, name, now))
+          }} />
+      )}
 
       {artFor && (
         <ArtPicker services={services} card={artFor} onClose={() => setArtFor(null)}

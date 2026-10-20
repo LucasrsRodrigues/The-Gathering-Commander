@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { emptyCardData, toGameDeck } from './cardData'
-import { addCard, deckSize, deckStats, moveCard, moveEntry, newDeck, removeCard, removeEntry, setMainCategory, setPrinting, toValidation } from './model'
+import {
+  addCard, addCategory, categoriesOf, deckSize, deckStats, deleteCategory, moveCard, moveCategory, moveEntry, newDeck, removeCard, removeEntry,
+  renameCategory, setMainCategory, setPrinting, toggleCategory, toValidation,
+} from './model'
 
 // Fitness (épico 10, req. 9): the "Talvez" list never reaches validation, stats, the deck size or the game.
 describe('the Talvez list stays out of the deck', () => {
@@ -71,5 +74,48 @@ describe('menu and drag operations (épico 10, T10.5)', () => {
     const off = setMainCategory(ramp, 'cards', ['o1', 'o2'], null, 3)
     expect(off.cards.map((c) => c.tags)).toEqual([['Mana'], undefined])
     expect(off.history).toEqual(start.history) // categories are not card changes
+  })
+})
+
+describe('categories (épico 10, T10.6)', () => {
+  const base = addCard(addCard(newDeck('d', 'D', 0), { oracleId: 'o1', name: 'Sol Ring' }, 'cards', 0), { oracleId: 'o2', name: 'Cultivate' }, 'maybe', 0)
+
+  it('toggles a category on and off; the first one becomes the main one', () => {
+    let d = toggleCategory(base, 'cards', ['o1'], 'Ramp', true, 1)
+    d = toggleCategory(d, 'cards', ['o1'], 'Mana', true, 2)
+    expect(d.cards[0]!.tags).toEqual(['Ramp', 'Mana'])
+    expect(toggleCategory(d, 'cards', ['o1'], 'ramp', false, 3).cards[0]!.tags).toEqual(['Mana'])
+    expect(toggleCategory(d, 'maybe', ['o2'], 'RAMP', true, 3).maybe[0]!.tags).toEqual(['Ramp']) // the deck's spelling wins
+  })
+
+  it('lists categories in order, counting the main category in the deck; empty ones stay', () => {
+    let d = toggleCategory(base, 'cards', ['o1'], 'Ramp', true, 1)
+    d = addCategory(d, 'Wincon', 2)
+    expect(categoriesOf(d)).toEqual([{ name: 'Ramp', count: 1 }, { name: 'Wincon', count: 0 }])
+    expect(addCategory(d, 'wincon', 3)).toBe(d) // no duplicates
+    expect(categoriesOf(moveCategory(d, 'Wincon', -1, 4)).map((c) => c.name)).toEqual(['Wincon', 'Ramp'])
+  })
+
+  it('renames everywhere and merges into an existing category', () => {
+    let d = toggleCategory(base, 'cards', ['o1'], 'Ramp', true, 1)
+    d = toggleCategory(d, 'maybe', ['o2'], 'Terrenos extra', true, 1)
+    d = renameCategory(d, 'Terrenos extra', 'ramp', 2)
+    expect(d.maybe[0]!.tags).toEqual(['ramp'])
+    expect(categoriesOf(d).map((c) => c.name)).toEqual(['Ramp'])
+  })
+
+  it('deleting a category removes it from the cards, never the cards, and leaves the history alone', () => {
+    let d = toggleCategory(base, 'cards', ['o1'], 'Ramp', true, 1)
+    d = toggleCategory(d, 'cards', ['o1'], 'Mana', true, 1)
+    const out = deleteCategory(d, 'ramp', 2)
+    expect(out.cards).toEqual([{ oracleId: 'o1', name: 'Sol Ring', count: 1, tags: ['Mana'] }])
+    expect(categoriesOf(out).map((c) => c.name)).toEqual(['Mana'])
+    expect(out.history).toEqual(base.history)
+  })
+
+  it('keeps names clean and within the limits', () => {
+    const d = toggleCategory(base, 'cards', ['o1'], '  Ra\u0000mp   pesado  ', true, 1)
+    expect(d.cards[0]!.tags).toEqual(['Ramp pesado'])
+    expect(toggleCategory(base, 'cards', ['o1'], '   ', true, 1)).toBe(base)
   })
 })

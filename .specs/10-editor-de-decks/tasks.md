@@ -132,7 +132,7 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
     mostra a carta inteira, e a faixa do nome guarda só o "⋯".
   - Para a T10.14: nas pilhas, no toque, a faixa de cada carta tem cerca de 32 px de altura. O caminho de 44 px é a
     lista.
-- [ ] **T10.6 — Categorias e sugestões pelo Oracle** _(req: 6–8)_ · depende de T10.5
+- [x] **T10.6 — Categorias e sugestões pelo Oracle** _(req: 6–8)_ · depende de T10.5
   - Escopo: criar, renomear e excluir categorias; definir a principal; agrupar por categoria; `tags.ts` com o painel
     de sugestões.
   - Verificação:
@@ -140,6 +140,29 @@ Quatro ondas. A onda 0 muda o formato do deck sem mudar a tela, e cada onda segu
       Counterspell, Demonic Tutor, Rhystic Study);
     - nada muda sem aceitar;
     - excluir uma categoria tira a tag das cartas, sem remover as cartas.
+  - Feito:
+    - modelo:
+      - `categoriesOf` lista na ordem do deck, contando a principal no deck;
+      - `addCategory` cria uma categoria vazia, que vira grupo e alvo de arrastar;
+      - `toggleCategory` liga e desliga, mantendo a grafia do deck;
+      - `renameCategory` junta as duas quando o nome novo já existe;
+      - `deleteCategory` tira a categoria e mantém as cartas;
+      - `moveCategory` muda a ordem;
+      - nada disso entra no histórico;
+    - `decks/tags.ts`: sugestões de Terreno, Ramp, Compra, Remoção, Limpa-mesa, Contramágica e Tutor por padrões do
+      texto Oracle e do tipo, nunca por nome; só sugere o que a carta ainda não tem;
+    - painel "Categorias" na lateral:
+      - lista com contagem, subir e descer, renomear, excluir (com "Desfazer") e nova;
+      - clicar no nome destaca as cartas;
+      - "N sugestões" abre a lista, com aceitar uma a uma ou "Aceitar todas";
+    - no menu da carta, as categorias aparecem com ✓ ou ○ e "(principal)", mais "Tornar principal: X" e "Nova
+      categoria…". Na carta selecionada, valem para a seleção inteira;
+    - a barra de seleção ganhou "Categoria: aplicar…".
+  - Verificado no navegador, no deck Krenko (56 entradas):
+    - 17 sugestões sensatas, aceitas e agrupadas por categoria;
+    - criar "Wincon" e arrastar Impact Tremors para ela;
+    - renomear para "Finalizadores";
+    - excluir, com a carta ficando no deck, e desfazer.
 - [ ] **T10.7 — Lista "Talvez"** _(req: 9, 10)_ · depende de T10.5
   - Verificação:
     - a busca adiciona ao Talvez;
