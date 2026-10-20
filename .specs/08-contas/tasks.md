@@ -209,7 +209,13 @@ chaves de login configuradas.
     - o id da conta fica no snapshot da sala até a sala expirar (24 h sem uso); depois de excluir a conta, ele não
       aponta para nada;
     - o histórico ainda não tem prazo para ser apagado.
-- [ ] **T8.12 — README, DEPLOY (criar os apps OAuth no Discord e no Google, passo a passo) e roadmap**
+- [x] **T8.12 — README, DEPLOY (criar os apps OAuth no Discord e no Google, passo a passo) e roadmap**
+  - Feito:
+    - o DEPLOY ganhou "Login com Discord e Google": `PUBLIC_URL`, `SESSION_SECRET`, o passo a passo nos dois
+      portais, como conferir, erros comuns e login no desenvolvimento local (`APP_URL`);
+    - as partes que ainda falavam de SQLite e de "sem contas" foram atualizadas;
+    - o README ganhou a seção "Conta opcional";
+    - no roadmap, a fase 3b está marcada como feita.
 
 ## Estratégia de testes
 - Os stores e as rotas rodam no PGlite em memória, o mesmo SQL do Postgres. Com `TEST_DATABASE_URL`, rodam também num

@@ -40,13 +40,21 @@ Fan game gratuito e open source de **Commander** (Magic: The Gathering) com uma 
 - Fontes de mana que o jogo não reconhece: a mana é declarada ao virar a carta e fica marcada no log.
 - A automação carta a carta é a próxima grande fase (veja `.specs/`).
 
+### Conta opcional
+Para jogar, não precisa de conta. Quem entra com Discord ou Google tem:
+- decks e regras da casa em qualquer aparelho, sincronizados (a última edição vence, com aviso);
+- o mesmo lugar nas salas de qualquer aparelho;
+- "Minhas partidas", com o histórico das partidas online.
+
+Em "Minha conta", dá para baixar os dados ou excluir a conta. O que é guardado está no [LEGAL.md](LEGAL.md#privacidade).
+
 ### Regras da casa
 Vida inicial, dano de comandante, mulligans, terrenos por turno e o rigor de cada área. "Hora de jogar", "Custo de
 mana" e "Combate" têm três níveis: bloqueia, só avisa ou desligada. Desligada é a mesa livre de antes.
 
 ## Online
 Com o servidor (`apps/server`) no ar, dá para criar uma sala e mandar o link de convite. Cada jogador entra do
-próprio dispositivo, sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
+próprio dispositivo, com ou sem conta. O servidor roda o mesmo motor do navegador e manda a cada jogador só o que ele pode
 ver. Se a partida esperar a decisão de alguém que saiu da sala há mais de 30 segundos, quem criou a sala pode
 pular essa pessoa: o servidor responde com o padrão (manter a mão, não atacar nem bloquear, confirmar o dano
 proposto, descartar as últimas cartas da mão, recusar a exceção ou passar a prioridade), e o registro mostra isso.
@@ -80,7 +88,7 @@ packages/engine   motor de regras puro em TypeScript (sem dependências)
 packages/formats  regras do formato, presets (regras da casa), validação de deck e bracket
 packages/protocol mensagens do jogo online, com validação estrita
 apps/web          React + react-three-fiber (mesa 3D) + HUD em DOM
-apps/server       servidor online (Node + ws + SQLite), uma sala = um RoomCore puro
+apps/server       servidor online (Node + ws + Postgres/PGlite): salas (um RoomCore puro), catálogo, contas, nuvem
 .specs/           requisitos, design e tarefas por épico
 spikes/           protótipos descartáveis (ex.: benchmark de renderização)
 ```

@@ -6,11 +6,12 @@ O jogo inteiro roda em **um único container**: o servidor Node entrega o app we
 ```
 navegador ──HTTPS──► proxy do EasyPanel (Traefik) ──► container :8787
                                                        ├─ /       app web (estático)
-                                                       ├─ /api/*  criar sala, health
+                                                       ├─ /api/*  salas, catálogo, login, nuvem, histórico
                                                        └─ /ws     WebSocket das salas
 ```
 
-As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sobreviver a novos deploys.
+Salas, catálogo, contas, decks na nuvem e histórico ficam num Postgres (um serviço à parte no EasyPanel). O volume
+`/data` guarda os arquivos baixados do Scryfall e, sem Postgres, um banco local.
 
 ## EasyPanel
 
@@ -32,7 +33,7 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
    | `ALLOWED_ORIGINS` | (vazio) | Outras origens que podem usar o servidor (o próprio domínio já é aceito) |
    | `PUBLIC_URL` | (vazio) | Endereço público do site (ex.: `https://seu-dominio`). Necessário para o login |
    | `SESSION_SECRET` | (vazio) | Segredo de 32+ caracteres para assinar cookies do login (gere com `openssl rand -base64 48`) |
-   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | (vazio) | Liga "Entrar com Discord" (o passo a passo do app OAuth vem com a tela de conta) |
+   | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | (vazio) | Liga "Entrar com Discord" (veja [Login com Discord e Google](#login-com-discord-e-google)) |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | (vazio) | Liga "Entrar com Google" |
    | `CATALOG` | ligado com Postgres | `off` desliga o catálogo próprio (o app usa só o Scryfall); `on` força com PGlite (precisa de ~2 GB de memória) |
 
@@ -60,7 +61,7 @@ As salas ficam num arquivo SQLite em `/data`, que precisa ser um volume para sob
 **Backup do banco:** no serviço do Postgres no EasyPanel, aba **Backups**, agende um backup diário (o EasyPanel
 guarda num destino S3 que você configura). Para um backup na mão, pelo terminal do serviço:
 `pg_dump -U postgres -Fc nome_do_banco > /tmp/gathering-hall.dump`. As salas duram 24 h e o catálogo se reconstrói
-sozinho; com as contas (próxima fase), o backup passa a guardar decks de jogadores e fica obrigatório.
+sozinho, mas com as contas ligadas o banco guarda os decks dos jogadores e o histórico: aí o backup é obrigatório.
 
 **Catálogo de cartas:** uns 5 segundos depois de subir, o servidor baixa o bulk "oracle-cards" do Scryfall
 (cerca de 25 MB) e importa. Depois confere a cada 6 horas e só reimporta quando o Scryfall publica um arquivo novo.
@@ -77,6 +78,60 @@ typecheck, testes e build passam. Assim, um commit quebrado não chega ao site. 
 
 Sem o secret, o passo de deploy só é pulado. Para publicar na mão, clique em **Deploy** no EasyPanel. As salas em
 andamento continuam, porque são recarregadas do volume.
+
+## Login com Discord e Google
+O login é **opcional** e fica desligado até haver as chaves de pelo menos um provedor. Ele precisa de três coisas
+no app do EasyPanel:
+- `PUBLIC_URL`: o endereço do site, exatamente como aparece no navegador, com `https://` e sem `/` no fim. Por
+  exemplo, `https://the-gathering-commander-app.yexuz7.easypanel.host`;
+- `SESSION_SECRET`: gere com `openssl rand -base64 48` e cole. Se trocar, todo mundo precisa entrar de novo;
+- as chaves de um provedor ou dos dois (abaixo).
+
+O endereço de retorno de cada provedor é sempre `PUBLIC_URL` + `/api/auth/<provedor>/callback`.
+
+### Discord
+1. Abra o [Discord Developer Portal](https://discord.com/developers/applications) e clique em **New Application**.
+   Dê o nome que vai aparecer na tela de autorização, por exemplo "The Gathering Hall".
+2. No menu **OAuth2**:
+   - copie o **Client ID** para `DISCORD_CLIENT_ID`;
+   - clique em **Reset Secret** e copie o valor para `DISCORD_CLIENT_SECRET`. Ele só aparece uma vez.
+3. Ainda em **OAuth2 → Redirects**, clique em **Add Redirect**, cole
+   `https://seu-dominio/api/auth/discord/callback` e clique em **Save Changes**.
+4. Não é preciso criar bot nem mudar mais nada. O jogo pede só o escopo `identify` (id, nome e foto; sem e-mail).
+
+### Google
+1. No [Google Cloud Console](https://console.cloud.google.com/), crie um projeto (seletor no topo → **New Project**).
+2. Abra **Google Auth Platform** (o antigo "OAuth consent screen") e clique em **Get started**:
+   - **App Information:** nome do app e um e-mail de suporte;
+   - **Audience:** **External**;
+   - **Contact Information:** seu e-mail. Aceite os termos e clique em **Create**.
+3. Em **Data Access**, não é preciso adicionar escopos: o jogo usa só `openid` e `profile`, que não precisam de
+   verificação do Google.
+4. Em **Audience**, clique em **Publish app** para sair do modo de teste. Em teste, só os e-mails listados como
+   "test users" conseguem entrar.
+5. Em **Clients → Create client**:
+   - **Application type:** **Web application**;
+   - **Authorized redirect URIs:** adicione `https://seu-dominio/api/auth/google/callback`. As "JavaScript origins"
+     não são necessárias.
+6. Clique em **Create**, copie o **Client ID** para `GOOGLE_CLIENT_ID` e o **Client secret** para
+   `GOOGLE_CLIENT_SECRET`. Guarde o secret na hora: o Google pode não mostrá-lo de novo.
+
+### Conferir
+Depois do deploy:
+- os Logs mostram `contas: login com discord e google`;
+- `https://seu-dominio/api/auth/providers` responde a lista;
+- o botão **Entrar** aparece no canto da barra do app.
+
+Se os Logs disserem "contas: desligadas", falta o `PUBLIC_URL` ou o `SESSION_SECRET` tem menos de 32 caracteres.
+
+**Erros comuns:**
+- "redirect_uri inválido" no Discord ou `redirect_uri_mismatch` no Google: o endereço cadastrado no provedor não é
+  igual a `PUBLIC_URL` + `/api/auth/<provedor>/callback`. Confira `https` e se não sobrou uma `/` no fim;
+- "O login demorou demais ou veio de outra aba": o cookie do login (10 minutos) se perdeu. Isso acontece, por
+  exemplo, quando o login começa num domínio e volta para outro. Use o mesmo domínio do `PUBLIC_URL`.
+
+**Segredos:** as chaves ficam só nas variáveis do EasyPanel. Nunca vão para o repositório nem para o app no
+navegador (uma fitness function confere isso). Se uma vazar, gere outra no portal do provedor e troque a variável.
 
 ## Outro host com Docker
 ```bash
@@ -96,7 +151,15 @@ já sobe com `TRUST_PROXY=1`. Se a porta 8787 ficar exposta direto, sem proxy, d
 - **Limites:** cada IP pode criar até 20 salas por hora, cada conexão pode mandar até 20 mensagens por segundo, e
   mensagens e decks têm tamanho máximo.
 - **Tokens de lugar:** ficam só no navegador de cada jogador. O servidor guarda apenas o hash (SHA-256).
-- **Sem contas e sem dados pessoais:** só o apelido escolhido na sala.
+- **Contas opcionais:**
+  - OAuth com PKCE e `state` num cookie assinado;
+  - sessão em cookie `HttpOnly`/`SameSite=Lax`/`Secure`, guardada só como hash;
+  - nenhum token do provedor é guardado;
+  - escritas exigem a mesma origem;
+  - limites de login (20 por minuto por IP), de rotas da conta (120 por minuto por IP) e de nuvem (120 por minuto
+    por conta).
+
+  O que é guardado e como apagar está no [LEGAL.md](LEGAL.md#privacidade).
 - **Headers:** HTTPS com HSTS atrás do proxy, `nosniff`, `X-Frame-Options: DENY`, CSP no app.
 
 ## Desenvolvimento local
@@ -110,6 +173,15 @@ npm run dev
 
 O servidor sobe em `http://localhost:8787` e aceita o app de desenvolvimento (`http://localhost:5180` e
 `http://localhost:5173`), configurado em `apps/web/.env`.
+
+Para testar o login localmente, crie um app OAuth de desenvolvimento, com retorno em
+`http://localhost:8787/api/auth/discord/callback`. Depois, suba o servidor com:
+- `PUBLIC_URL=http://localhost:8787`;
+- `APP_URL=http://localhost:5180`, para onde o navegador volta depois do login;
+- um `SESSION_SECRET`;
+- as chaves do provedor.
+
+Os testes nunca chamam o Discord nem o Google: usam provedores falsos locais.
 
 Sem `DATABASE_URL`, o servidor usa um Postgres embutido (PGlite) em `apps/server/data/pg`, sem instalar nada, e o
 catálogo próprio fica desligado (o app usa o Scryfall direto). Para testar o catálogo localmente, aponte
