@@ -98,7 +98,7 @@ export function GameScreen({ session, onExit, onRematch, away: awayControls }: {
           <button className="btn ghost" onClick={() => { if (confirm('Sair da partida atual?')) onExit() }}>Sair</button>
         </div>
         <aside className="side">
-          <StackPanel view={view} dispatch={dispatch} />
+          <StackPanel view={view} viewer={seat} dispatch={dispatch} />
           <GameLog entries={session.getLog()} />
         </aside>
         <PhaseBar view={view} viewer={seat} dispatch={dispatch} />

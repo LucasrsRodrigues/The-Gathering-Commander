@@ -143,6 +143,10 @@ const discardCount: Policy = (state, action) => {
   return action.objectIds.length < count ? timing('discardCount', `Descarte ${count} carta(s) para ficar com ${state.ruleset.maxHandSize}.`) : null
 }
 
+// Épico 11, req. 9: "Resolver à mão" changes what a card does, so like any rule exception the others approve it online.
+const manualResolution: Policy = (_state, action) =>
+  action.type === 'resolveManually' ? timing('manualResolution', 'Resolver à mão deixa de aplicar o efeito automático: os outros jogadores aprovam.') : null
+
 const POLICIES: { area: RuleArea; check: Policy }[] = [
   { area: 'timing', check: discardCount },
   { area: 'combat', check: attackLegality },
@@ -154,6 +158,7 @@ const POLICIES: { area: RuleArea; check: Policy }[] = [
   { area: 'timing', check: playedByHand },
   { area: 'timing', check: landTiming },
   { area: 'timing', check: spellTiming },
+  { area: 'timing', check: manualResolution },
 ]
 
 // Findings for every area that is not 'off'.

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PlayerId, PlayerView, Step } from '@gathering-hall/engine'
+import { levelOf, type PlayerId, type PlayerView, type StackItem, type Step } from '@gathering-hall/engine'
 import { STEP_LABELS } from '../session/describe'
 import { menuStore, previewStore, showPreview } from '../ui/stores'
 import type { Dispatch } from './PlayerPanels'
@@ -47,7 +47,26 @@ export function PhaseBar({ view, viewer, dispatch }: { view: PlayerView; viewer:
   )
 }
 
-export function StackPanel({ view, dispatch }: { view: PlayerView; dispatch: Dispatch }) {
+// Épico 11, req. 9: the top item resolves by itself; whoever has priority may ask to do it by hand instead. With the
+// rules blocking exceptions it goes as a request (at once locally, approved by the others online).
+function ManualToggle({ view, viewer, item, dispatch }: { view: PlayerView; viewer: PlayerId; item: StackItem; dispatch: Dispatch }) {
+  if (!item.ability) return null
+  if (item.manual) return <small className="muted">à mão</small>
+  const canAsk = view.priority?.player === viewer || view.ruleset.timingRules === 'off'
+  const action = { type: 'resolveManually' as const, stackItemId: item.id }
+  return (
+    <span className="stack-auto">
+      <small className="muted">automático</small>
+      {canAsk && (
+        <button className="btn small" onClick={() => dispatch(levelOf(view.ruleset, 'timing') === 'block'
+          ? { type: 'requestException', action, reason: 'Resolver à mão' }
+          : action)}>Resolver à mão</button>
+      )}
+    </span>
+  )
+}
+
+export function StackPanel({ view, viewer, dispatch }: { view: PlayerView; viewer: PlayerId; dispatch: Dispatch }) {
   const [text, setText] = useState('')
   const items = [...view.stack].reverse()
   return (
@@ -76,6 +95,7 @@ export function StackPanel({ view, dispatch }: { view: PlayerView; dispatch: Dis
                     <small>{view.players[item.controller]?.name}</small>
                   </div>
                 )}
+                {i === 0 ? <ManualToggle view={view} viewer={viewer} item={item} dispatch={dispatch} /> : item.ability && <small className="muted">{item.manual ? 'à mão' : 'automático'}</small>}
               </li>
             )
           })}

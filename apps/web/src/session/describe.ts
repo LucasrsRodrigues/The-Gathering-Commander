@@ -95,6 +95,11 @@ export function describeEvents(events: GameEvent[], after: LogContext, before: L
       case 'judgeAction':
         lines.push(`⚖ Ação de juiz: ${name(e.player)} fez uma jogada fora das regras${e.reason ? ` (“${e.reason}”)` : ''}${e.approvedBy.length ? `, aprovada por ${e.approvedBy.map(name).join(', ')}` : ''}.`)
         break
+      case 'resolvedManually': {
+        const source = e.item.objectId ?? e.item.sourceId
+        lines.push(`${name(e.player)} pediu para resolver ${source ? cardName(source) : 'o item do topo'} à mão: o efeito fica com os jogadores.`)
+        break
+      }
       default: break
     }
   }

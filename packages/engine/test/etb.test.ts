@@ -206,3 +206,51 @@ describe('"when this enters" in play', () => {
     expect(out.ok && out.state.pending).toBeNull()
   })
 })
+
+describe('"Resolver à mão" (épico 11, T11.8)', () => {
+  // Elvish Visionary's trigger on top of the stack, p1 with priority; then the rules as the test wants them.
+  function withTrigger(timingRules: 'off' | 'block', exceptionApproval: 'auto' | 'vote' = 'auto'): [Run, string] {
+    let [r, elf] = put(start(), 'p1', 'Elvish Visionary', 'hand')
+    r = resolveOne(step(r, { type: 'castSpell', player: 'p1', objectId: elf }))
+    const state = { ...r.state, ruleset: { ...r.state.ruleset, timingRules }, options: { ...r.state.options, exceptionApproval } }
+    return [{ ...r, state }, r.state.stack[0]!.id]
+  }
+
+  it('without the rules on it simply marks the item: it resolves without its effects', () => {
+    let [r, item] = withTrigger('off')
+    const before = hand(r.state, 'p1')
+    r = step(r, { type: 'resolveManually', player: 'p1', stackItemId: item })
+    expect(r.state.stack[0]).toMatchObject({ id: item, manual: true })
+    expect(r.events.at(-1)).toMatchObject({ type: 'resolvedManually', player: 'p1' })
+    r = resolveTo(r, 0)
+    expect(hand(r.state, 'p1')).toBe(before)
+  })
+
+  it('with the rules on it is an exception: locally at once, logged as a judge action', () => {
+    let [r, item] = withTrigger('block')
+    expectError(r.state, { type: 'resolveManually', player: 'p1', stackItemId: item }, 'ruleBlocked')
+    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: 'Resolver à mão' })
+    expect(r.state.stack[0]!.manual).toBe(true)
+    expect(r.events).toContainEqual({ type: 'judgeAction', player: 'p1', actionType: 'resolveManually', reason: 'Resolver à mão', approvedBy: [] })
+  })
+
+  it('online, the others approve first', () => {
+    let [r, item] = withTrigger('block', 'vote')
+    r = step(r, { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: 'Resolver à mão' })
+    expect(r.state.pending?.kind).toBe('exception')
+    expect(r.state.stack[0]!.manual).toBeUndefined()
+    r = step(r, { type: 'answerException', player: 'p2', approve: true })
+    expect(r.state.stack[0]!.manual).toBe(true)
+    expect(r.events).toContainEqual(expect.objectContaining({ type: 'judgeAction', approvedBy: ['p2'] }))
+  })
+
+  it('only the top item, only automated items, only with priority', () => {
+    const [r, item] = withTrigger('off')
+    expectError(r.state, { type: 'resolveManually', player: 'p1', stackItemId: 'nope' }, 'invalidAction')
+    const manual = act(r.state, { type: 'resolveManually', player: 'p1', stackItemId: item }).state
+    expectError(manual, { type: 'resolveManually', player: 'p1', stackItemId: item }, 'invalidAction')
+    const [blocked] = withTrigger('block')
+    const request: Action = { type: 'requestException', player: 'p1', action: { type: 'resolveManually', player: 'p1', stackItemId: item }, reason: '' }
+    expectError({ ...blocked.state, priority: { player: 'p2', passed: [] } }, request, 'strictPriority') // the exception does not skip priority
+  })
+})

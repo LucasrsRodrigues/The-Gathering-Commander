@@ -254,11 +254,32 @@ Quatro ondas e um fechamento:
     - Os ETBs mais jogados quase sempre têm "you may", busca ou vidência, e ficam para a onda 2.
     - A meta da onda (20%) depende das próximas frases: Equip, Enchant, modais e "Draw a card." depois de uma
       frase manual.
-- [ ] **T11.8 — "Resolver à mão"** _(req: 9)_ · depende de T11.6
+- [x] **T11.8 — "Resolver à mão"** _(req: 9)_ · depende de T11.6
   - Verificação:
     - local resolve na hora;
     - online passa pela aprovação dos outros;
     - fica no registro como ação de juiz.
+  - Feito:
+    - ação `resolveManually { stackItemId }`: marca o item do topo como `manual`, e ele resolve sem os efeitos
+      automáticos (a carta só vai para onde vai). Evento `resolvedManually`, com frase no registro.
+      - Só o item do topo, só item automatizado e só com prioridade. Com as regras de tempo desligadas (mesa livre),
+        qualquer um pode pedir.
+    - **Política:** `manualResolution`, na área "tempo". Com a área em "bloquear", o pedido é uma exceção às regras:
+      - local, aplica na hora;
+      - online, os outros aprovam;
+      - nos dois casos fica no registro como ação de juiz.
+
+      Com "avisar", passa com o aviso, e com "desligado", passa direto, como as outras exceções.
+    - **Protocolo:** a ação nova é validada, inclusive dentro de um pedido de exceção.
+    - **Mesa:** a pilha mostra "automático" ou "à mão" nos itens automatizados. No topo, quem tem prioridade vê
+      "Resolver à mão", que já manda o pedido de exceção quando as regras bloqueiam.
+  - Verificado nos testes do motor:
+    - sem regras, só marca o item, e o Elvish Visionary não compra;
+    - com regras, a ação direta é barrada, e o pedido aplica na hora, com `judgeAction` sem aprovadores;
+    - online, o item só muda depois da aprovação do outro jogador;
+    - erros para item fora do topo, item já manual e jogador sem prioridade.
+  - Não verificado no navegador: os decks de exemplo não abrem com um item automático na pilha, e uma lista de teste
+    com cartas repetidas é barrada pelas regras.
 - [ ] **T11.9 — Interface: alvos na mesa, registro e selo** _(req: 7, 15)_ · depende de T11.5
   - Escopo:
     - destaque dos alvos válidos na mesa 3D e nos painéis;

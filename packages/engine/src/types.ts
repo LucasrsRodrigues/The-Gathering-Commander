@@ -411,6 +411,7 @@ export type Action =
   | ActionOf<'concede'>
   | ActionOf<'playLand', { objectId: ObjectId }> // CR 305.1
   | ActionOf<'castSpell', { objectId: ObjectId; x?: number; payWith?: ManaActivation[]; targets?: Target[] }> // CR 601.2 (payWith: tap these first, atomically; targets: épico 11)
+  | ActionOf<'resolveManually', { stackItemId: string }> // épico 11: the top item resolves without its automated effects
   | ActionOf<'chooseTargets', { targets: Target[]; manual?: boolean }> // épico 11: answers ChooseTargets (manual: do it by hand)
   | ActionOf<'activateMana', { objectId: ObjectId; abilityIndex: number; color?: ManaType }> // CR 605
   | ActionOf<'declareMana', { objectId: ObjectId; mana: ManaAmount }> // a source the parser did not recognize
@@ -464,6 +465,7 @@ export type GameEvent =
   | { type: 'stackItemAdded'; item: StackItem }
   | { type: 'stackItemResolved'; item: StackItem }
   | { type: 'stackItemFizzled'; item: StackItem } // CR 608.2b: every target became illegal, nothing happens
+  | { type: 'resolvedManually'; player: PlayerId; item: StackItem } // "Resolver à mão": the players apply it by hand
   | { type: 'triggerSkipped'; sourceId: ObjectId; text: string } // CR 603.3d: no legal target, the trigger is removed
   | { type: 'abilityResolving'; item: StackItem; text: string } // épico 11: an automated ability applies its effects
   | { type: 'manualStep'; text: string; objectId?: ObjectId } // épico 11: a part the players do by hand

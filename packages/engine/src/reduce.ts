@@ -46,7 +46,7 @@ const ACTION_TYPES = new Set<Action['type']>([
   'shuffleLibrary', 'tap', 'untap', 'setFaceDown', 'addCounter', 'createToken', 'setArrangement',
   'adjustLife', 'adjustPoison', 'commanderDamage', 'putAbilityOnStack', 'concede', 'playLand', 'castSpell',
   'requestException', 'answerException', 'cancelException', 'activateMana', 'declareMana', 'adjustPT', 'dealDamage',
-  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil', 'chooseTargets',
+  'declareAttackers', 'declareBlockers', 'assignDamage', 'discard', 'setStops', 'passUntil', 'chooseTargets', 'resolveManually',
 ])
 const MAX_PT_DELTA = 100
 const WAITING: Record<string, string> = {
@@ -445,6 +445,19 @@ function applyGameAction(tx: Tx, action: Action) {
       return
     }
 
+    // Épico 11, req. 9: whoever has priority may ask that the top item resolve by hand (a safety valve against a
+    // misread card). It changes the game's outcome, so it is a rule exception (policies.ts): approved online.
+    case 'resolveManually': {
+      const top = s.stack[s.stack.length - 1]
+      if (!top || top.id !== action.stackItemId) fail('invalidAction', 'Só o item do topo da pilha pode ser resolvido à mão.')
+      if (s.ruleset.timingRules !== 'off' && s.priority?.player !== actor) fail('strictPriority', 'Você precisa ter prioridade para isso.')
+      if (!top.ability || top.manual) fail('invalidAction', 'Esse item já é resolvido à mão.')
+      const item = { ...top, manual: true }
+      tx.stack()[s.stack.length - 1] = item
+      tx.emit({ type: 'resolvedManually', player: actor, item })
+      return
+    }
+
     case 'putAbilityOnStack': {
       const description = text(action.description, MAX_TEXT)
       if (action.sourceId !== undefined && !own(s.objects, action.sourceId)) fail('unknownObject', 'Origem desconhecida.')
@@ -602,7 +615,7 @@ function checkShape(action: Action) {
     fail('invalidAction', 'Ação desconhecida.')
   }
   if (typeof action.player !== 'string') fail('invalidAction', 'Ação malformada.')
-  for (const key of ['objectId', 'target', 'commanderId', 'sourceId'] as const) {
+  for (const key of ['objectId', 'target', 'commanderId', 'sourceId', 'stackItemId'] as const) {
     const value = (action as Partial<Record<typeof key, unknown>>)[key]
     if (value !== undefined && typeof value !== 'string') fail('invalidAction', 'Ação malformada.')
   }
