@@ -1,7 +1,8 @@
 // Deck storage port + adapters. IndexedDB is the default; when it is unavailable (some private modes)
 // we fall back to memory so the session still works. Everything read back is re-validated.
 
-import { MAX_DECK_NAME, type Deck, type DeckCard } from './model'
+import { sanitizeDeck } from '@gathering-hall/formats'
+import type { Deck } from './model'
 
 export interface DeckRepository {
   readonly persistent: boolean
@@ -11,40 +12,8 @@ export interface DeckRepository {
   remove(id: string): Promise<void>
 }
 
-const MAX_ENTRIES = 300
-const MAX_COUNT = 99
-const MAX_ID = 64
-
-function text(v: unknown, max: number): v is string {
-  return typeof v === 'string' && v.length > 0 && v.length <= max
-}
-
-function card(raw: unknown): DeckCard | null {
-  if (!raw || typeof raw !== 'object') return null
-  const c = raw as Record<string, unknown>
-  if (!text(c.oracleId, MAX_ID) || !text(c.name, 200)) return null
-  if (typeof c.count !== 'number' || !Number.isInteger(c.count) || c.count < 1 || c.count > MAX_COUNT) return null
-  return { oracleId: c.oracleId, name: c.name, count: c.count, ...(text(c.scryfallId, MAX_ID) ? { scryfallId: c.scryfallId } : {}) }
-}
-
-// Storage is writable by anything on this origin: treat stored decks as untrusted input.
-export function sanitizeDeck(raw: unknown): Deck | null {
-  if (!raw || typeof raw !== 'object') return null
-  const d = raw as Record<string, unknown>
-  if (d.schemaVersion !== 1 || !text(d.id, MAX_ID) || typeof d.name !== 'string') return null
-  const list = (v: unknown) => (Array.isArray(v) ? v.slice(0, MAX_ENTRIES).map(card).filter((c): c is DeckCard => !!c) : [])
-  const time = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
-  return {
-    schemaVersion: 1,
-    id: d.id,
-    name: d.name.slice(0, MAX_DECK_NAME) || 'Deck sem nome',
-    ...(text(d.presetId, MAX_ID) ? { presetId: d.presetId } : {}),
-    commanders: list(d.commanders).slice(0, 2),
-    cards: list(d.cards),
-    createdAt: time(d.createdAt),
-    updatedAt: time(d.updatedAt),
-  }
-}
+// Storage is writable by anything on this origin: stored decks go through the shared validator.
+export { sanitizeDeck } from '@gathering-hall/formats'
 
 const byRecent = (a: Deck, b: Deck) => b.updatedAt - a.updatedAt
 

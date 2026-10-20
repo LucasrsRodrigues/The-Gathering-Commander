@@ -11,6 +11,7 @@ import { DEFAULT_CONFIG, startServer, type ServerCatalog } from './server'
 import { AccountStore } from './auth/accounts'
 import { providersFromEnv } from './auth/providers'
 import { AuthService } from './auth/routes'
+import { CloudStore } from './cloud/store'
 import { importLegacyRooms } from './legacy'
 import { DbRoomStore } from './store'
 
@@ -67,15 +68,19 @@ if (catalogOn) {
 // Optional accounts (épico 08): on when at least one provider has its keys, plus PUBLIC_URL and SESSION_SECRET.
 const providers = providersFromEnv(env)
 let auth: AuthService | null = null
+let cloud: CloudStore | null = null
 if (providers.length) {
   if (!env.PUBLIC_URL || !env.SESSION_SECRET || env.SESSION_SECRET.length < 32) {
     console.warn('contas: desligadas (defina PUBLIC_URL e SESSION_SECRET com 32+ caracteres para ligar o login).')
   } else {
-    auth = new AuthService(new AccountStore(db), { publicUrl: env.PUBLIC_URL, appUrl: env.APP_URL, sessionSecret: env.SESSION_SECRET, providers })
+    const accounts = new AccountStore(db)
+    cloud = new CloudStore(db)
+    accounts.register(cloud.accountPart()) // cloud decks and presets go with an exported or deleted account
+    auth = new AuthService(accounts, { publicUrl: env.PUBLIC_URL, appUrl: env.APP_URL, sessionSecret: env.SESSION_SECRET, providers })
     console.log(`contas: login com ${providers.map((p) => p.id).join(' e ')}`)
   }
 }
-const server = await startServer(config, store, undefined, catalog, auth)
+const server = await startServer(config, store, undefined, catalog, auth, cloud)
 console.log(`The Gathering Hall server on :${server.port} (${db.kind}; origens: ${config.allowedOrigins.join(', ')}${config.staticDir ? ' + mesma origem' : ''})`)
 
 // Catalog: import Scryfall's bulk on start if the last import is old, then check every 6 hours

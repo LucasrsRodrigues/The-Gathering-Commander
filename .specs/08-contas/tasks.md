@@ -108,12 +108,19 @@ chaves de login configuradas.
     - excluir a conta com a confirmação digitada e voltar ao estado sem conta.
 
 ## Onda 2 — Nuvem
-- [ ] **T8.7 — API de sincronização com "última escrita vence" e marcas de exclusão** _(req: 11, 13–15)_ · depende de T8.4
+- [x] **T8.7 — API de sincronização com "última escrita vence" e marcas de exclusão** _(req: 11, 13–15)_ · depende de T8.4
   - Verificação:
     - `409` com a versão do servidor quando a dele é mais nova;
     - limites de quantidade e tamanho;
     - data no futuro limitada;
     - fitness "última escrita vence".
+  - Feito:
+    - migração `0003-cloud.sql` com uma tabela `cloud_doc` para decks e presets;
+    - `updated_at` é a hora da edição no aparelho (limitada a 5 min no futuro); `changed_at` é a hora do servidor e
+      serve para o "o que mudou desde", para um relógio errado nunca esconder mudanças;
+    - a escrita é numa transação com `FOR UPDATE`, então dois aparelhos não ganham ao mesmo tempo;
+    - o tipo `Deck` e o `sanitizeDeck` foram para o `formats`, e o servidor valida decks e presets como o app;
+    - a nuvem entra na exportação e na exclusão da conta pelas "partes da conta".
 - [ ] **T8.8 — Repositórios de nuvem no app, primeiro login e sair** _(req: 11–13, 16)_ · depende de T8.7
   - Verificação:
     - o app abre e edita sem rede (cache local) e sincroniza quando a rede volta;

@@ -3,27 +3,14 @@
 
 import type { Color, DeckForValidation } from '@gathering-hall/formats'
 
-export interface DeckCard {
-  oracleId: string
-  name: string
-  scryfallId?: string // chosen printing (art); validation never depends on it
-  count: number
-}
-
-export interface Deck {
-  schemaVersion: 1
-  id: string
-  name: string
-  presetId?: string
-  commanders: DeckCard[]
-  cards: DeckCard[]
-  createdAt: number
-  updatedAt: number
-}
+// The document shape (and its validator) lives in @gathering-hall/formats: the server validates cloud decks with it.
+export type { Deck, DeckCard } from '@gathering-hall/formats'
+import type { Deck, DeckCard } from '@gathering-hall/formats'
 
 export type DeckZone = 'commanders' | 'cards'
 
-export const MAX_DECK_NAME = 60
+export { MAX_DECK_NAME } from '@gathering-hall/formats'
+import { MAX_DECK_NAME } from '@gathering-hall/formats'
 
 export function newDeck(id: string, name: string, now: number): Deck {
   return { schemaVersion: 1, id, name: name.trim().slice(0, MAX_DECK_NAME) || 'Deck sem nome', commanders: [], cards: [], createdAt: now, updatedAt: now }

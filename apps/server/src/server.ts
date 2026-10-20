@@ -19,6 +19,8 @@ import { makeDeckChecker } from './catalog/deckCheck'
 import type { CatalogCache } from './catalog/lookup'
 import { handleCatalog } from './catalog/routes'
 import type { AuthService } from './auth/routes'
+import { handleCloud } from './cloud/routes'
+import type { CloudStore } from './cloud/store'
 import type { CatalogStore } from './catalog/store'
 
 export interface ServerCatalog {
@@ -66,6 +68,7 @@ export interface RunningServer {
 
 export function startServer(
   config: ServerConfig, store: RoomStore, baseDeps: RoomDeps = cryptoDeps, catalog: ServerCatalog | null = null, auth: AuthService | null = null,
+  cloud: CloudStore | null = null,
 ): Promise<RunningServer> {
   const deps: RoomDeps = catalog
     ? { checkDeck: makeDeckChecker(catalog.cache), cardRules: makeRulesFiller(catalog.cache), ...baseDeps }
@@ -76,6 +79,7 @@ export function startServer(
   const creation = new WindowLimiter(config.roomsPerIpPerHour, 60 * 60 * 1000)
   const catalogLimit = new WindowLimiter(config.catalogRequestsPerMinute, 60 * 1000)
   const loginLimit = new WindowLimiter(20, 60 * 1000) // login attempts per IP per minute
+  const cloudLimit = new WindowLimiter(120, 60 * 1000) // cloud requests per account per minute
   let nextConn = 0
   let closing = false // during shutdown, sockets closing must not touch the store anymore
 
@@ -162,6 +166,13 @@ export function startServer(
       auth.handle(req, res, { sameOrigin: originAllowed(origin, req), json })
         .then((handled) => handled || json(res, 404, { error: 'não encontrado' }))
         .catch(() => json(res, 500, { error: 'erro no login' }))
+      return
+    }
+    if (req.url?.startsWith('/api/sync') || req.url?.startsWith('/api/decks/') || req.url?.startsWith('/api/presets/')) {
+      if (!auth || !cloud) return json(res, 404, { error: 'contas desligadas neste servidor' })
+      handleCloud(auth, cloud, req, res, { sameOrigin: originAllowed(origin, req), now: deps.now(), allow: (id) => cloudLimit.allow(id, deps.now()), json })
+        .then((handled) => handled || json(res, 404, { error: 'não encontrado' }))
+        .catch(() => json(res, 500, { error: 'erro na nuvem' }))
       return
     }
     if (req.url?.startsWith('/api/catalog/')) {
@@ -261,6 +272,7 @@ export function startServer(
     creation.sweep(now)
     catalogLimit.sweep(now)
     loginLimit.sweep(now)
+    cloudLimit.sweep(now)
     for (const id of await store.expired(now - config.roomTtlMs)) {
       await enqueue(id, async () => {
         const live = rooms.get(id)
