@@ -515,6 +515,30 @@ Quatro ondas e um fechamento:
     - jogar uma partida online com cartas automáticas;
     - conferir alvos e "Resolver à mão" no tablet real (junto com a medição pendente do épico 10);
     - erros de leitura achados viram exceções ou correções de padrão.
+  - Feito (falta só o tablet real, com o usuário):
+    - **Revisão do leitor:** as 94 cartas automáticas do top 1.000 que têm efeito (mágica, ETB ou ativada) foram
+      conferidas, uma a uma, contra o Oracle. Estavam certas, por exemplo:
+      - as fetch lands buscam "Island or Swamp card", o que inclui as duais com subtipo;
+      - o Chain Reaction conta as criaturas na resolução;
+      - o Burnished Hart não vira;
+      - o Strip Mine pede um terreno como alvo;
+      - o Zuran Orb sacrifica um terreno.
+    - **Correção:** as cartas de duas faces e com aventura apareciam como "automáticas", com o leitor vendo só a
+      frente (Fell the Profane // Fell Mire, Witch Enchanter).
+      - Agora `OracleFacts.otherFaces` leva o texto das outras faces, no servidor e no app.
+      - Esse texto entra em "Manual:", e a carta fica parcial.
+    - **Partida online** num servidor de teste separado (porta 8791, PGlite com o catálogo importado, dados no
+      scratchpad; o servidor do usuário não foi tocado), com duas abas em origens diferentes:
+      - Ana (Goblins) lançou Lightning Bolt, escolheu a Bia pelo botão "Alvo" do painel e pagou com a Montanha;
+      - na aba da Bia, a pilha mostrou "automático" e "Resolver à mão";
+      - a Bia pediu "Resolver à mão", a Ana recebeu o pedido de aprovação e recusou;
+      - a Bia passou, e as duas telas mostraram "Lightning Bolt causou 3 de dano a Bia" e vida 37.
+    - **Achado do teste:** o build com o `.env` de desenvolvimento aponta para `localhost:8787`. Para servir pelo
+      próprio servidor, o build precisa de `VITE_SERVER_URL` vazio (o Dockerfile já faz isso).
+    - **Pendente com o usuário:** alvos e "Resolver à mão" no tablet real, junto com a medição pendente do épico 10.
+  - **Medição (bulk de 2026-10-19), depois da correção das faces:**
+    - top 1.000: automáticas 18,3% (eram 19,0%; 7 cartas de duas faces passaram a parciais);
+    - top 5.000: automáticas 7,7%.
 - [ ] **T11.14 — README, roadmap e a linha de cobertura**
   - Escopo: as frases mais comuns ainda manuais viram a lista da onda 3 (gatilhos de morrer e atacar, anthems…).
 

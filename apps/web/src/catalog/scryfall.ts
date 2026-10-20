@@ -127,6 +127,9 @@ function rulesOf(card: ScryfallCard, front: ScryfallFace | undefined, keywords: 
     const v = field(k, 10)
     if (v !== undefined) facts[k] = v
   }
+  // The other faces are played by hand: listed as manual (the same on the server, catalog/cardRules.ts).
+  const others = (card.card_faces ?? []).slice(1).flatMap((f) => (isText(f.oracle_text, MAX_ORACLE) && f.oracle_text ? [`${isText(f.name, MAX_TEXT) ? f.name : ''}: ${f.oracle_text}`] : []))
+  if (others.length) facts.otherFaces = others
   return rulesFor(facts, card.oracle_id ?? front?.oracle_id)
 }
 

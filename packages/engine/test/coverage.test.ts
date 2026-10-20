@@ -29,6 +29,16 @@ describe('coverage (épico 11, T11.2)', () => {
     expect(ward.manualText).toEqual(['Ward {2}'])
   })
 
+  it('the other faces of a card (an MDFC land, an adventure) are listed as manual: the front alone is not the card (T11.13)', () => {
+    const fell = deriveCardRules(card({
+      name: 'Fell the Profane // Fell Mire', typeLine: 'Instant', manaCost: '{2}{B}{B}', oracleText: 'Destroy target creature or planeswalker.',
+      otherFaces: ["Fell Mire: As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {B}."],
+    }))
+    expect(fell.coverage).toBe('partial')
+    expect(fell.spell?.effects).toEqual([{ kind: 'destroy', what: 'target' }])
+    expect(fell.manualText).toEqual(["Fell Mire: As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {B}."])
+  })
+
   it('reminder text never counts, and the card name shows in the manual list', () => {
     const r = deriveCardRules(card({ name: 'Odd Golem', typeLine: 'Artifact Creature — Golem', oracleText: 'Odd Golem does something weird. (This is a reminder.)' }))
     expect(r.manualText).toEqual(['Odd Golem does something weird.'])

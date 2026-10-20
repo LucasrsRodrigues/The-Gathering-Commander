@@ -19,6 +19,8 @@ export function oracleFactsOf(card: ClientCard): OracleFacts {
     const value = pick(field)
     if (value !== undefined) facts[key] = value
   }
+  const others = (card.card_faces ?? []).slice(1).flatMap((f) => (f.oracle_text ? [`${f.name ?? ''}: ${f.oracle_text}`] : []))
+  if (others.length) facts.otherFaces = others // the same in the app (catalog/scryfall.ts)
   return facts
 }
 

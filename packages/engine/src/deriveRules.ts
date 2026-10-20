@@ -21,6 +21,7 @@ export interface OracleFacts {
   loyalty?: string
   keywords: string[] // Scryfall's keyword names: only hints, they also list keywords the card grants to others
   colorIdentity: string[]
+  otherFaces?: string[] // "Name: text" of the other faces (back, adventure): played by hand, so listed as manual
 }
 
 const COLORS: readonly ManaColor[] = ['W', 'U', 'B', 'R', 'G']
@@ -103,6 +104,11 @@ export function deriveCardRulesWith(facts: OracleFacts, patterns: readonly LineP
       delete rules.spell
       return { ...rules, coverage: 'manual', manualText: shown }
     }
+  }
+  // T11.13: the rules come from the front face; the other faces (an MDFC's land, an adventure) are the players'.
+  for (const face of facts.otherFaces ?? []) {
+    const text = face.replace(/\s*\([^)]*\)/g, '').trim()
+    if (text && !text.endsWith(':')) manual.push(text)
   }
   rules.coverage = manual.length === 0 ? 'automated' : understood === 0 ? 'manual' : 'partial'
   if (manual.length) rules.manualText = manual
